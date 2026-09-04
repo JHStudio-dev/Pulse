@@ -142,15 +142,13 @@ async function main() {
   }
   check('student B cannot insert rows owned by A', insertBlocked, true);
 
-  // Reference data stays readable for everyone signed in.
-  await asSuperuser(
-    db,
-    `insert into universities (name, abbreviation, country_code)
-     values ('Universidad Nacional Autonoma de Honduras', 'UNAH', 'HN')`,
-  );
+  // Reference data ships in a migration and stays readable for anyone signed in.
   await actAs(db, studentB);
   const universities = await db.query('select count(*)::int as n from universities');
-  check('reference data is readable by any student', universities.rows[0].n, 1);
+  check('reference data is readable by any student', universities.rows[0].n, 2);
+
+  const campuses = await db.query('select count(*)::int as n from campus_instances');
+  check('campus instances are readable by any student', campuses.rows[0].n, 2);
 
   await db.exec('reset role;');
   await db.close();
