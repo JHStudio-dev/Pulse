@@ -1,0 +1,11 @@
+{
+  "name": "campus-sync-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated feasibility spike. Not part of the Pulse build.",
+  "scripts": {
+    "probe": "node src/run.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}

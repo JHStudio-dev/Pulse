@@ -1,0 +1,3 @@
+# Findings can contain course names; keep real runs local by default.
+findings/*.md
+!findings/TEMPLATE.md
