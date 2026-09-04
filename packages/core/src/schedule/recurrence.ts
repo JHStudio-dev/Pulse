@@ -37,7 +37,9 @@ function effectiveRange(schedule: SubjectSchedule, periodRange: DateRange): Date
 
   const start = scheduleRange.start > periodRange.start ? scheduleRange.start : periodRange.start;
 
-  const ends = [scheduleRange.end, periodRange.end].filter((value): value is IsoDate => value !== null);
+  const ends = [scheduleRange.end, periodRange.end].filter(
+    (value): value is IsoDate => value !== null,
+  );
   const end = ends.length === 0 ? null : ends.reduce((a, b) => (a < b ? a : b));
 
   if (end !== null && start > end) return null;

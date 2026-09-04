@@ -12,8 +12,18 @@ describe('findNextClass', () => {
     const now = new Date('2026-03-02T13:00:00.000Z'); // 07:00 local
     const next = findNextClass(
       [
-        makeSession({ id: 'later' as never, date: '2026-03-02', startTime: '14:00', endTime: '15:00' }),
-        makeSession({ id: 'sooner' as never, date: '2026-03-02', startTime: '08:00', endTime: '09:30' }),
+        makeSession({
+          id: 'later' as never,
+          date: '2026-03-02',
+          startTime: '14:00',
+          endTime: '15:00',
+        }),
+        makeSession({
+          id: 'sooner' as never,
+          date: '2026-03-02',
+          startTime: '08:00',
+          endTime: '09:30',
+        }),
       ],
       subjects(makeSubject()),
       now,

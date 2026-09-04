@@ -39,8 +39,7 @@ export function findNextClass(
     if (endsAt.getTime() <= now.getTime()) continue;
 
     const subject = subjectsById.get(session.subjectId);
-    const buffer =
-      session.modality === 'in_person' ? (subject?.travelBufferMinutes ?? null) : null;
+    const buffer = session.modality === 'in_person' ? (subject?.travelBufferMinutes ?? null) : null;
 
     const candidate: UpcomingClass = {
       session,
@@ -61,10 +60,7 @@ export function findNextClass(
 }
 
 /** Sessions falling on one local date, ordered by start time. */
-export function sessionsOnDate(
-  sessions: readonly ClassSession[],
-  date: string,
-): ClassSession[] {
+export function sessionsOnDate(sessions: readonly ClassSession[], date: string): ClassSession[] {
   return sessions
     .filter((session) => session.date === date)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));

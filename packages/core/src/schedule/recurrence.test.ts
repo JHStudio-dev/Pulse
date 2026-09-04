@@ -82,8 +82,18 @@ describe('expandSchedule', () => {
 
 describe('expandSchedules', () => {
   it('merges slots in chronological order', () => {
-    const monday = makeSchedule({ id: 'a' as never, weekday: 1, startTime: '10:00', endTime: '11:00' });
-    const wednesday = makeSchedule({ id: 'b' as never, weekday: 3, startTime: '08:00', endTime: '09:00' });
+    const monday = makeSchedule({
+      id: 'a' as never,
+      weekday: 1,
+      startTime: '10:00',
+      endTime: '11:00',
+    });
+    const wednesday = makeSchedule({
+      id: 'b' as never,
+      weekday: 3,
+      startTime: '08:00',
+      endTime: '09:00',
+    });
 
     const sessions = expandSchedules(
       [wednesday, monday],

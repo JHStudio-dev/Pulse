@@ -77,11 +77,7 @@ function parseTimeOfDay(time: TimeOfDay): [number, number] {
  * The offset is resolved twice because the first guess uses the offset at the
  * naive UTC timestamp, which is wrong on the days a zone shifts.
  */
-export function zonedTimeToDate(
-  date: IsoDate,
-  time: TimeOfDay,
-  timeZone: TimeZone,
-): Date {
+export function zonedTimeToDate(date: IsoDate, time: TimeOfDay, timeZone: TimeZone): Date {
   const [year, month, day] = parseIsoDate(date);
   const [hour, minute] = parseTimeOfDay(time);
   const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
@@ -96,11 +92,7 @@ export function zonedTimeToDate(
   return new Date(naiveUtc - secondOffset);
 }
 
-export function zonedTimeToInstant(
-  date: IsoDate,
-  time: TimeOfDay,
-  timeZone: TimeZone,
-): Instant {
+export function zonedTimeToInstant(date: IsoDate, time: TimeOfDay, timeZone: TimeZone): Instant {
   return zonedTimeToDate(date, time, timeZone).toISOString();
 }
 

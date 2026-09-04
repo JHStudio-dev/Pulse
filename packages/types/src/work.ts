@@ -44,14 +44,7 @@ export interface TaskItem {
 }
 
 export type AssessmentType =
-  | 'exam'
-  | 'midterm'
-  | 'quiz'
-  | 'project'
-  | 'presentation'
-  | 'lab'
-  | 'graded_task'
-  | 'final';
+  'exam' | 'midterm' | 'quiz' | 'project' | 'presentation' | 'lab' | 'graded_task' | 'final';
 
 export interface Assessment {
   id: AssessmentId;

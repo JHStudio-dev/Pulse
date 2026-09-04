@@ -10,9 +10,7 @@ import { z } from 'zod';
 export const isoDateSchema = z.iso.date();
 
 /** `HH:mm`, rejecting the seconds form so stored times stay comparable as text. */
-export const timeOfDaySchema = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected HH:mm');
+export const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Expected HH:mm');
 
 export const instantSchema = z.iso.datetime({ offset: true });
 

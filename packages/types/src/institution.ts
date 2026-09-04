@@ -31,11 +31,7 @@ export interface CampusInstance {
   createdAt: Instant;
 }
 
-export type CampusConnectionStatus =
-  | 'disconnected'
-  | 'connected'
-  | 'needs_reauth'
-  | 'error';
+export type CampusConnectionStatus = 'disconnected' | 'connected' | 'needs_reauth' | 'error';
 
 export interface CampusConnection {
   id: CampusConnectionId;

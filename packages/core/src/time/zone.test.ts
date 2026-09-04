@@ -12,12 +12,8 @@ const NEW_YORK = 'America/New_York';
 describe('zonedTimeToInstant', () => {
   it('applies a fixed offset for a zone without DST', () => {
     // Honduras stays at UTC-6 all year.
-    expect(zonedTimeToInstant('2026-03-04', '08:00', TEGUCIGALPA)).toBe(
-      '2026-03-04T14:00:00.000Z',
-    );
-    expect(zonedTimeToInstant('2026-08-04', '08:00', TEGUCIGALPA)).toBe(
-      '2026-08-04T14:00:00.000Z',
-    );
+    expect(zonedTimeToInstant('2026-03-04', '08:00', TEGUCIGALPA)).toBe('2026-03-04T14:00:00.000Z');
+    expect(zonedTimeToInstant('2026-08-04', '08:00', TEGUCIGALPA)).toBe('2026-08-04T14:00:00.000Z');
   });
 
   it('uses the correct offset on each side of a DST change', () => {

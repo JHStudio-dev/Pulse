@@ -8,13 +8,7 @@ import {
   uuidSchema,
 } from './primitives.js';
 
-export const taskStatusSchema = z.enum([
-  'pending',
-  'in_progress',
-  'done',
-  'submitted',
-  'overdue',
-]);
+export const taskStatusSchema = z.enum(['pending', 'in_progress', 'done', 'submitted', 'overdue']);
 
 export const taskDifficultySchema = z.enum(['easy', 'medium', 'hard']);
 
@@ -33,7 +27,8 @@ export const createTaskSchema = z
     academicWeight: z.number().min(0).max(100).nullable().default(null),
   })
   .refine(
-    (task) => task.assignedDate === null || task.dueDate === null || task.assignedDate <= task.dueDate,
+    (task) =>
+      task.assignedDate === null || task.dueDate === null || task.assignedDate <= task.dueDate,
     { message: 'Due date must not precede the assigned date', path: ['dueDate'] },
   )
   .refine((task) => task.dueTime === null || task.dueDate !== null, {
