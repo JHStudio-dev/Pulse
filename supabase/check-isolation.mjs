@@ -60,11 +60,6 @@ async function actAs(db, userId) {
   await db.exec(`select set_config('request.jwt.claim.sub', '${userId}', false);`);
 }
 
-async function asSuperuser(db, sql) {
-  await db.exec('reset role;');
-  await db.exec(sql);
-}
-
 async function main() {
   const db = new PGlite();
   await db.exec(AUTH_STUB);
