@@ -1,0 +1,56 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/install-state.gz
+
+# builds
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# supabase
+.branches
+.temp
+supabase/.temp/
+
+# testing
+coverage/
+.nyc_output/
+
+# turbo / caches
+.turbo/
+.cache/
+.eslintcache
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# os
+.DS_Store
+Thumbs.db
+
+# vercel
+.vercel
+
+# local project docs
+docs/CLAUDE.md
+docs/PULSE_SPEC.md
