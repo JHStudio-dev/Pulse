@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+/*
+ * Base tokens.
+ *
+ * The final palette is still an open decision, so these are neutral values
+ * chosen for contrast rather than a brand identity. Dark, light and system
+ * modes are all supported from the start.
+ */
+
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-raised: #f6f6f7;
+  --color-border: #e2e2e5;
+  --color-ink: #16161a;
+  --color-ink-muted: #5f6068;
+  --color-accent: #2f5fd0;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-surface: #101013;
+    --color-surface-raised: #17171c;
+    --color-border: #2a2a31;
+    --color-ink: #f2f2f4;
+    --color-ink-muted: #a0a1ab;
+    --color-accent: #7ea2ff;
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard focus must stay visible; status is never colour alone. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
