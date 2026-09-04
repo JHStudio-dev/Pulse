@@ -136,6 +136,12 @@ export function toMarkdown(report: Report): string {
     );
   }
 
-  lines.push('', '## Notes', '', '<!-- Record what worked, what blocked, and the fallback. -->', '');
+  lines.push(
+    '',
+    '## Notes',
+    '',
+    '<!-- Record what worked, what blocked, and the fallback. -->',
+    '',
+  );
   return lines.join('\n');
 }

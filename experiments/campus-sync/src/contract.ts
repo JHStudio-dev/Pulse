@@ -9,11 +9,7 @@
 
 /** Integration mechanisms, in the priority order the repository rules set. */
 export type Mechanism =
-  | 'official_api'
-  | 'lms_connector'
-  | 'session_extension'
-  | 'html_parsing'
-  | 'browser_agent';
+  'official_api' | 'lms_connector' | 'session_extension' | 'html_parsing' | 'browser_agent';
 
 export const MECHANISM_PRIORITY: readonly Mechanism[] = [
   'official_api',
@@ -25,12 +21,7 @@ export const MECHANISM_PRIORITY: readonly Mechanism[] = [
 
 /** The data the spike has to prove Pulse can obtain. */
 export type Capability =
-  | 'courses'
-  | 'assignments'
-  | 'due_dates'
-  | 'materials'
-  | 'file_download'
-  | 'announcements';
+  'courses' | 'assignments' | 'due_dates' | 'materials' | 'file_download' | 'announcements';
 
 export const REQUIRED_CAPABILITIES: readonly Capability[] = [
   'courses',
@@ -116,7 +107,9 @@ export interface CampusProbe {
   getMaterials(courseId: string): Promise<CampusMaterial[]>;
   getAnnouncements(courseId: string): Promise<CampusAnnouncement[]>;
   /** Confirms a file is reachable without writing it to disk. */
-  checkFileAccess(url: string): Promise<{ ok: boolean; status: number; contentType: string | null }>;
+  checkFileAccess(
+    url: string,
+  ): Promise<{ ok: boolean; status: number; contentType: string | null }>;
 }
 
 /** Campus responses are untrusted input; nothing is used before it is checked. */
