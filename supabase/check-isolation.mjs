@@ -26,18 +26,23 @@ const AUTH_STUB = `
 
   do $stub$
   begin
+    if not exists (select 1 from pg_roles where rolname = 'anon') then
+      create role anon;
+    end if;
     if not exists (select 1 from pg_roles where rolname = 'authenticated') then
       create role authenticated;
+    end if;
+    if not exists (select 1 from pg_roles where rolname = 'service_role') then
+      create role service_role;
     end if;
   end
   $stub$;
 `;
 
-// Supabase grants these automatically; pglite needs them stated.
+// Only the auth schema is granted here. Access to public must come from the
+// migrations themselves: granting it in the harness is exactly what hid the
+// missing privileges until the first real deployment.
 const GRANTS = `
-  grant usage on schema public to authenticated;
-  grant all on all tables in schema public to authenticated;
-  grant all on all sequences in schema public to authenticated;
   grant usage on schema auth to authenticated;
   grant select on auth.users to authenticated;
 `;
