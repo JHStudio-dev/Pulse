@@ -1,0 +1,12 @@
+-- Local demo data.
+--
+-- This file runs on `supabase db reset` during local development. It is for
+-- throwaway data that helps while building screens: a sample period, a few
+-- subjects, some tasks.
+--
+-- Canonical reference data does NOT belong here. Universities and campus
+-- instances live in a migration, because every environment needs them and the
+-- GitHub integration does not run seed files when deploying to main. Keeping a
+-- copy here would mean two sources of truth for the same rows.
+--
+-- Empty for now: Phase 1 has not started, so there are no screens to populate.

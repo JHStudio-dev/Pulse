@@ -70,15 +70,25 @@ npx supabase link --project-ref <ref>
 npx supabase db push
 ```
 
-Then seed the reference institutions:
+Reference institutions need no separate step: UJCV and UNAH ship in an
+idempotent migration, so any environment gets them when migrations run.
 
-```bash
-psql "$DATABASE_URL" -f supabase/seed/universities.sql
-```
-
-The campus base URLs in that seed are **unconfirmed placeholders**. Replace them
-with the real hosts recorded during the Campus Sync spike before pointing any
+The campus base URLs there are **unconfirmed placeholders**. Replace them with
+the real hosts recorded during the Campus Sync spike before pointing any
 connector at them.
+
+## Reference data vs seed
+
+The two are deliberately separate:
+
+- **Canonical reference data** — universities and campus instances — lives in a
+  migration. Every environment needs it, and the GitHub integration does not run
+  seed files when deploying to `main`.
+- **`supabase/seed/demo.sql`** holds throwaway local data and runs only on
+  `supabase db reset`. It is empty until there are screens to populate.
+
+Never copy reference data into the seed. Two sources of truth for the same rows
+drift the moment one is edited.
 
 ## Checking changes
 
