@@ -54,3 +54,6 @@ Thumbs.db
 # local project docs
 docs/CLAUDE.md
 docs/PULSE_SPEC.md
+
+# typescript build output
+*.tsbuildinfo
