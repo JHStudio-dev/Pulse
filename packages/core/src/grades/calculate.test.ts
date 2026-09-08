@@ -6,7 +6,7 @@ import {
   summarizeGrades,
   weightsAreComplete,
   type GradedAssessment,
-} from './calculate.js';
+} from './calculate';
 
 const NOW = '2026-03-01T00:00:00.000Z';
 

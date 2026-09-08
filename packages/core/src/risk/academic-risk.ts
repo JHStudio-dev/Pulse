@@ -1,5 +1,5 @@
 import type { IsoDate } from '@pulse/types';
-import type { RequiredGrade } from '../grades/calculate.js';
+import type { RequiredGrade } from '../grades/calculate';
 
 /**
  * Academic risk.

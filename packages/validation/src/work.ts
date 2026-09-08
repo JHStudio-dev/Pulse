@@ -6,7 +6,7 @@ import {
   shortText,
   timeOfDaySchema,
   uuidSchema,
-} from './primitives.js';
+} from './primitives';
 
 export const taskStatusSchema = z.enum(['pending', 'in_progress', 'done', 'submitted', 'overdue']);
 

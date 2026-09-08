@@ -7,8 +7,8 @@ import type {
   TaskId,
   TaskItemId,
   UserId,
-} from './ids.js';
-import type { Instant, IsoDate } from './primitives.js';
+} from './ids';
+import type { Instant, IsoDate } from './primitives';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'submitted' | 'overdue';
 

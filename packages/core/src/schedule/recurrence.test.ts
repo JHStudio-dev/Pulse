@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { makeSchedule } from '../testing/factories.js';
-import { expandSchedule, expandSchedules } from './recurrence.js';
+import { makeSchedule } from '../testing/factories';
+import { expandSchedule, expandSchedules } from './recurrence';
 
 const PERIOD = { start: '2026-03-01', end: '2026-06-30' };
 const TZ = 'America/Tegucigalpa';

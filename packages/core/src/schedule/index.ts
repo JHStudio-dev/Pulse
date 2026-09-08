@@ -1,2 +1,2 @@
-export * from './recurrence.js';
-export * from './next-class.js';
+export * from './recurrence';
+export * from './next-class';

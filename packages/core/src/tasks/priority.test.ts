@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Task, TaskId, UserId } from '@pulse/types';
-import { isOverdue, resolveTaskPriority, sortTasksByPriority } from './priority.js';
+import { isOverdue, resolveTaskPriority, sortTasksByPriority } from './priority';
 
 const TODAY = '2026-03-10';
 const NOW = '2026-03-01T00:00:00.000Z';

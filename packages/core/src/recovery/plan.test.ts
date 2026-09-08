@@ -6,13 +6,8 @@ import type {
   RecoveryPlanId,
   UserId,
 } from '@pulse/types';
-import { makeSession } from '../testing/factories.js';
-import {
-  buildRecoveryPlan,
-  countUnrecovered,
-  deriveRecoveryStatus,
-  needsRecovery,
-} from './plan.js';
+import { makeSession } from '../testing/factories';
+import { buildRecoveryPlan, countUnrecovered, deriveRecoveryStatus, needsRecovery } from './plan';
 
 const NOW = '2026-03-02T16:00:00.000Z';
 

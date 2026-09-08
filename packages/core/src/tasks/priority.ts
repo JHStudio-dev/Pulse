@@ -1,5 +1,5 @@
 import type { IsoDate, Task } from '@pulse/types';
-import { daysBetween } from '../time/dates.js';
+import { daysBetween } from '../time/dates';
 
 /**
  * Task priority.

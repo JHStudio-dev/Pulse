@@ -1,6 +1,6 @@
-import type { UserId } from './ids.js';
-import type { Instant, TimeZone } from './primitives.js';
-import type { QuietHours } from './reminders.js';
+import type { UserId } from './ids';
+import type { Instant, TimeZone } from './primitives';
+import type { QuietHours } from './reminders';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 

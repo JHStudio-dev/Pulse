@@ -1,2 +1,2 @@
-export * from './zone.js';
-export * from './dates.js';
+export * from './zone';
+export * from './dates';

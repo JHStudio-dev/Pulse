@@ -6,7 +6,7 @@ import {
   isIsoDate,
   nextDateOnWeekday,
   weekdayOf,
-} from './dates.js';
+} from './dates';
 
 describe('isIsoDate', () => {
   it('rejects dates that do not exist', () => {

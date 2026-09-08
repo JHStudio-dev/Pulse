@@ -9,7 +9,7 @@ import {
   timeZoneSchema,
   uuidSchema,
   weekdaySchema,
-} from './primitives.js';
+} from './primitives';
 
 export const modalitySchema = z.enum(['in_person', 'virtual', 'hybrid', 'unconfirmed']);
 

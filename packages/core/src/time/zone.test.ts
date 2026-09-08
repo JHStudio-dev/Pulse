@@ -4,7 +4,7 @@ import {
   instantToZonedTime,
   isValidTimeZone,
   zonedTimeToInstant,
-} from './zone.js';
+} from './zone';
 
 const TEGUCIGALPA = 'America/Tegucigalpa';
 const NEW_YORK = 'America/New_York';

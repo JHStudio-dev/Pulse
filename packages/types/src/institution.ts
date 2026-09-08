@@ -1,5 +1,5 @@
-import type { CampusConnectionId, CampusInstanceId, UniversityId, UserId } from './ids.js';
-import type { Instant } from './primitives.js';
+import type { CampusConnectionId, CampusInstanceId, UniversityId, UserId } from './ids';
+import type { Instant } from './primitives';
 
 /**
  * Institution layer.

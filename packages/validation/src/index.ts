@@ -1,3 +1,3 @@
-export * from './primitives.js';
-export * from './academic.js';
-export * from './work.js';
+export * from './primitives';
+export * from './academic';
+export * from './work';

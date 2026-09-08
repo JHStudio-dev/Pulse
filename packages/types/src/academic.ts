@@ -5,8 +5,8 @@ import type {
   SubjectId,
   SubjectScheduleId,
   UserId,
-} from './ids.js';
-import type { DateRange, Instant, IsoDate, TimeOfDay, TimeZone, Weekday } from './primitives.js';
+} from './ids';
+import type { DateRange, Instant, IsoDate, TimeOfDay, TimeZone, Weekday } from './primitives';
 
 /**
  * Class modality.

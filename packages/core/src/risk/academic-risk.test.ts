@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateAcademicRisk, topRiskSignals, type RiskInput } from './academic-risk.js';
+import { calculateAcademicRisk, topRiskSignals, type RiskInput } from './academic-risk';
 
 const baseline: RiskInput = {
   today: '2026-03-10',

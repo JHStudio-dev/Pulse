@@ -1,5 +1,5 @@
-import type { ClassSessionId, DocumentId, InboxItemId, NoteId, SubjectId, UserId } from './ids.js';
-import type { Instant } from './primitives.js';
+import type { ClassSessionId, DocumentId, InboxItemId, NoteId, SubjectId, UserId } from './ids';
+import type { Instant } from './primitives';
 
 export type DocumentSource = 'upload' | 'link' | 'campus_sync';
 

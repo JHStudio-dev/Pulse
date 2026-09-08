@@ -24,7 +24,7 @@ import type {
   SubjectRow,
   SubjectScheduleRow,
   TaskRow,
-} from './rows.js';
+} from './rows';
 
 /**
  * Row to domain mapping.

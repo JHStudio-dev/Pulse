@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Subject, SubjectId } from '@pulse/types';
-import { makeSession, makeSubject } from '../testing/factories.js';
-import { findNextClass, needsModalityConfirmation, sessionsOnDate } from './next-class.js';
+import { makeSession, makeSubject } from '../testing/factories';
+import { findNextClass, needsModalityConfirmation, sessionsOnDate } from './next-class';
 
 const TZ = 'America/Tegucigalpa';
 const subjects = (subject: Subject): ReadonlyMap<SubjectId, Subject> =>

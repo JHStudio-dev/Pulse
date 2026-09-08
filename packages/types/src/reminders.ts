@@ -5,8 +5,8 @@ import type {
   ReminderId,
   TaskId,
   UserId,
-} from './ids.js';
-import type { Instant, TimeOfDay } from './primitives.js';
+} from './ids';
+import type { Instant, TimeOfDay } from './primitives';
 
 export type ReminderTargetKind = 'class_session' | 'task' | 'assessment';
 

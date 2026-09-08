@@ -8,8 +8,8 @@ import type {
   TimeOfDay,
   TimeZone,
 } from '@pulse/types';
-import { addDays, isDateWithin, nextDateOnWeekday } from '../time/dates.js';
-import { zonedTimeToInstant } from '../time/zone.js';
+import { addDays, isDateWithin, nextDateOnWeekday } from '../time/dates';
+import { zonedTimeToInstant } from '../time/zone';
 
 /**
  * A class occurrence derived from a recurring slot.

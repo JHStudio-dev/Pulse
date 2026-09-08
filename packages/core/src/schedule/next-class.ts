@@ -1,5 +1,5 @@
 import type { ClassSession, Instant, Subject, TimeZone } from '@pulse/types';
-import { zonedTimeToDate } from '../time/zone.js';
+import { zonedTimeToDate } from '../time/zone';
 
 /** Everything the dashboard needs to render the next class correctly. */
 export interface UpcomingClass {

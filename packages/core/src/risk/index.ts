@@ -1,1 +1,1 @@
-export * from './academic-risk.js';
+export * from './academic-risk';

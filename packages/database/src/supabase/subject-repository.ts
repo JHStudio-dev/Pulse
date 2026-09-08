@@ -1,9 +1,9 @@
 import type { AcademicPeriodId, Subject, SubjectId, UserId } from '@pulse/types';
-import { DatabaseError } from '../ports/errors.js';
-import type { SubjectRepository } from '../ports/repositories.js';
-import type { PulseSupabaseClient } from './client.js';
-import { fromSubject, toSubject } from './mappers.js';
-import type { SubjectRow } from './rows.js';
+import { DatabaseError } from '../ports/errors';
+import type { SubjectRepository } from '../ports/repositories';
+import type { PulseSupabaseClient } from './client';
+import { fromSubject, toSubject } from './mappers';
+import type { SubjectRow } from './rows';
 
 /**
  * Reference implementation of a repository port.

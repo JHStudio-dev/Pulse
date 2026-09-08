@@ -1,5 +1,5 @@
-import type { ClassSessionId, RecoveryItemId, RecoveryPlanId, UserId } from './ids.js';
-import type { Instant } from './primitives.js';
+import type { ClassSessionId, RecoveryItemId, RecoveryPlanId, UserId } from './ids';
+import type { Instant } from './primitives';
 
 /**
  * Recovery.

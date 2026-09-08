@@ -9,8 +9,8 @@ import {
   toSubjectSchedule,
   toTask,
   toTimeOfDay,
-} from './mappers.js';
-import type { ClassSessionRow, SubjectRow, SubjectScheduleRow, TaskRow } from './rows.js';
+} from './mappers';
+import type { ClassSessionRow, SubjectRow, SubjectScheduleRow, TaskRow } from './rows';
 
 const NOW = '2026-03-01T00:00:00.000Z';
 
