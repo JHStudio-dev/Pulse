@@ -1,3 +1,12 @@
 # Findings can contain course names; keep real runs local by default.
 findings/*.md
 !findings/TEMPLATE.md
+
+# Campus credentials and session material. None of this may ever reach git.
+# A HAR export from browser devtools carries session cookies in full.
+.env
+.env.*
+cookies*.txt
+*.cookies
+session*.json
+*.har
