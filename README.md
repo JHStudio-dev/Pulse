@@ -43,7 +43,7 @@ Requires Node 22 or newer.
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in from your Supabase project
+cp .env.example apps/web/.env.local   # fill in from your Supabase project
 npm run dev --workspace @pulse/web
 ```
 
