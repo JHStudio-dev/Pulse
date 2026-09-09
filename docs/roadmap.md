@@ -22,29 +22,45 @@ remaining repository implementations (added as Phase 1 needs them).
 
 ## Phase 0.1 — Campus Sync feasibility
 
-**Instrument built, results pending.**
+**Not complete. Blocked on external availability, not on engineering.**
 
-`experiments/campus-sync/` can probe UJCV/Chamilo and UNAH/Moodle for courses,
-assignments, due dates, materials, file access and announcements. It is outside
-the build and imported by nothing.
+Full status in [campus-sync.md](campus-sync.md).
 
-Still to do — this needs a real account and cannot be completed from the
-repository alone:
+UJCV / Chamilo — partially validated:
 
-- [ ] Run the Moodle probe against UNAH with a beta tester's own token
-- [ ] Run the Chamilo probe against UJCV and record whether REST is enabled
-- [ ] Write up both findings, personal details removed
-- [ ] Decide the mechanism per platform, or record the fallback
+- [x] Authenticated access verified
+- [x] Private campus access verified
+- [x] REST API detected
+- [x] Student API key confirmed unavailable
+- [ ] Course, material and task extraction — **pending active enrollment**
 
-**Phase 1.5 should not be designed until these findings exist.** The
-specification is explicit that Campus Sync is both a core capability and the
-largest technical risk.
+UNAH / Moodle:
+
+- [ ] Connector feasibility — **requires a real student session**
+
+External blockers, neither solvable by writing code:
+
+1. The UJCV account has no active enrolled courses yet.
+2. No UNAH Moodle beta tester is available.
+
+The spike stays in place and does not need rebuilding. Synthetic fixtures may be
+used for contract tests, normalization, duplicate detection and parsing, but
+never as evidence of real-campus validation.
+
+**Phase 1.5 still should not be designed until real extraction is validated.**
+One conclusion already holds: UJCV needs the Campus Companion over the student
+session, because an API-key worker is not possible without administrator action.
 
 ## Phase 1 — Pulse Core / MVP
 
-Not started. Auth, academic period, subjects, schedules, sessions by modality,
-dashboard, tasks, calendar, documents, quick capture, internal reminders,
-onboarding, responsive, installable PWA, demo data.
+**In progress — foundation only.**
+
+Current scope: email/password authentication, first-user onboarding, academic
+periods, university selection, subject creation, subject schedules, and an
+authenticated application shell.
+
+Not yet in scope for this pass: class sessions, dashboard, tasks, calendar,
+documents, quick capture, reminders, demo data.
 
 ## Later phases
 
