@@ -13,6 +13,7 @@
     "@pulse/database": "*",
     "@pulse/types": "*",
     "@pulse/validation": "*",
+    "@supabase/ssr": "^0.12.7",
     "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
