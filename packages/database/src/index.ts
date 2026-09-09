@@ -9,3 +9,4 @@ export * from './supabase/institution-repository';
 export * from './supabase/academic-period-repository';
 export * from './supabase/campus-connection-repository';
 export * from './supabase/subject-schedule-repository';
+export * from './supabase/class-session-repository';
