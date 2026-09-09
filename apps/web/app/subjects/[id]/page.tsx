@@ -1,28 +1,12 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import type { Modality, SubjectId, Weekday } from '@pulse/types';
+import type { SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { requireUser } from '@/lib/session';
 import { deleteSchedule } from './actions';
 import { GenerateSessions } from './generate-sessions';
 import { ScheduleForm } from './schedule-form';
-
-const MODALITY_LABEL: Record<Modality, string> = {
-  in_person: 'Presencial',
-  virtual: 'Virtual',
-  hybrid: 'Híbrida',
-  unconfirmed: 'Sin confirmar',
-};
-
-const WEEKDAY_LABEL: Record<Weekday, string> = {
-  1: 'Lunes',
-  2: 'Martes',
-  3: 'Miércoles',
-  4: 'Jueves',
-  5: 'Viernes',
-  6: 'Sábado',
-  7: 'Domingo',
-};
 
 export default async function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -120,7 +104,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
               {upcoming.map((session) => (
                 <li key={session.id} className="flex items-baseline justify-between gap-4 py-2.5">
-                  <span className="text-sm">{session.date}</span>
+                  <span className="text-sm">{formatSessionDate(session.date)}</span>
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
                     {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
                   </span>

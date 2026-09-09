@@ -21,7 +21,7 @@ function SubmitButton() {
   );
 }
 
-export function SubjectForm() {
+export function SubjectForm({ onSaved }: { onSaved?: () => void }) {
   const [state, formAction] = useActionState<SubjectResult, FormData>(createSubject, {
     error: null,
   });
@@ -29,14 +29,15 @@ export function SubjectForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const saved = useRef(false);
 
-  // Clear the form only after a save that reported no error.
+  // Only after a save that reported no error: reset, then let the caller close.
   useEffect(() => {
     if (state.error === null && saved.current) {
       formRef.current?.reset();
       setModality('unconfirmed');
       saved.current = false;
+      onSaved?.();
     }
-  }, [state]);
+  }, [state, onSaved]);
 
   return (
     <form

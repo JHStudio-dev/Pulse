@@ -1,16 +1,22 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { Modality } from '@pulse/types';
+import { instantToZonedDate } from '@pulse/core';
+import type { ClassSession, SubjectSchedule } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { formatSessionDate, MODALITY_LABEL, summarizeSchedules } from '@/lib/format';
 import { requireUser } from '@/lib/session';
-import { SubjectForm } from './subject-form';
+import { NewSubject } from './new-subject';
 
-const MODALITY_LABEL: Record<Modality, string> = {
-  in_person: 'Presencial',
-  virtual: 'Virtual',
-  hybrid: 'Híbrida',
-  unconfirmed: 'Sin confirmar',
-};
+/** Groups rows by subject so the list costs one query per kind, not per subject. */
+function groupBySubject<T extends { subjectId: string }>(rows: readonly T[]): Map<string, T[]> {
+  const grouped = new Map<string, T[]>();
+  for (const row of rows) {
+    const list = grouped.get(row.subjectId);
+    if (list) list.push(row);
+    else grouped.set(row.subjectId, [row]);
+  }
+  return grouped;
+}
 
 export default async function SubjectsPage() {
   const { userId, email, db } = await requireUser();
@@ -20,48 +26,81 @@ export default async function SubjectsPage() {
 
   const subjects = await db.subjects.listByPeriod(userId, period.id);
 
+  const today = instantToZonedDate(new Date(), period.timeZone);
+  const [schedules, sessions] = await Promise.all([
+    db.schedules.listByPeriod(userId, period.id),
+    period.range.end === null
+      ? Promise.resolve<ClassSession[]>([])
+      : db.sessions.listInRange(userId, today, period.range.end),
+  ]);
+
+  const schedulesBySubject = groupBySubject<SubjectSchedule>(schedules);
+  const sessionsBySubject = groupBySubject<ClassSession>(
+    sessions.filter((session) => session.status === 'scheduled'),
+  );
+
   return (
     <AppShell email={email}>
-      <h1 className="text-2xl font-semibold tracking-tight">Materias</h1>
-      <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-sm">{period.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Materias</h1>
+          <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">{period.name}</p>
+        </div>
+        {subjects.length > 0 ? <NewSubject /> : null}
+      </div>
 
-      <section className="mt-8" aria-labelledby="list-heading">
-        <h2 id="list-heading" className="text-sm font-medium">
-          Tus materias
-        </h2>
-
-        {subjects.length === 0 ? (
-          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
-            Todavía no hay materias. Agrega la primera abajo.
+      {subjects.length === 0 ? (
+        <div className="mt-10 border-t border-[color:var(--color-border)] pt-8">
+          <h2 className="text-base font-medium">Empieza por tus materias</h2>
+          <p className="text-[color:var(--color-ink-muted)] mt-2 max-w-md text-sm">
+            Cada materia guarda su horario semanal. Con eso Pulse genera las clases del período y
+            puede mostrarte lo que viene.
           </p>
-        ) : (
-          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
-            {subjects.map((subject) => (
-              <li key={subject.id} className="py-3">
+          <div className="mt-5">
+            <NewSubject variant="inline" />
+          </div>
+        </div>
+      ) : (
+        <ul className="mt-6 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+          {subjects.map((subject) => {
+            const subjectSchedules = schedulesBySubject.get(subject.id) ?? [];
+            const next = sessionsBySubject.get(subject.id)?.[0];
+            const scheduleSummary = summarizeSchedules(subjectSchedules);
+
+            return (
+              <li key={subject.id}>
                 <Link
                   href={`/subjects/${subject.id}`}
-                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+                  className="hover:bg-[color:var(--color-surface-raised)] block px-2 py-3.5"
                 >
-                  <span className="text-sm font-medium underline-offset-4 hover:underline">
-                    {subject.name}
-                  </span>
-                  <span className="text-[color:var(--color-ink-muted)] text-xs">
-                    {subject.code ? `${subject.code} · ` : ''}
-                    {MODALITY_LABEL[subject.defaultModality]}
-                  </span>
+                  <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                    <span className="font-medium">{subject.name}</span>
+                    {subject.code ? (
+                      <span className="text-[color:var(--color-ink-muted)] font-mono text-xs">
+                        {subject.code}
+                      </span>
+                    ) : null}
+                    <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
+                      {MODALITY_LABEL[subject.defaultModality]}
+                    </span>
+                  </div>
+
+                  <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                    {scheduleSummary.length > 0 ? scheduleSummary : 'Sin horario'}
+                    {subject.professorName ? ` · ${subject.professorName}` : ''}
+                  </p>
+
+                  {next ? (
+                    <p className="mt-1.5 text-xs">
+                      Próxima clase: {formatSessionDate(next.date)} · {next.startTime}
+                    </p>
+                  ) : null}
                 </Link>
               </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-10" aria-labelledby="new-heading">
-        <h2 id="new-heading" className="mb-4 text-sm font-medium">
-          Nueva materia
-        </h2>
-        <SubjectForm />
-      </section>
+            );
+          })}
+        </ul>
+      )}
     </AppShell>
   );
 }
