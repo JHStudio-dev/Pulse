@@ -4,6 +4,7 @@ import {
   createCampusConnectionRepository,
   createInstitutionRepository,
   createSubjectRepository,
+  createSubjectScheduleRepository,
 } from '@pulse/database';
 import { redirect } from 'next/navigation';
 import { createClient } from './supabase-server';
@@ -30,6 +31,7 @@ export async function requireUser() {
       campusConnections: createCampusConnectionRepository(supabase),
       periods: createAcademicPeriodRepository(supabase),
       subjects: createSubjectRepository(supabase),
+      schedules: createSubjectScheduleRepository(supabase),
     },
   };
 }

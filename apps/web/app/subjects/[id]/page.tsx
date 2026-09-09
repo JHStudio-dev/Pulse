@@ -1,0 +1,101 @@
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+import type { Modality, SubjectId, Weekday } from '@pulse/types';
+import { AppShell } from '@/components/app-shell';
+import { requireUser } from '@/lib/session';
+import { deleteSchedule } from './actions';
+import { ScheduleForm } from './schedule-form';
+
+const MODALITY_LABEL: Record<Modality, string> = {
+  in_person: 'Presencial',
+  virtual: 'Virtual',
+  hybrid: 'Híbrida',
+  unconfirmed: 'Sin confirmar',
+};
+
+const WEEKDAY_LABEL: Record<Weekday, string> = {
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+  7: 'Domingo',
+};
+
+export default async function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { userId, email, db } = await requireUser();
+
+  const period = await db.periods.findActive(userId);
+  if (!period) redirect('/onboarding');
+
+  const subject = await db.subjects.findById(userId, id as SubjectId);
+  if (!subject) notFound();
+
+  const schedules = await db.schedules.listBySubject(userId, subject.id);
+
+  return (
+    <AppShell email={email}>
+      <Link
+        href="/subjects"
+        className="text-[color:var(--color-ink-muted)] text-sm underline-offset-4 hover:underline"
+      >
+        Materias
+      </Link>
+
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">{subject.name}</h1>
+      <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-sm">
+        {subject.code ? `${subject.code} · ` : ''}
+        {MODALITY_LABEL[subject.defaultModality]}
+        {subject.professorName ? ` · ${subject.professorName}` : ''}
+      </p>
+
+      <section className="mt-8" aria-labelledby="schedule-heading">
+        <h2 id="schedule-heading" className="text-sm font-medium">
+          Horario semanal
+        </h2>
+
+        {schedules.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Sin horarios. Agrega el primero abajo.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+            {schedules.map((schedule) => (
+              <li key={schedule.id} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm">
+                    {WEEKDAY_LABEL[schedule.weekday]} · {schedule.startTime}–{schedule.endTime}
+                  </p>
+                  <p className="text-[color:var(--color-ink-muted)] mt-0.5 text-xs">
+                    {MODALITY_LABEL[schedule.modality]}
+                    {schedule.location.room ? ` · Aula ${schedule.location.room}` : ''}
+                  </p>
+                </div>
+
+                <form action={deleteSchedule}>
+                  <input type="hidden" name="scheduleId" value={schedule.id} />
+                  <input type="hidden" name="subjectId" value={subject.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-[color:var(--color-border)] px-2.5 py-1 text-xs"
+                  >
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="new-schedule-heading">
+        <h2 id="new-schedule-heading" className="mb-4 text-sm font-medium">
+          Nuevo horario
+        </h2>
+        <ScheduleForm subjectId={subject.id} />
+      </section>
+    </AppShell>
+  );
+}

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Modality } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
@@ -36,15 +37,19 @@ export default async function SubjectsPage() {
         ) : (
           <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
             {subjects.map((subject) => (
-              <li
-                key={subject.id}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3"
-              >
-                <span className="text-sm font-medium">{subject.name}</span>
-                <span className="text-[color:var(--color-ink-muted)] text-xs">
-                  {subject.code ? `${subject.code} · ` : ''}
-                  {MODALITY_LABEL[subject.defaultModality]}
-                </span>
+              <li key={subject.id} className="py-3">
+                <Link
+                  href={`/subjects/${subject.id}`}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+                >
+                  <span className="text-sm font-medium underline-offset-4 hover:underline">
+                    {subject.name}
+                  </span>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">
+                    {subject.code ? `${subject.code} · ` : ''}
+                    {MODALITY_LABEL[subject.defaultModality]}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
