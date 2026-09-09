@@ -1,50 +1,37 @@
-import Link from 'next/link';
 import { signOut } from '@/app/auth/actions';
+import { MainNav } from './main-nav';
 
 /**
  * Frame for every signed in screen.
  *
- * Navigation stays flat while there are few sections; a sidebar is not worth it
- * until the product has more than a handful of destinations.
+ * Two rows: identity and account on top, sections below. Splitting them keeps
+ * the header readable on a phone without a menu, and leaves the section row as
+ * the natural place to swap in a mobile pattern once there are more sections.
  */
-
-const links = [
-  { href: '/', label: 'Inicio' },
-  { href: '/subjects', label: 'Materias' },
-];
-
 export function AppShell({ email, children }: { email: string; children: React.ReactNode }) {
   return (
     <div className="min-h-dvh">
       <header className="border-b border-[color:var(--color-border)]">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
-          <span className="font-semibold tracking-tight">Pulse</span>
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="flex items-center justify-between gap-4 py-3">
+            <span className="text-sm font-semibold tracking-tight">Pulse</span>
 
-          <nav aria-label="Principal" className="flex gap-4 text-sm">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)]"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-[color:var(--color-ink-muted)] hidden text-xs sm:inline">
-              {email}
-            </span>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="rounded-md border border-[color:var(--color-border)] px-2.5 py-1 text-xs"
-              >
-                Salir
-              </button>
-            </form>
+            <div className="flex items-center gap-3">
+              <span className="text-[color:var(--color-ink-muted)] hidden max-w-[16rem] truncate text-xs sm:inline">
+                {email}
+              </span>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+                >
+                  Salir
+                </button>
+              </form>
+            </div>
           </div>
+
+          <MainNav />
         </div>
       </header>
 
