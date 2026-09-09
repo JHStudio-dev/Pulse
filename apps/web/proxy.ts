@@ -16,7 +16,7 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const config = readPublicConfig({

@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
  * Client for server components, route handlers and server actions.
  *
  * The session lives in cookies so a server render can read it. Writing cookies
- * throws inside a Server Component; the middleware refreshes the session, so
+ * throws inside a Server Component; the proxy refreshes the session, so
  * that case is safe to ignore here.
  */
 export async function createClient() {
@@ -28,7 +28,7 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Called from a Server Component; the middleware handles the refresh.
+          // Called from a Server Component; the proxy handles the refresh.
         }
       },
     },
