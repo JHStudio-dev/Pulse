@@ -15,6 +15,8 @@
   --color-ink: #16161a;
   --color-ink-muted: #5f6068;
   --color-accent: #2f5fd0;
+  /* Text placed on --color-accent. White fails contrast on the lighter dark-mode accent. */
+  --color-accent-ink: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +27,7 @@
     --color-ink: #f2f2f4;
     --color-ink-muted: #a0a1ab;
     --color-accent: #7ea2ff;
+    --color-accent-ink: #101013;
   }
 }
 

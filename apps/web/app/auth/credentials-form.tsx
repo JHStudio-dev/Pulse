@@ -11,7 +11,7 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
     <button
       type="submit"
       disabled={pending}
-      className="mt-2 w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+      className="mt-2 w-full rounded-md bg-[color:var(--color-accent)] px-4 py-2.5 text-sm font-medium text-[color:var(--color-accent-ink)] disabled:opacity-60"
     >
       {pending ? pendingLabel : label}
     </button>
