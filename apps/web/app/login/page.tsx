@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthLayout } from '@/components/auth-layout';
 import { signIn } from '../auth/actions';
 import { CredentialsForm } from '../auth/credentials-form';
 
@@ -16,29 +17,31 @@ export default async function LoginPage({
   const message = error ? ERRORS[error] : null;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight">Entrar a Pulse</h1>
-      <p className="text-[color:var(--color-ink-muted)] mt-1.5 mb-8 text-sm">
-        Usa el correo con el que creaste tu cuenta.
-      </p>
-
+    <AuthLayout
+      title="Entrar"
+      description="Usa el correo con el que creaste tu cuenta."
+      footer={
+        <span className="text-[color:var(--color-ink-muted)]">
+          ¿No tienes cuenta?{' '}
+          <Link
+            href="/signup"
+            className="text-[color:var(--color-ink)] underline underline-offset-4"
+          >
+            Crear una
+          </Link>
+        </span>
+      }
+    >
       {message ? (
         <p
           role="alert"
-          className="mb-6 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm"
+          className="mb-5 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm"
         >
           {message}
         </p>
       ) : null}
 
       <CredentialsForm action={signIn} submitLabel="Entrar" pendingLabel="Entrando" />
-
-      <p className="text-[color:var(--color-ink-muted)] mt-6 text-sm">
-        ¿No tienes cuenta?{' '}
-        <Link href="/signup" className="text-[color:var(--color-ink)] underline underline-offset-4">
-          Crear una
-        </Link>
-      </p>
-    </main>
+    </AuthLayout>
   );
 }
