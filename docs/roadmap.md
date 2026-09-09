@@ -53,14 +53,35 @@ session, because an API-key worker is not possible without administrator action.
 
 ## Phase 1 — Pulse Core / MVP
 
-**In progress — foundation only.**
+**In progress.**
 
-Current scope: email/password authentication, first-user onboarding, academic
-periods, university selection, subject creation, subject schedules, and an
-authenticated application shell.
+Done:
 
-Not yet in scope for this pass: class sessions, dashboard, tasks, calendar,
-documents, quick capture, reminders, demo data.
+- [x] Email and password authentication, with email confirmation
+- [x] First-user onboarding
+- [x] Academic periods, including editing after onboarding
+- [x] University selection, stored as a campus connection
+- [x] Subjects: create and list with academic context
+- [x] Subject schedules: weekly slots per subject
+- [x] Class sessions generated from schedules
+- [x] Authenticated application shell
+
+Still to do in this phase:
+
+- [ ] Dashboard
+- [ ] Tasks
+- [ ] Basic calendar
+- [ ] Documents
+- [ ] Quick Capture and Inbox
+- [ ] Internal reminders
+- [ ] Demo data
+
+Known gaps in what is already built, none blocking:
+
+- A subject cannot be edited or archived from the interface, though the
+  repository supports both.
+- The chosen university cannot be changed after onboarding.
+- There is no password recovery flow.
 
 ## Later phases
 
