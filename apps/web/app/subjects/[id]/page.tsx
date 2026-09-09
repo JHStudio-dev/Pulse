@@ -4,6 +4,7 @@ import type { Modality, SubjectId, Weekday } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
 import { deleteSchedule } from './actions';
+import { GenerateSessions } from './generate-sessions';
 import { ScheduleForm } from './schedule-form';
 
 const MODALITY_LABEL: Record<Modality, string> = {
@@ -34,6 +35,8 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   if (!subject) notFound();
 
   const schedules = await db.schedules.listBySubject(userId, subject.id);
+  const sessions = await db.sessions.listBySubject(userId, subject.id);
+  const upcoming = sessions.filter((session) => session.status !== 'cancelled').slice(0, 8);
 
   return (
     <AppShell email={email}>
@@ -95,6 +98,37 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
           Nuevo horario
         </h2>
         <ScheduleForm subjectId={subject.id} />
+      </section>
+
+      <section className="mt-10" aria-labelledby="sessions-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="sessions-heading" className="text-sm font-medium">
+            Clases del período
+          </h2>
+          <GenerateSessions subjectId={subject.id} hasSessions={sessions.length > 0} />
+        </div>
+
+        {sessions.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Sin clases generadas. Se crean a partir del horario semanal.
+          </p>
+        ) : (
+          <>
+            <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+              {sessions.length} en total. Las próximas:
+            </p>
+            <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+              {upcoming.map((session) => (
+                <li key={session.id} className="flex items-baseline justify-between gap-4 py-2.5">
+                  <span className="text-sm">{session.date}</span>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">
+                    {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </AppShell>
   );
