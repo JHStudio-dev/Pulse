@@ -1,7 +1,9 @@
 import type {
   AcademicPeriod,
   AcademicPeriodId,
+  CampusConnection,
   CampusInstance,
+  CampusInstanceId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -29,6 +31,16 @@ import type {
 export interface InstitutionRepository {
   listUniversities(): Promise<University[]>;
   listCampusInstances(universityId: UniversityId): Promise<CampusInstance[]>;
+}
+
+/**
+ * The student's campus. A connection is created on selection with status
+ * disconnected: it records which campus they belong to, and says nothing about
+ * synchronization, which does not exist yet.
+ */
+export interface CampusConnectionRepository {
+  findByUser(userId: UserId): Promise<CampusConnection | null>;
+  selectCampus(userId: UserId, campusInstanceId: CampusInstanceId): Promise<CampusConnection>;
 }
 
 export interface ProfileRepository {
@@ -112,6 +124,7 @@ export interface TaskRepository {
 /** Everything the application layer is allowed to reach storage through. */
 export interface PulseDatabase {
   institutions: InstitutionRepository;
+  campusConnections: CampusConnectionRepository;
   profiles: ProfileRepository;
   academicPeriods: AcademicPeriodRepository;
   subjects: SubjectRepository;

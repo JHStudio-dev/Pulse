@@ -131,3 +131,14 @@ export interface CampusInstanceRow {
   settings: Record<string, unknown>;
   created_at: string;
 }
+
+export interface CampusConnectionRow {
+  id: string;
+  user_id: string;
+  campus_instance_id: string;
+  status: 'disconnected' | 'connected' | 'needs_reauth' | 'error';
+  last_synced_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}

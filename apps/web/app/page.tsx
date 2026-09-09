@@ -1,21 +1,29 @@
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { createClient } from '@/lib/supabase-server';
+import { requireUser } from '@/lib/session';
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { userId, email, db } = await requireUser();
 
-  // The middleware already redirects, so this only guards a direct render.
-  if (!user) redirect('/login');
+  // Without a period there is nothing to organise, so setup comes first.
+  const period = await db.periods.findActive(userId);
+  if (!period) redirect('/onboarding');
+
+  const subjects = await db.subjects.listByPeriod(userId, period.id);
+  const subjectLabel = subjects.length === 1 ? 'materia' : 'materias';
 
   return (
-    <AppShell email={user.email ?? ''}>
-      <h1 className="text-2xl font-semibold tracking-tight">Inicio</h1>
-      <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">
-        Aún no hay nada que mostrar aquí. Configura tu período y tus materias para empezar.
+    <AppShell email={email}>
+      <h1 className="text-2xl font-semibold tracking-tight">{period.name}</h1>
+      <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-sm">
+        {period.range.start}
+        {period.range.end === null ? '' : ` — ${period.range.end}`} · {period.timeZone}
+      </p>
+
+      <p className="mt-8 text-sm">
+        {subjects.length === 0
+          ? 'Todavía no has agregado materias.'
+          : `${subjects.length} ${subjectLabel} en este período.`}
       </p>
     </AppShell>
   );

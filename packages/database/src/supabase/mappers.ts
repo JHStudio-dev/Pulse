@@ -1,6 +1,8 @@
 import type {
   AcademicPeriod,
   AcademicPeriodId,
+  CampusConnection,
+  CampusConnectionId,
   CampusInstance,
   CampusInstanceId,
   Attendance,
@@ -22,6 +24,7 @@ import type {
 } from '@pulse/types';
 import type {
   AcademicPeriodRow,
+  CampusConnectionRow,
   CampusInstanceRow,
   AttendanceRow,
   ClassSessionRow,
@@ -237,5 +240,18 @@ export function toCampusInstance(row: CampusInstanceRow): CampusInstance {
     baseUrl: row.base_url,
     settings: row.settings,
     createdAt: row.created_at,
+  };
+}
+
+export function toCampusConnection(row: CampusConnectionRow): CampusConnection {
+  return {
+    id: row.id as CampusConnectionId,
+    userId: row.user_id as UserId,
+    campusInstanceId: row.campus_instance_id as CampusInstanceId,
+    status: row.status,
+    lastSyncedAt: row.last_synced_at,
+    lastError: row.last_error,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
