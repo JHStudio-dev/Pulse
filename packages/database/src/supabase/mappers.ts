@@ -1,6 +1,8 @@
 import type {
   AcademicPeriod,
   AcademicPeriodId,
+  CampusInstance,
+  CampusInstanceId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -13,17 +15,21 @@ import type {
   Task,
   TaskId,
   TimeOfDay,
+  University,
+  UniversityId,
   UserId,
   Weekday,
 } from '@pulse/types';
 import type {
   AcademicPeriodRow,
+  CampusInstanceRow,
   AttendanceRow,
   ClassSessionRow,
   ProfileRow,
   SubjectRow,
   SubjectScheduleRow,
   TaskRow,
+  UniversityRow,
 } from './rows';
 
 /**
@@ -209,5 +215,27 @@ export function fromClassSession(
     room: session.location.room,
     change_note: session.changeNote,
     cancelled_reason: session.cancelledReason,
+  };
+}
+
+export function toUniversity(row: UniversityRow): University {
+  return {
+    id: row.id as UniversityId,
+    name: row.name,
+    abbreviation: row.abbreviation,
+    countryCode: row.country_code,
+    createdAt: row.created_at,
+  };
+}
+
+export function toCampusInstance(row: CampusInstanceRow): CampusInstance {
+  return {
+    id: row.id as CampusInstanceId,
+    universityId: row.university_id as UniversityId,
+    name: row.name,
+    platform: row.platform,
+    baseUrl: row.base_url,
+    settings: row.settings,
+    createdAt: row.created_at,
   };
 }

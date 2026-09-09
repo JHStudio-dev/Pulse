@@ -1,6 +1,7 @@
 import type {
   AcademicPeriod,
   AcademicPeriodId,
+  CampusInstance,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -11,6 +12,8 @@ import type {
   SubjectSchedule,
   Task,
   TaskId,
+  University,
+  UniversityId,
   UserId,
 } from '@pulse/types';
 
@@ -21,6 +24,12 @@ import type {
  * Supabase implements them today; a direct PostgreSQL layer could implement the
  * same contract later without touching domain or interface code.
  */
+
+/** Shared reference data. Readable by any signed in user, written by nobody. */
+export interface InstitutionRepository {
+  listUniversities(): Promise<University[]>;
+  listCampusInstances(universityId: UniversityId): Promise<CampusInstance[]>;
+}
 
 export interface ProfileRepository {
   findByUserId(userId: UserId): Promise<Profile | null>;
@@ -102,6 +111,7 @@ export interface TaskRepository {
 
 /** Everything the application layer is allowed to reach storage through. */
 export interface PulseDatabase {
+  institutions: InstitutionRepository;
   profiles: ProfileRepository;
   academicPeriods: AcademicPeriodRepository;
   subjects: SubjectRepository;

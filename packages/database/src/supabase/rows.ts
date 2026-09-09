@@ -113,3 +113,21 @@ export interface TaskRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface UniversityRow {
+  id: string;
+  name: string;
+  abbreviation: string;
+  country_code: string;
+  created_at: string;
+}
+
+export interface CampusInstanceRow {
+  id: string;
+  university_id: string;
+  name: string;
+  platform: 'chamilo' | 'moodle' | 'manual';
+  base_url: string;
+  settings: Record<string, unknown>;
+  created_at: string;
+}

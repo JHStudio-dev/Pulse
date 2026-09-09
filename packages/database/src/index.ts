@@ -4,3 +4,6 @@ export * from './supabase/client';
 export * from './supabase/rows';
 export * from './supabase/mappers';
 export * from './supabase/subject-repository';
+export * from './supabase/errors';
+export * from './supabase/institution-repository';
+export * from './supabase/academic-period-repository';

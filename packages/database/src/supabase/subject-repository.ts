@@ -1,5 +1,6 @@
 import type { AcademicPeriodId, Subject, SubjectId, UserId } from '@pulse/types';
 import { DatabaseError } from '../ports/errors';
+import { translateError } from './errors';
 import type { SubjectRepository } from '../ports/repositories';
 import type { PulseSupabaseClient } from './client';
 import { fromSubject, toSubject } from './mappers';
@@ -14,17 +15,6 @@ import type { SubjectRow } from './rows';
 
 const TABLE = 'subjects';
 
-function translate(error: { code?: string; message: string }): DatabaseError {
-  // PostgREST surfaces an RLS denial as an empty result or a 42501 code.
-  if (error.code === '42501') {
-    return new DatabaseError('permission_denied', error.message, error);
-  }
-  if (error.code === '23505') {
-    return new DatabaseError('conflict', error.message, error);
-  }
-  return new DatabaseError('unavailable', error.message, error);
-}
-
 export function createSubjectRepository(client: PulseSupabaseClient): SubjectRepository {
   return {
     async listByPeriod(userId: UserId, periodId: AcademicPeriodId): Promise<Subject[]> {
@@ -36,7 +26,7 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .is('archived_at', null)
         .order('name');
 
-      if (error) throw translate(error);
+      if (error) throw translateError(error);
       return (data as SubjectRow[]).map(toSubject);
     },
 
@@ -48,7 +38,7 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw translate(error);
+      if (error) throw translateError(error);
       return data ? toSubject(data as SubjectRow) : null;
     },
 
@@ -62,7 +52,7 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .select()
         .single();
 
-      if (error) throw translate(error);
+      if (error) throw translateError(error);
       return toSubject(data as SubjectRow);
     },
 
@@ -84,7 +74,7 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .select()
         .single();
 
-      if (error) throw translate(error);
+      if (error) throw translateError(error);
       return toSubject(data as SubjectRow);
     },
 
@@ -95,7 +85,7 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .eq('user_id', userId)
         .eq('id', id);
 
-      if (error) throw translate(error);
+      if (error) throw translateError(error);
     },
   };
 }
