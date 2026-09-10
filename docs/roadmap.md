@@ -86,9 +86,12 @@ Also done:
 
 - [x] Quick Capture and Inbox: global capture, raw text preserved, convert to task
 
+Also done:
+
+- [x] Internal reminders: task and class reminders, due/upcoming states, in-app only
+
 Still to do in this phase:
 
-- [ ] Internal reminders
 - [ ] Demo data
 
 Known gaps in what is already built, none blocking:
@@ -97,9 +100,14 @@ Known gaps in what is already built, none blocking:
   repository supports both.
 - The chosen university cannot be changed after onboarding.
 - There is no password recovery flow.
-- Quick Capture cannot create a reminder: the schema requires every reminder to
-  target an existing session, task or assessment, so there is no standalone
-  reminder to create. It belongs with Internal reminders.
+- Quick Capture cannot create a standalone reminder: the schema requires every
+  reminder to target an existing session, task or assessment. Reminders are
+  created from a task or a class instead, which is where they belong.
+- Reminder delivery is in-app only. Scheduling is separate from delivery, so
+  push, email or any other channel can be added without touching the academic
+  model. No external channel exists yet, and none is implied in the interface.
+- Assessment reminders are supported by the schema but have no screen, since
+  assessments belong to Phase 3.
 
 ## Later phases
 
