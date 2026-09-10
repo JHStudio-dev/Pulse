@@ -4,10 +4,12 @@ import {
   findNextClass,
   instantToZonedDate,
   instantToZonedTime,
+  isOverdue,
   needsModalityConfirmation,
   sessionsOnDate,
+  sortTasksByPriority,
 } from '@pulse/core';
-import type { ClassSession, Subject, SubjectId } from '@pulse/types';
+import type { ClassSession, Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
 import { NextClass } from './next-class';
@@ -20,6 +22,12 @@ import { TodaySchedule } from './today-schedule';
  * assessments, attendance, recovery — belongs to a later phase, so it would
  * report "no risk" for everyone and state something Pulse cannot know.
  */
+/** Whole days from one calendar date to another. */
+function daysBetweenDates(from: string, to: string): number {
+  const ms = new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
 function buildAttention(
   subjects: readonly Subject[],
   schedules: ReadonlyMap<string, unknown[]>,
@@ -80,10 +88,25 @@ export default async function HomePage() {
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((s) => [s.id, s]));
 
   const horizonEnd = period.range.end ?? today;
-  const [schedules, sessions] = await Promise.all([
+  const [schedules, sessions, allTasks] = await Promise.all([
     db.schedules.listByPeriod(userId, period.id),
     db.sessions.listInRange(userId, today, horizonEnd),
+    db.tasks.listByUser(userId),
   ]);
+
+  const openTasks = allTasks.filter(
+    (task) =>
+      task.status !== 'done' &&
+      task.status !== 'submitted' &&
+      (task.subjectId === null || subjectsById.has(task.subjectId)),
+  );
+  const overdueTasks = openTasks.filter((task) => isOverdue(task, today));
+  const soonTasks = openTasks.filter(
+    (task) =>
+      !isOverdue(task, today) &&
+      task.dueDate !== null &&
+      daysBetweenDates(today, task.dueDate) <= 3,
+  );
 
   const upcoming = findNextClass(sessions, subjectsById, now, period.timeZone);
   const todaySessions = sessionsOnDate(sessions, today);
@@ -170,6 +193,48 @@ export default async function HomePage() {
           />
         )}
       </section>
+
+      {overdueTasks.length + soonTasks.length > 0 ? (
+        <section className="mt-8" aria-labelledby="tasks-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="tasks-heading" className="text-sm font-medium">
+              Entregas
+            </h2>
+            <Link
+              href="/tasks"
+              className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+            >
+              Ver todas
+            </Link>
+          </div>
+
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {sortTasksByPriority([...overdueTasks, ...soonTasks], { today })
+              .slice(0, 5)
+              .map(({ task }: { task: Task }) => {
+                const late = isOverdue(task, today);
+                const subject = task.subjectId ? subjectsById.get(task.subjectId) : undefined;
+
+                return (
+                  <li
+                    key={task.id}
+                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
+                  >
+                    <span className="text-sm">{task.title}</span>
+                    <span className="text-[color:var(--color-ink-muted)] text-xs">
+                      {subject ? `${subject.name} · ` : ''}
+                      {late
+                        ? 'Atrasada'
+                        : task.dueDate === today
+                          ? 'Hoy'
+                          : `En ${daysBetweenDates(today, task.dueDate!)} días`}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        </section>
+      ) : null}
 
       {attention.length > 0 ? (
         <section className="mt-8" aria-labelledby="attention-heading">
