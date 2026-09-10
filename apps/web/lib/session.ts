@@ -2,6 +2,7 @@ import type { UserId } from '@pulse/types';
 import {
   createAcademicPeriodRepository,
   createClassSessionRepository,
+  createDocumentRepository,
   createCampusConnectionRepository,
   createInstitutionRepository,
   createSubjectRepository,
@@ -28,6 +29,8 @@ export async function requireUser() {
   return {
     userId: user.id as UserId,
     email: user.email ?? '',
+    // Exposed for storage calls, which are not part of the repository ports.
+    supabase,
     db: {
       institutions: createInstitutionRepository(supabase),
       campusConnections: createCampusConnectionRepository(supabase),
@@ -36,6 +39,7 @@ export async function requireUser() {
       schedules: createSubjectScheduleRepository(supabase),
       sessions: createClassSessionRepository(supabase),
       tasks: createTaskRepository(supabase),
+      documents: createDocumentRepository(supabase),
     },
   };
 }

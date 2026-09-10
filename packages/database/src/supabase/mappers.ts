@@ -5,6 +5,8 @@ import type {
   CampusConnectionId,
   CampusInstance,
   CampusInstanceId,
+  DocumentId,
+  DocumentRecord,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -25,6 +27,7 @@ import type {
 import type {
   AcademicPeriodRow,
   CampusConnectionRow,
+  DocumentRow,
   CampusInstanceRow,
   AttendanceRow,
   ClassSessionRow,
@@ -251,6 +254,25 @@ export function toCampusConnection(row: CampusConnectionRow): CampusConnection {
     status: row.status,
     lastSyncedAt: row.last_synced_at,
     lastError: row.last_error,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function toDocument(row: DocumentRow): DocumentRecord {
+  return {
+    id: row.id as DocumentId,
+    userId: row.user_id as UserId,
+    subjectId: row.subject_id as DocumentRecord['subjectId'],
+    classSessionId: row.class_session_id as DocumentRecord['classSessionId'],
+    title: row.title,
+    source: row.source,
+    storagePath: row.storage_path,
+    externalUrl: row.external_url,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+    contentHash: row.content_hash,
+    replacesDocumentId: row.replaces_document_id as DocumentRecord['replacesDocumentId'],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -142,3 +142,20 @@ export interface CampusConnectionRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface DocumentRow {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  class_session_id: string | null;
+  title: string;
+  source: 'upload' | 'link' | 'campus_sync';
+  storage_path: string | null;
+  external_url: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  content_hash: string | null;
+  replaces_document_id: string | null;
+  created_at: string;
+  updated_at: string;
+}

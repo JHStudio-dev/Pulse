@@ -4,6 +4,8 @@ import type {
   CampusConnection,
   CampusInstance,
   CampusInstanceId,
+  DocumentId,
+  DocumentRecord,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -109,6 +111,18 @@ export interface AttendanceRepository {
   record(userId: UserId, attendance: Attendance): Promise<Attendance>;
 }
 
+/** Files a student uploads. The bucket is private; access goes through signed URLs. */
+export interface DocumentRepository {
+  listBySubject(userId: UserId, subjectId: SubjectId): Promise<DocumentRecord[]>;
+  findById(userId: UserId, id: DocumentId): Promise<DocumentRecord | null>;
+  create(
+    userId: UserId,
+    input: Omit<DocumentRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+  ): Promise<DocumentRecord>;
+  remove(userId: UserId, id: DocumentId): Promise<void>;
+  createSignedUrl(userId: UserId, id: DocumentId, expiresInSeconds: number): Promise<string>;
+}
+
 export interface TaskRepository {
   listByUser(userId: UserId): Promise<Task[]>;
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Task[]>;
@@ -132,4 +146,5 @@ export interface PulseDatabase {
   classSessions: ClassSessionRepository;
   attendance: AttendanceRepository;
   tasks: TaskRepository;
+  documents: DocumentRepository;
 }
