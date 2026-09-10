@@ -82,9 +82,12 @@ Also done:
 
 - [x] Documents: private storage, upload, list, signed-URL open, delete
 
+Also done:
+
+- [x] Quick Capture and Inbox: global capture, raw text preserved, convert to task
+
 Still to do in this phase:
 
-- [ ] Quick Capture and Inbox
 - [ ] Internal reminders
 - [ ] Demo data
 
@@ -94,6 +97,9 @@ Known gaps in what is already built, none blocking:
   repository supports both.
 - The chosen university cannot be changed after onboarding.
 - There is no password recovery flow.
+- Quick Capture cannot create a reminder: the schema requires every reminder to
+  target an existing session, task or assessment, so there is no standalone
+  reminder to create. It belongs with Internal reminders.
 
 ## Later phases
 
