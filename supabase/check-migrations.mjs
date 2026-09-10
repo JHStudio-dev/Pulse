@@ -22,6 +22,38 @@ const AUTH_STUB = `
   language sql stable
   as $stub$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $stub$;
 
+
+  create schema if not exists storage;
+
+  create table storage.buckets (
+    id text primary key,
+    name text not null,
+    public boolean not null default false,
+    file_size_limit bigint,
+    allowed_mime_types text[]
+  );
+
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(),
+    bucket_id text references storage.buckets (id),
+    name text not null,
+    owner uuid,
+    created_at timestamptz default now()
+  );
+
+  alter table storage.objects enable row level security;
+
+  -- Supabase provides this; it returns the folder segments of an object path.
+  create or replace function storage.foldername(name text) returns text[]
+  language plpgsql immutable
+  as $stub$
+  declare parts text[];
+  begin
+    parts := string_to_array(name, '/');
+    return parts[1:array_length(parts, 1) - 1];
+  end
+  $stub$;
+
   do $stub$
   begin
     if not exists (select 1 from pg_roles where rolname = 'anon') then

@@ -24,6 +24,38 @@ const AUTH_STUB = `
   language sql stable
   as $stub$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $stub$;
 
+
+  create schema if not exists storage;
+
+  create table storage.buckets (
+    id text primary key,
+    name text not null,
+    public boolean not null default false,
+    file_size_limit bigint,
+    allowed_mime_types text[]
+  );
+
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(),
+    bucket_id text references storage.buckets (id),
+    name text not null,
+    owner uuid,
+    created_at timestamptz default now()
+  );
+
+  alter table storage.objects enable row level security;
+
+  -- Supabase provides this; it returns the folder segments of an object path.
+  create or replace function storage.foldername(name text) returns text[]
+  language plpgsql immutable
+  as $stub$
+  declare parts text[];
+  begin
+    parts := string_to_array(name, '/');
+    return parts[1:array_length(parts, 1) - 1];
+  end
+  $stub$;
+
   do $stub$
   begin
     if not exists (select 1 from pg_roles where rolname = 'anon') then
@@ -45,6 +77,9 @@ const AUTH_STUB = `
 const GRANTS = `
   grant usage on schema auth to authenticated;
   grant select on auth.users to authenticated;
+  grant usage on schema storage to authenticated;
+  grant all on storage.objects to authenticated;
+  grant select on storage.buckets to authenticated;
 `;
 
 const failures = [];
@@ -144,6 +179,32 @@ async function main() {
 
   const campuses = await db.query('select count(*)::int as n from campus_instances');
   check('campus instances are readable by any student', campuses.rows[0].n, 2);
+
+  // Storage: a file lives under a folder named after its owner.
+  await actAs(db, studentA);
+  await db.query(`insert into storage.objects (bucket_id, name) values ('documents', $1)`, [
+    `${studentA}/apuntes.pdf`,
+  ]);
+
+  const ownFiles = await db.query('select count(*)::int as n from storage.objects');
+  check('student A sees their own file', ownFiles.rows[0].n, 1);
+
+  await actAs(db, studentB);
+  const otherFiles = await db.query('select count(*)::int as n from storage.objects');
+  check('student B cannot read A files', otherFiles.rows[0].n, 0);
+
+  const deletedFiles = await db.query('delete from storage.objects returning id');
+  check('student B cannot delete A files', deletedFiles.rows.length, 0);
+
+  let forgedUpload = false;
+  try {
+    await db.query(`insert into storage.objects (bucket_id, name) values ('documents', $1)`, [
+      `${studentA}/robado.pdf`,
+    ]);
+  } catch {
+    forgedUpload = true;
+  }
+  check('student B cannot upload into A folder', forgedUpload, true);
 
   await db.exec('reset role;');
   await db.close();
