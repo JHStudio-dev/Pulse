@@ -32,12 +32,12 @@ const STATUS_LABEL: Record<RecordingStatus, string> = {
   failed: 'Falló',
 };
 
-function UploadButton() {
+function UploadButton({ blocked }: { blocked: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || blocked}
       className="bg-[color:var(--color-accent)] text-[color:var(--color-accent-ink)] rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
     >
       {pending ? 'Subiendo' : 'Adjuntar grabación'}
@@ -45,22 +45,42 @@ function UploadButton() {
   );
 }
 
-/** Reads the length in the browser, the only side that can do it cheaply. */
+/** How long to wait for the browser to report a length before giving up. */
+const DURATION_TIMEOUT_MS = 5000;
+
+/**
+ * Reads the length in the browser, the only side that can do it cheaply.
+ *
+ * Some browsers never load metadata for a local file — media policy, a codec
+ * they will not touch, a container they only parse while playing — and answer
+ * with neither an event nor an error. The timeout is what keeps the form usable
+ * in that case: an unknown duration is allowed, a form stuck on "reading" is
+ * not.
+ */
 function readDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const audio = new Audio();
+    audio.preload = 'metadata';
 
+    let settled = false;
     const finish = (value: number | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
       resolve(value);
     };
+
+    const timer = setTimeout(() => finish(null), DURATION_TIMEOUT_MS);
 
     audio.addEventListener('loadedmetadata', () => {
       finish(Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : null);
     });
     audio.addEventListener('error', () => finish(null));
+
     audio.src = url;
+    audio.load();
   });
 }
 
@@ -70,20 +90,24 @@ function UploadForm({ sessionId }: { sessionId: string }) {
     saved: false,
   });
   const [duration, setDuration] = useState<number | null>(null);
-  const [tooLong, setTooLong] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [checked, setChecked] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const tooLong = duration !== null && duration > MAX_RECORDING_SECONDS;
 
   async function onFileChange() {
     const file = fileRef.current?.files?.[0] ?? null;
-    if (!file) {
-      setDuration(null);
-      setTooLong(false);
-      return;
-    }
+    setDuration(null);
+    setChecked(false);
 
+    if (!file) return;
+
+    setReading(true);
     const seconds = await readDuration(file);
     setDuration(seconds);
-    setTooLong(seconds !== null && seconds > MAX_RECORDING_SECONDS);
+    setChecked(true);
+    setReading(false);
   }
 
   return (
@@ -105,9 +129,17 @@ function UploadForm({ sessionId }: { sessionId: string }) {
           onChange={onFileChange}
           className="w-full text-sm"
         />
-        {duration !== null ? (
+        {reading ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-xs">Leyendo duración</p>
+        ) : null}
+        {!reading && checked && duration !== null ? (
           <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-xs">
             Duración detectada: {formatDuration(duration)}
+          </p>
+        ) : null}
+        {!reading && checked && duration === null ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-xs">
+            No se pudo leer la duración en el navegador. Puedes subirla igual.
           </p>
         ) : null}
         {tooLong ? (
@@ -146,7 +178,7 @@ function UploadForm({ sessionId }: { sessionId: string }) {
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <UploadButton />
+        <UploadButton blocked={tooLong} />
         <span className="text-[color:var(--color-ink-muted)] text-xs">
           Hasta {MAX_RECORDING_SECONDS / 60} minutos, 200 MB.
         </span>
