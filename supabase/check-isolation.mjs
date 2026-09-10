@@ -180,6 +180,24 @@ async function main() {
   const campuses = await db.query('select count(*)::int as n from campus_instances');
   check('campus instances are readable by any student', campuses.rows[0].n, 2);
 
+  // Reminders must not be creatable against another student's task.
+  await actAs(db, studentA);
+  const taskRow = await db.query('select id from tasks limit 1');
+  const foreignTaskId = taskRow.rows[0].id;
+
+  await actAs(db, studentB);
+  let forgedReminder = false;
+  try {
+    await db.query(
+      `insert into reminders (user_id, target_kind, task_id, kind, offset_minutes)
+       values ($1, 'task', $2, 'lead_time', 1440)`,
+      [studentB, foreignTaskId],
+    );
+  } catch {
+    forgedReminder = true;
+  }
+  check('student B cannot remind on A task', forgedReminder, true);
+
   // Storage: a file lives under a folder named after its owner.
   await actAs(db, studentA);
   await db.query(`insert into storage.objects (bucket_id, name) values ('documents', $1)`, [
