@@ -74,9 +74,12 @@ Also done:
 
 - [x] Tasks: quick capture, edit, complete, computed priority, overdue state
 
+Also done:
+
+- [x] Calendar: month grid and agenda over classes and task deadlines
+
 Still to do in this phase:
 
-- [ ] Basic calendar
 - [ ] Documents
 - [ ] Quick Capture and Inbox
 - [ ] Internal reminders
