@@ -3,10 +3,13 @@ import { notFound, redirect } from 'next/navigation';
 import type { SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
+import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
 import { deleteSchedule } from './actions';
+import { deleteDocument, openDocument } from './document-actions';
 import { GenerateSessions } from './generate-sessions';
 import { ScheduleForm } from './schedule-form';
+import { UploadDocument } from './upload-document';
 
 export default async function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,6 +23,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
 
   const schedules = await db.schedules.listBySubject(userId, subject.id);
   const sessions = await db.sessions.listBySubject(userId, subject.id);
+  const documents = await db.documents.listBySubject(userId, subject.id);
   const upcoming = sessions.filter((session) => session.status !== 'cancelled').slice(0, 8);
 
   return (
@@ -112,6 +116,53 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
               ))}
             </ul>
           </>
+        )}
+      </section>
+      <section className="mt-10" aria-labelledby="documents-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="documents-heading" className="text-sm font-medium">
+            Documentos
+          </h2>
+          <UploadDocument subjectId={subject.id} />
+        </div>
+
+        {documents.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Sin documentos. Sube apuntes, guías o presentaciones de esta materia.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+            {documents.map((document) => (
+              <li key={document.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                <form action={openDocument} className="min-w-0 flex-1">
+                  <input type="hidden" name="documentId" value={document.id} />
+                  <button
+                    type="submit"
+                    className="block max-w-full truncate text-left text-sm underline-offset-4 hover:underline"
+                  >
+                    {document.title}
+                  </button>
+                </form>
+
+                <span className="text-[color:var(--color-ink-muted)] text-xs">
+                  {describeType(document.mimeType)}
+                  {document.sizeBytes === null ? '' : ` · ${formatSize(document.sizeBytes)}`} ·{' '}
+                  {formatSessionDate(document.createdAt.slice(0, 10))}
+                </span>
+
+                <form action={deleteDocument}>
+                  <input type="hidden" name="documentId" value={document.id} />
+                  <input type="hidden" name="subjectId" value={subject.id} />
+                  <button
+                    type="submit"
+                    className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+                  >
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </AppShell>
