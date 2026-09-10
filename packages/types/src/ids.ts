@@ -30,6 +30,12 @@ export type NoteId = Branded<string, 'NoteId'>;
 export type InboxItemId = Branded<string, 'InboxItemId'>;
 export type RecoveryPlanId = Branded<string, 'RecoveryPlanId'>;
 export type RecoveryItemId = Branded<string, 'RecoveryItemId'>;
+export type RecordingId = Branded<string, 'RecordingId'>;
+export type TranscriptId = Branded<string, 'TranscriptId'>;
+export type TranscriptSegmentId = Branded<string, 'TranscriptSegmentId'>;
+export type ExtractedItemId = Branded<string, 'ExtractedItemId'>;
+export type ClassSummaryId = Branded<string, 'ClassSummaryId'>;
+export type ModelUsageId = Branded<string, 'ModelUsageId'>;
 export type ReminderId = Branded<string, 'ReminderId'>;
 export type NotificationId = Branded<string, 'NotificationId'>;
 

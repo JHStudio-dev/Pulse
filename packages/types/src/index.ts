@@ -6,5 +6,6 @@ export * from './academic';
 export * from './classroom';
 export * from './work';
 export * from './content';
+export * from './recording';
 export * from './recovery';
 export * from './reminders';
