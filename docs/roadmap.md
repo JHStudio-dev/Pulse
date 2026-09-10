@@ -167,6 +167,51 @@ build succeeds.
   how long the screen has been open. It is clamped server side so a bad value
   cannot land outside the day, but it is not independently verifiable.
 
+## Phase 2.5A — Class recording foundation
+
+**Complete.** The storage and lifecycle a later pipeline will read from, with no
+model work in it. Nothing here transcribes, summarises or extracts anything.
+
+Delivered:
+
+- [x] Full Phase 2.5 data model: `recordings`, `transcripts`,
+      `transcript_segments`, `extracted_items`, `class_summaries`,
+      `model_usage`, all with row level security
+- [x] A private `class-recordings` bucket of its own, 200 MiB, audio and video
+      types only, with the same owner-folder policies as documents
+- [x] Upload from the class screen, tied to a real session owned by the caller
+- [x] Explicit permission confirmation per recording, refused on the server as
+      well as in the form, and stored with its timestamp
+- [x] Size and type enforced by the bucket; duration bounded at 120 minutes
+- [x] Playback through signed URLs that live five minutes and are issued on
+      request, never rendered into the page
+- [x] Deletion of the row and the stored file together, and cleanup of the
+      uploaded object when the row fails to save
+- [x] Recording lifecycle as domain rules — which transitions are legal, when a
+      failed recording may be retried — so a background worker and the web app
+      agree without sharing code
+- [x] Empty, reading, error and per-status states in the interface
+
+Verified end to end against the development project with a temporary audio
+file: upload, metadata, session association, listing, signed playback of the
+exact bytes, and deletion leaving neither a row nor an object behind.
+
+### Known gaps, none blocking
+
+- **No recording happens inside Pulse.** A recording is a file the student
+  attaches. Capture on a phone is Phase 5 work and the schema is ready for it.
+- **Duration is whatever the browser reports.** Some browsers never load
+  metadata for a local file and answer with neither a length nor an error, so
+  the field is nullable and the form says when it could not be read. Only size
+  and type are enforced independently of the client.
+- Nothing moves a recording past `uploaded` yet. The queue columns, the status
+  flow and the retry rule exist; the worker that uses them is Phase 2.5B.
+- Retention is "keep everything". `retain` and `delete_after` are the hooks a
+  configurable policy will set, and the specification requires that policy to
+  exist before a public beta.
+- The project wide upload limit applies on top of the 200 MiB bucket limit,
+  whichever is smaller. It has not been raised or measured.
+
 ## Later phases
 
 Unchanged from the specification, and not to be started early:
@@ -174,7 +219,7 @@ Unchanged from the specification, and not to be started early:
 | Phase | Scope |
 |---|---|
 | 1.5 | Campus Sync integration, Review Changes, first connectors |
-| 2.5 | Recording, transcription, class processing |
+| 2.5B | Transcription, segments, summaries, extracted items, review, Campus Sync crosscheck |
 | 3 | Assessments, grade calculation, simulator, risk, day plan |
 | 3.5 | Ask, document search, RAG per subject |
 | 4 | Study tools, Web Push, grouped email, quiet hours, calendar sync |
