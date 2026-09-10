@@ -3,6 +3,8 @@ import {
   createAcademicPeriodRepository,
   createClassSessionRepository,
   createDocumentRepository,
+  createInboxRepository,
+  createNoteRepository,
   createCampusConnectionRepository,
   createInstitutionRepository,
   createSubjectRepository,
@@ -40,6 +42,8 @@ export async function requireUser() {
       sessions: createClassSessionRepository(supabase),
       tasks: createTaskRepository(supabase),
       documents: createDocumentRepository(supabase),
+      inbox: createInboxRepository(supabase),
+      notes: createNoteRepository(supabase),
     },
   };
 }

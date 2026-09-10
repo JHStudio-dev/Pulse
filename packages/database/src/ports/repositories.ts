@@ -6,6 +6,10 @@ import type {
   CampusInstanceId,
   DocumentId,
   DocumentRecord,
+  InboxItem,
+  InboxItemId,
+  Note,
+  NoteId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -123,6 +127,32 @@ export interface DocumentRepository {
   createSignedUrl(userId: UserId, id: DocumentId, expiresInSeconds: number): Promise<string>;
 }
 
+/**
+ * Raw capture. The text is stored exactly as written and never rewritten, so a
+ * later parser can work from the original wording.
+ */
+export interface InboxRepository {
+  listByUser(userId: UserId): Promise<InboxItem[]>;
+  findById(userId: UserId, id: InboxItemId): Promise<InboxItem | null>;
+  capture(userId: UserId, rawText: string, subjectId: SubjectId | null): Promise<InboxItem>;
+  update(
+    userId: UserId,
+    id: InboxItemId,
+    changes: { rawText?: string; subjectId?: SubjectId | null },
+  ): Promise<InboxItem>;
+  close(userId: UserId, id: InboxItemId, status: 'converted' | 'discarded'): Promise<InboxItem>;
+  remove(userId: UserId, id: InboxItemId): Promise<void>;
+}
+
+export interface NoteRepository {
+  listBySubject(userId: UserId, subjectId: SubjectId): Promise<Note[]>;
+  create(
+    userId: UserId,
+    input: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+  ): Promise<Note>;
+  remove(userId: UserId, id: NoteId): Promise<void>;
+}
+
 export interface TaskRepository {
   listByUser(userId: UserId): Promise<Task[]>;
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Task[]>;
@@ -147,4 +177,6 @@ export interface PulseDatabase {
   attendance: AttendanceRepository;
   tasks: TaskRepository;
   documents: DocumentRepository;
+  inbox: InboxRepository;
+  notes: NoteRepository;
 }

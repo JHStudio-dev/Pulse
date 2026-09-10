@@ -12,3 +12,5 @@ export * from './supabase/subject-schedule-repository';
 export * from './supabase/class-session-repository';
 export * from './supabase/task-repository';
 export * from './supabase/document-repository';
+export * from './supabase/inbox-repository';
+export * from './supabase/note-repository';

@@ -7,6 +7,10 @@ import type {
   CampusInstanceId,
   DocumentId,
   DocumentRecord,
+  InboxItem,
+  InboxItemId,
+  Note,
+  NoteId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -28,6 +32,8 @@ import type {
   AcademicPeriodRow,
   CampusConnectionRow,
   DocumentRow,
+  InboxItemRow,
+  NoteRow,
   CampusInstanceRow,
   AttendanceRow,
   ClassSessionRow,
@@ -273,6 +279,32 @@ export function toDocument(row: DocumentRow): DocumentRecord {
     sizeBytes: row.size_bytes,
     contentHash: row.content_hash,
     replacesDocumentId: row.replaces_document_id as DocumentRecord['replacesDocumentId'],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function toInboxItem(row: InboxItemRow): InboxItem {
+  return {
+    id: row.id as InboxItemId,
+    userId: row.user_id as UserId,
+    rawText: row.raw_text,
+    subjectId: row.subject_id as InboxItem['subjectId'],
+    status: row.status,
+    createdAt: row.created_at,
+    processedAt: row.processed_at,
+  };
+}
+
+export function toNote(row: NoteRow): Note {
+  return {
+    id: row.id as NoteId,
+    userId: row.user_id as UserId,
+    subjectId: row.subject_id as Note['subjectId'],
+    classSessionId: row.class_session_id as Note['classSessionId'],
+    title: row.title,
+    body: row.body,
+    markers: row.markers,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

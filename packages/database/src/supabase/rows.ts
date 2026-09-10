@@ -159,3 +159,25 @@ export interface DocumentRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface InboxItemRow {
+  id: string;
+  user_id: string;
+  raw_text: string;
+  subject_id: string | null;
+  status: 'unprocessed' | 'converted' | 'discarded';
+  created_at: string;
+  processed_at: string | null;
+}
+
+export interface NoteRow {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  class_session_id: string | null;
+  title: string | null;
+  body: string;
+  markers: ('question' | 'important' | 'exam' | 'task' | 'missed')[];
+  created_at: string;
+  updated_at: string;
+}

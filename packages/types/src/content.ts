@@ -39,11 +39,17 @@ export interface Note {
 
 export type InboxItemStatus = 'unprocessed' | 'converted' | 'discarded';
 
-/** Raw capture that has not been classified into a task, note or event yet. */
+/**
+ * Raw capture that has not been classified into a task, note or event yet.
+ *
+ * `rawText` is kept exactly as written. A subject may be attached while filing
+ * without touching the text, so a later parser still sees the original wording.
+ */
 export interface InboxItem {
   id: InboxItemId;
   userId: UserId;
   rawText: string;
+  subjectId: SubjectId | null;
   status: InboxItemStatus;
   createdAt: Instant;
   processedAt: Instant | null;
