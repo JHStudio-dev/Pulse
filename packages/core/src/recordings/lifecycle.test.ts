@@ -5,8 +5,11 @@ import {
   isRecordingDurationAllowed,
   isRecordingProcessing,
   isRecordingTerminal,
+  hasAudioSource,
   MAX_RECORDING_ATTEMPTS,
   MAX_RECORDING_SECONDS,
+  needsAudioExtraction,
+  transcriptionSourcePath,
 } from './lifecycle';
 
 describe('canTransitionRecording', () => {
@@ -102,5 +105,100 @@ describe('isRecordingDurationAllowed', () => {
     expect(isRecordingDurationAllowed(-60)).toBe(false);
     expect(isRecordingDurationAllowed(Number.NaN)).toBe(false);
     expect(isRecordingDurationAllowed(Number.POSITIVE_INFINITY)).toBe(false);
+  });
+});
+
+describe('transcriptionSourcePath', () => {
+  it('sends a microphone recording straight to transcription', () => {
+    expect(
+      transcriptionSourcePath({
+        captureMode: 'in_person_audio',
+        storagePath: 'user/session/clase.webm',
+        audioStoragePath: null,
+        hasVideo: false,
+      }),
+    ).toBe('user/session/clase.webm');
+  });
+
+  it('refuses to hand over a video that has not been extracted', () => {
+    expect(
+      transcriptionSourcePath({
+        captureMode: 'virtual_meeting',
+        storagePath: 'user/session/clase.webm',
+        audioStoragePath: null,
+        hasVideo: true,
+      }),
+    ).toBeNull();
+  });
+
+  it('uses the extracted audio once it exists', () => {
+    expect(
+      transcriptionSourcePath({
+        captureMode: 'virtual_meeting',
+        storagePath: 'user/session/clase.webm',
+        audioStoragePath: 'user/session/clase.opus',
+        hasVideo: true,
+      }),
+    ).toBe('user/session/clase.opus');
+  });
+
+  it('treats an uploaded audio file as its own source', () => {
+    expect(
+      transcriptionSourcePath({
+        captureMode: 'upload',
+        storagePath: 'user/session/grabacion.mp3',
+        audioStoragePath: null,
+        hasVideo: false,
+      }),
+    ).toBe('user/session/grabacion.mp3');
+  });
+});
+
+describe('needsAudioExtraction', () => {
+  it('is true for a video with no extracted audio', () => {
+    expect(needsAudioExtraction({ hasVideo: true, audioStoragePath: null })).toBe(true);
+  });
+
+  it('is false once the audio is out, and for anything that was never video', () => {
+    expect(needsAudioExtraction({ hasVideo: true, audioStoragePath: 'a.opus' })).toBe(false);
+    expect(needsAudioExtraction({ hasVideo: false, audioStoragePath: null })).toBe(false);
+  });
+});
+
+describe('hasAudioSource', () => {
+  it('accepts a meeting capture that carried tab audio', () => {
+    expect(
+      hasAudioSource({
+        captureMode: 'virtual_meeting',
+        hasSystemAudio: true,
+        hasMicrophone: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('accepts a meeting capture rescued by the microphone', () => {
+    expect(
+      hasAudioSource({
+        captureMode: 'virtual_meeting',
+        hasSystemAudio: false,
+        hasMicrophone: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects a display capture that came back silent', () => {
+    expect(
+      hasAudioSource({
+        captureMode: 'virtual_meeting',
+        hasSystemAudio: false,
+        hasMicrophone: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('does not judge an uploaded file it did not produce', () => {
+    expect(
+      hasAudioSource({ captureMode: 'upload', hasSystemAudio: false, hasMicrophone: false }),
+    ).toBe(true);
   });
 });

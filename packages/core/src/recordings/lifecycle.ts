@@ -55,3 +55,41 @@ export function isRecordingDurationAllowed(seconds: number | null): boolean {
 }
 
 export { MAX_RECORDING_SECONDS };
+
+/**
+ * The file transcription should read.
+ *
+ * A video recording is never handed to transcription directly: the audio is
+ * pulled out first and that is what gets processed, which keeps the cost tied
+ * to the audio and lets the model be an audio model. The other two modes are
+ * already audio, or are whatever the student uploaded, so the stored file is
+ * the source. Null means the recording is not ready to transcribe yet.
+ */
+export function transcriptionSourcePath(
+  recording: Pick<Recording, 'captureMode' | 'storagePath' | 'audioStoragePath' | 'hasVideo'>,
+): string | null {
+  if (recording.audioStoragePath !== null) return recording.audioStoragePath;
+  if (recording.hasVideo) return null;
+  return recording.storagePath;
+}
+
+/** A video recording needs its audio pulled out before anything can read it. */
+export function needsAudioExtraction(
+  recording: Pick<Recording, 'audioStoragePath' | 'hasVideo'>,
+): boolean {
+  return recording.hasVideo && recording.audioStoragePath === null;
+}
+
+/**
+ * Whether there is any audio to transcribe at all.
+ *
+ * A display capture that came back without tab or system audio and without a
+ * microphone is a silent video: worth keeping if the student wants it, but
+ * nothing downstream can do anything with it.
+ */
+export function hasAudioSource(
+  recording: Pick<Recording, 'captureMode' | 'hasSystemAudio' | 'hasMicrophone'>,
+): boolean {
+  if (recording.captureMode === 'upload') return true;
+  return recording.hasSystemAudio || recording.hasMicrophone;
+}

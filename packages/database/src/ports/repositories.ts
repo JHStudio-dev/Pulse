@@ -220,6 +220,8 @@ export interface RecordingRepository {
       | 'processedAt'
       | 'attempts'
       | 'failureReason'
+      | 'audioStoragePath'
+      | 'audioExtractedAt'
       | 'permissionConfirmedAt'
       | 'retain'
       | 'deleteAfter'

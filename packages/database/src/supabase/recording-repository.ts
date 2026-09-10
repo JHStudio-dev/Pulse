@@ -60,7 +60,11 @@ export function createRecordingRepository(client: PulseSupabaseClient): Recordin
         .insert({
           user_id: userId,
           class_session_id: input.classSessionId,
+          capture_mode: input.captureMode,
           storage_path: input.storagePath,
+          has_video: input.hasVideo,
+          has_system_audio: input.hasSystemAudio,
+          has_microphone: input.hasMicrophone,
           original_filename: input.originalFilename,
           mime_type: input.mimeType,
           size_bytes: input.sizeBytes,

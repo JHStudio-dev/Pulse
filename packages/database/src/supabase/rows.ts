@@ -209,7 +209,13 @@ export interface RecordingRow {
   id: string;
   user_id: string;
   class_session_id: string;
+  capture_mode: 'virtual_meeting' | 'in_person_audio' | 'upload';
   storage_path: string;
+  has_video: boolean;
+  has_system_audio: boolean;
+  has_microphone: boolean;
+  audio_storage_path: string | null;
+  audio_extracted_at: string | null;
   original_filename: string | null;
   mime_type: string;
   size_bytes: number;

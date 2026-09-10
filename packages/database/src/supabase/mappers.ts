@@ -360,7 +360,13 @@ export function toRecording(row: RecordingRow): Recording {
     id: row.id as RecordingId,
     userId: row.user_id as UserId,
     classSessionId: row.class_session_id as ClassSessionId,
+    captureMode: row.capture_mode,
     storagePath: row.storage_path,
+    hasVideo: row.has_video,
+    hasSystemAudio: row.has_system_audio,
+    hasMicrophone: row.has_microphone,
+    audioStoragePath: row.audio_storage_path,
+    audioExtractedAt: row.audio_extracted_at,
     originalFilename: row.original_filename,
     mimeType: row.mime_type,
     // bigint arrives as a number for the sizes Pulse accepts, but not always

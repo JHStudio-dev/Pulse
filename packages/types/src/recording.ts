@@ -25,6 +25,16 @@ export type RecordingStatus =
   'uploaded' | 'queued' | 'transcribing' | 'analyzing' | 'ready' | 'failed';
 
 /**
+ * How a recording was produced.
+ *
+ * The three are not interchangeable downstream. `virtual_meeting` is a browser
+ * surface the student picked and arrives as video; `in_person_audio` is
+ * microphone audio with no video; `upload` is a file Pulse did not produce and
+ * whose contents it cannot assume.
+ */
+export type RecordingCapture = 'virtual_meeting' | 'in_person_audio' | 'upload';
+
+/**
  * Why the student may hold this audio.
  *
  * Pulse processes only recordings a student is allowed to record or use, so the
@@ -36,7 +46,15 @@ export interface Recording {
   id: RecordingId;
   userId: UserId;
   classSessionId: ClassSessionId;
+  captureMode: RecordingCapture;
   storagePath: string;
+  /** What the capture actually produced, not what was asked for. */
+  hasVideo: boolean;
+  hasSystemAudio: boolean;
+  hasMicrophone: boolean;
+  /** Audio pulled out of a video recording. Null until extraction runs. */
+  audioStoragePath: string | null;
+  audioExtractedAt: Instant | null;
   originalFilename: string | null;
   mimeType: string;
   sizeBytes: number;
