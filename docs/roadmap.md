@@ -179,6 +179,23 @@ Delivered:
       `model_usage`, all with row level security
 - [x] A private `class-recordings` bucket of its own, 200 MiB, audio and video
       types only, with the same owner-folder policies as documents
+- [x] Three capture modes, stored explicitly as `capture_mode`, because what
+      produced a recording changes what later stages may assume:
+      - **Clase virtual** — browser display capture of the tab, window or
+        screen the student picks, with meeting audio when the browser offers
+        it and the microphone optionally mixed in
+      - **Clase presencial** — microphone audio, no video
+      - **Archivo subido** — a file Pulse did not produce
+- [x] The capture surface is always chosen by the student in the browser's own
+      dialog. Pulse never picks it and never starts a recording on its own
+- [x] What the capture actually produced is recorded, not assumed:
+      `has_video`, `has_system_audio`, `has_microphone`
+- [x] A display capture that comes back without meeting audio says so plainly,
+      both while recording and on the saved recording
+- [x] A capture with no audio at all is refused rather than saved as a silent
+      video that could never be transcribed
+- [x] Transcription reads extracted audio, never a video file:
+      `audio_storage_path` plus the `transcriptionSourcePath` rule in the domain
 - [x] Upload from the class screen, tied to a real session owned by the caller
 - [x] Explicit permission confirmation per recording, refused on the server as
       well as in the form, and stored with its timestamp
@@ -192,18 +209,33 @@ Delivered:
       agree without sharing code
 - [x] Empty, reading, error and per-status states in the interface
 
-Verified end to end against the development project with a temporary audio
-file: upload, metadata, session association, listing, signed playback of the
-exact bytes, and deletion leaving neither a row nor an object behind.
+Verified end to end against the development project: upload, metadata, session
+association, listing, signed playback of the exact bytes, and deletion leaving
+neither a row nor an object behind — with a temporary WAV, and again with a
+WebM that MediaRecorder produced in the browser and that was saved as a virtual
+class capture.
 
 ### Known gaps, none blocking
 
-- **No recording happens inside Pulse.** A recording is a file the student
-  attaches. Capture on a phone is Phase 5 work and the schema is ready for it.
+- **The browser capture dialogs were not exercised end to end.**
+  `getDisplayMedia` and `getUserMedia` open permission prompts that browser
+  automation cannot drive, so the two direct capture modes need one manual pass
+  on a real machine. Everything either side of them was verified: the recorder
+  itself produces a real WebM, the capture metadata persists, and the server
+  refuses every inconsistent combination.
+- **Native capture is not built.** A phone recording app is Phase 5; the schema
+  and the capture mode already accommodate it.
 - **Duration is whatever the browser reports.** Some browsers never load
   metadata for a local file and answer with neither a length nor an error, so
   the field is nullable and the form says when it could not be read. Only size
   and type are enforced independently of the client.
+- **A long capture is held in memory until it stops.** MediaRecorder chunks
+  accumulate in the tab, so a two hour virtual class is a large buffer before
+  anything is uploaded. Chunked upload while recording is the fix, and it is not
+  built.
+- Audio extraction from a video recording is not implemented. The column, the
+  constraint and the domain rule that decides what transcription reads are all
+  in place; the extraction step belongs to Phase 2.5B.
 - Nothing moves a recording past `uploaded` yet. The queue columns, the status
   flow and the retry rule exist; the worker that uses them is Phase 2.5B.
 - Retention is "keep everything". `retain` and `delete_after` are the hooks a

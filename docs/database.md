@@ -54,6 +54,16 @@ them; building tables for unbuilt features only invites schema churn.
   timezone in `packages/core`, not stored per row.
 - **Documents keep history.** `replaces_document_id` links a campus file to the
   version it superseded, and `content_hash` supports duplicate detection.
+- **A recording carries how it was captured.** `capture_mode` separates a
+  virtual class captured from a browser surface, a room captured through the
+  microphone, and a file the student uploaded. `has_video`, `has_system_audio`
+  and `has_microphone` record what the capture actually produced, because a
+  browser may hand back display video with no meeting audio and that decides
+  whether the recording can be transcribed at all. Check constraints refuse an
+  in-person recording with video and any capture with no audio source.
+- **Transcription never reads a video file.** `audio_storage_path` holds the
+  audio extracted from a video recording, and `transcriptionSourcePath` in
+  `packages/core` decides which path a processing stage may use.
 - **A recording carries why it is allowed.** `permission` and
   `permission_confirmed_at` are written per recording and never defaulted from a
   previous answer, because Pulse only processes audio the student may record or
