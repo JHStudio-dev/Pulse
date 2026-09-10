@@ -28,7 +28,7 @@ export default tseslint.config(
   },
   {
     // Command line tooling: console output is the point.
-    files: ['supabase/**/*.mjs', 'experiments/**/*.ts', '*.config.{js,mjs,ts}'],
+    files: ['supabase/**/*.mjs', 'scripts/**/*.mjs', 'experiments/**/*.ts', '*.config.{js,mjs,ts}'],
     languageOptions: {
       globals: globals.node,
     },
