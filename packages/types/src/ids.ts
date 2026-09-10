@@ -19,6 +19,7 @@ export type SubjectId = Branded<string, 'SubjectId'>;
 export type SubjectScheduleId = Branded<string, 'SubjectScheduleId'>;
 export type ClassSessionId = Branded<string, 'ClassSessionId'>;
 export type AttendanceId = Branded<string, 'AttendanceId'>;
+export type ClassMarkerId = Branded<string, 'ClassMarkerId'>;
 export type TaskId = Branded<string, 'TaskId'>;
 export type TaskItemId = Branded<string, 'TaskItemId'>;
 export type AssessmentId = Branded<string, 'AssessmentId'>;

@@ -1,10 +1,13 @@
 import type { UserId } from '@pulse/types';
 import {
   createAcademicPeriodRepository,
+  createAttendanceRepository,
+  createClassMarkerRepository,
   createClassSessionRepository,
   createDocumentRepository,
   createInboxRepository,
   createNoteRepository,
+  createRecoveryRepository,
   createReminderRepository,
   createCampusConnectionRepository,
   createInstitutionRepository,
@@ -41,6 +44,9 @@ export async function requireUser() {
       subjects: createSubjectRepository(supabase),
       schedules: createSubjectScheduleRepository(supabase),
       sessions: createClassSessionRepository(supabase),
+      attendance: createAttendanceRepository(supabase),
+      markers: createClassMarkerRepository(supabase),
+      recovery: createRecoveryRepository(supabase),
       tasks: createTaskRepository(supabase),
       documents: createDocumentRepository(supabase),
       inbox: createInboxRepository(supabase),

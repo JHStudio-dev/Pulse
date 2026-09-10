@@ -15,3 +15,5 @@ export * from './supabase/document-repository';
 export * from './supabase/inbox-repository';
 export * from './supabase/note-repository';
 export * from './supabase/reminder-repository';
+export * from './supabase/classroom-repository';
+export * from './supabase/recovery-repository';

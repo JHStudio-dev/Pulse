@@ -12,9 +12,15 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  RecoveryItem,
+  RecoveryItemId,
+  RecoveryPlan,
+  RecoveryPlanId,
   Reminder,
   ReminderId,
   Attendance,
+  ClassMarker,
+  ClassMarkerId,
   ClassSession,
   ClassSessionId,
   Location,
@@ -37,8 +43,11 @@ import type {
   DocumentRow,
   InboxItemRow,
   NoteRow,
+  RecoveryItemRow,
+  RecoveryPlanRow,
   ReminderRow,
   CampusInstanceRow,
+  ClassMarkerRow,
   AttendanceRow,
   ClassSessionRow,
   ProfileRow,
@@ -328,5 +337,39 @@ export function toReminder(row: ReminderRow): Reminder {
     offsetMinutes: row.offset_minutes,
     enabled: row.enabled,
     createdAt: row.created_at,
+  };
+}
+
+export function toClassMarker(row: ClassMarkerRow): ClassMarker {
+  return {
+    id: row.id as ClassMarkerId,
+    userId: row.user_id as UserId,
+    classSessionId: row.class_session_id as ClassSessionId,
+    kind: row.kind,
+    note: row.note,
+    offsetSeconds: row.offset_seconds,
+    createdAt: row.created_at,
+  };
+}
+
+export function toRecoveryPlan(row: RecoveryPlanRow): RecoveryPlan {
+  return {
+    id: row.id as RecoveryPlanId,
+    userId: row.user_id as UserId,
+    classSessionId: row.class_session_id as ClassSessionId,
+    status: row.status,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+  };
+}
+
+export function toRecoveryItem(row: RecoveryItemRow): RecoveryItem {
+  return {
+    id: row.id as RecoveryItemId,
+    recoveryPlanId: row.recovery_plan_id as RecoveryPlanId,
+    kind: row.kind,
+    label: row.label,
+    done: row.done,
+    position: row.position,
   };
 }

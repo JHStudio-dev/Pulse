@@ -3,6 +3,7 @@ export * from './ids';
 export * from './profile';
 export * from './institution';
 export * from './academic';
+export * from './classroom';
 export * from './work';
 export * from './content';
 export * from './recovery';

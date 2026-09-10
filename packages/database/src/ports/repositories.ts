@@ -10,9 +10,17 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  RecoveryItem,
+  RecoveryItemId,
+  RecoveryItemKind,
+  RecoveryPlan,
+  RecoveryPlanId,
   Reminder,
   ReminderId,
   Attendance,
+  ClassMarker,
+  ClassMarkerId,
+  ClassMarkerKind,
   ClassSession,
   ClassSessionId,
   IsoDate,
@@ -170,6 +178,38 @@ export interface ReminderRepository {
   remove(userId: UserId, id: ReminderId): Promise<void>;
 }
 
+/** Points the student flagged while a class was running. */
+export interface ClassMarkerRepository {
+  listBySession(userId: UserId, sessionId: ClassSessionId): Promise<ClassMarker[]>;
+  create(
+    userId: UserId,
+    sessionId: ClassSessionId,
+    kind: ClassMarkerKind,
+    offsetSeconds: number,
+    note: string | null,
+  ): Promise<ClassMarker>;
+  remove(userId: UserId, id: ClassMarkerId): Promise<void>;
+}
+
+/** Recovery plans for missed classes, with their checklist. */
+export interface RecoveryRepository {
+  findBySession(userId: UserId, sessionId: ClassSessionId): Promise<RecoveryPlan | null>;
+  listByUser(userId: UserId): Promise<RecoveryPlan[]>;
+  listItems(userId: UserId, planId: RecoveryPlanId): Promise<RecoveryItem[]>;
+  create(
+    userId: UserId,
+    sessionId: ClassSessionId,
+    items: ReadonlyArray<{ kind: RecoveryItemKind; position: number }>,
+  ): Promise<RecoveryPlan>;
+  setItemDone(userId: UserId, itemId: RecoveryItemId, done: boolean): Promise<void>;
+  setStatus(
+    userId: UserId,
+    planId: RecoveryPlanId,
+    status: RecoveryPlan['status'],
+  ): Promise<RecoveryPlan>;
+  remove(userId: UserId, planId: RecoveryPlanId): Promise<void>;
+}
+
 export interface TaskRepository {
   listByUser(userId: UserId): Promise<Task[]>;
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Task[]>;
@@ -192,6 +232,8 @@ export interface PulseDatabase {
   subjectSchedules: SubjectScheduleRepository;
   classSessions: ClassSessionRepository;
   attendance: AttendanceRepository;
+  markers: ClassMarkerRepository;
+  recovery: RecoveryRepository;
   tasks: TaskRepository;
   documents: DocumentRepository;
   inbox: InboxRepository;

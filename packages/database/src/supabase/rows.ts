@@ -194,3 +194,38 @@ export interface ReminderRow {
   enabled: boolean;
   created_at: string;
 }
+
+export interface ClassMarkerRow {
+  id: string;
+  user_id: string;
+  class_session_id: string;
+  kind: 'note' | 'question' | 'important' | 'task' | 'missed';
+  note: string | null;
+  offset_seconds: number;
+  created_at: string;
+}
+
+export interface RecoveryPlanRow {
+  id: string;
+  user_id: string;
+  class_session_id: string;
+  status: 'pending' | 'recovering' | 'recovered';
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface RecoveryItemRow {
+  id: string;
+  user_id: string;
+  recovery_plan_id: string;
+  kind:
+    | 'review_material'
+    | 'get_notes'
+    | 'confirm_topics'
+    | 'check_new_dates'
+    | 'practice'
+    | 'ask_question';
+  label: string;
+  done: boolean;
+  position: number;
+}
