@@ -47,67 +47,69 @@ The spike stays in place and does not need rebuilding. Synthetic fixtures may be
 used for contract tests, normalization, duplicate detection and parsing, but
 never as evidence of real-campus validation.
 
-**Phase 1.5 still should not be designed until real extraction is validated.**
+**Phase 1.5 remains externally blocked and must not be designed until real
+extraction is validated.** Closing Phase 1 does not unblock it: the blockers are
+enrollment and tester availability, not engineering capacity.
+
 One conclusion already holds: UJCV needs the Campus Companion over the student
 session, because an API-key worker is not possible without administrator action.
 
+To resume, either of these is enough to restart the spike:
+
+- The UJCV account gains at least one enrolled course.
+- A UNAH student runs the Moodle probe on their own session.
+
 ## Phase 1 — Pulse Core / MVP
 
-**In progress.**
+**Complete.** Closed September 2026, after manual testing of the running
+product against real data in the development project.
 
-Done:
+Delivered:
 
 - [x] Email and password authentication, with email confirmation
 - [x] First-user onboarding
-- [x] Academic periods, including editing after onboarding
+- [x] Academic periods, editable after onboarding
 - [x] University selection, stored as a campus connection
-- [x] Subjects: create and list with academic context
+- [x] Subjects with academic context, created through a dialog
 - [x] Subject schedules: weekly slots per subject
-- [x] Class sessions generated from schedules
-- [x] Authenticated application shell
-
-Also done:
-
-- [x] Dashboard: next class with countdown, today's schedule, real attention signals
-
-Also done:
-
+- [x] Class sessions generated from schedules, per-session modality
+- [x] Authenticated application shell with scalable navigation
+- [x] Dashboard: next class with countdown, today's schedule, due tasks, real
+      attention signals
 - [x] Tasks: quick capture, edit, complete, computed priority, overdue state
-
-Also done:
-
 - [x] Calendar: month grid and agenda over classes and task deadlines
-
-Also done:
-
 - [x] Documents: private storage, upload, list, signed-URL open, delete
+- [x] Quick Capture and Inbox: global capture, raw text preserved verbatim,
+      convert to task
+- [x] Internal reminders: task and class reminders, due and upcoming states
+- [x] Demo data: seed and cleanup scripts under `scripts/`
 
-Also done:
+Verification at close: format, lint, typecheck, 110 unit tests, migration
+application and row level security isolation all passing; production build
+succeeds.
 
-- [x] Quick Capture and Inbox: global capture, raw text preserved, convert to task
+### Known gaps, none blocking
 
-Also done:
-
-- [x] Internal reminders: task and class reminders, due/upcoming states, in-app only
-
-Still to do in this phase:
-
-- [ ] Demo data
-
-Known gaps in what is already built, none blocking:
+Behaviour that is absent or deliberately limited, recorded so it is not
+rediscovered as a surprise:
 
 - A subject cannot be edited or archived from the interface, though the
   repository supports both.
 - The chosen university cannot be changed after onboarding.
 - There is no password recovery flow.
-- Quick Capture cannot create a standalone reminder: the schema requires every
-  reminder to target an existing session, task or assessment. Reminders are
+- Quick Capture cannot create a standalone reminder. The schema requires every
+  reminder to target an existing session, task or assessment, so reminders are
   created from a task or a class instead, which is where they belong.
 - Reminder delivery is in-app only. Scheduling is separate from delivery, so
-  push, email or any other channel can be added without touching the academic
-  model. No external channel exists yet, and none is implied in the interface.
+  push, email or another channel can be added without touching the academic
+  model. No external channel exists, and none is implied in the interface.
 - Assessment reminders are supported by the schema but have no screen, since
   assessments belong to Phase 3.
+- **The PWA has not been verified on a real device.** The manifest and service
+  worker exist and the app builds and serves them, but installing to an iPhone
+  home screen — the pilot's actual distribution route — has never been tested.
+- The app icons are placeholder marks, because the visual identity is still an
+  open decision.
 
 ## Later phases
 

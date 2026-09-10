@@ -8,11 +8,15 @@ grades and academic risk.
 
 ## Status
 
-Phase 0 complete: architecture, shared types, domain logic, database schema with
-row level security, and an installable PWA shell. No product screens yet.
+**Phase 1 complete.** A student can sign up, set up an academic period, add
+subjects and weekly schedules, generate class sessions, and work with tasks, a
+calendar, documents, quick capture and internal reminders.
 
-Phase 0.1 in progress: the Campus Sync feasibility spike is built but needs to
-be run against real UJCV and UNAH accounts. See [docs/roadmap.md](docs/roadmap.md).
+Phase 0.1, the Campus Sync feasibility spike, is **externally blocked**: it
+needs a UJCV account with enrolled courses and a UNAH student session. Phase 1.5
+is not started for the same reason.
+
+See [docs/roadmap.md](docs/roadmap.md) for the full status and known gaps.
 
 ## Scope
 
