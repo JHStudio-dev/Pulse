@@ -156,10 +156,13 @@ export interface InboxRepository {
 
 export interface NoteRepository {
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Note[]>;
+  /** The note written during a class. One per session, so it can be reopened. */
+  findBySession(userId: UserId, sessionId: ClassSessionId): Promise<Note | null>;
   create(
     userId: UserId,
     input: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
   ): Promise<Note>;
+  updateBody(userId: UserId, id: NoteId, body: string): Promise<Note>;
   remove(userId: UserId, id: NoteId): Promise<void>;
 }
 

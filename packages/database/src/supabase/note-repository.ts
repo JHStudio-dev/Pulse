@@ -1,4 +1,5 @@
-import type { Note, NoteId, SubjectId, UserId } from '@pulse/types';
+import type { ClassSessionId, Note, NoteId, SubjectId, UserId } from '@pulse/types';
+import { DatabaseError } from '../ports/errors';
 import type { NoteRepository } from '../ports/repositories';
 import type { PulseSupabaseClient } from './client';
 import { translateError } from './errors';
@@ -21,6 +22,20 @@ export function createNoteRepository(client: PulseSupabaseClient): NoteRepositor
       return (data as NoteRow[]).map(toNote);
     },
 
+    async findBySession(userId: UserId, sessionId: ClassSessionId): Promise<Note | null> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select('*')
+        .eq('user_id', userId)
+        .eq('class_session_id', sessionId)
+        .order('created_at')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      return data ? toNote(data as NoteRow) : null;
+    },
+
     async create(
       userId: UserId,
       input: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
@@ -39,6 +54,20 @@ export function createNoteRepository(client: PulseSupabaseClient): NoteRepositor
         .single();
 
       if (error) throw translateError(error);
+      return toNote(data as NoteRow);
+    },
+
+    async updateBody(userId: UserId, id: NoteId, body: string): Promise<Note> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({ body })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Note ${id} not found`);
       return toNote(data as NoteRow);
     },
 
