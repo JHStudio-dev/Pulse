@@ -113,8 +113,10 @@ rediscovered as a surprise:
 
 ## Phase 2 — Classes and recovery
 
-**In progress.** Class Mode, attendance, markers, session notes and Recovery
-Mode are built and tested against real data in the development project.
+**Complete.** Closed September 2026, after verifying Class Mode, markers,
+session notes, attendance and Recovery Mode against real data in the development
+project. Every row written during that verification was removed afterwards, so
+the account holds only the seeded demo dataset.
 
 Delivered:
 
@@ -133,20 +135,31 @@ Delivered:
 - [x] Row level security isolation covers markers, attendance, recovery plans
       and recovery steps
 
-Remaining in this phase:
-
-- [ ] Optional attention check-in. Deliberately not built yet: the
-      specification is explicit that Class Mode is not surveillance and that a
-      non-response must not be asserted as distraction, so the interaction
-      needs a design decision before code.
-- [ ] Class Mode has no dedicated full-screen layout. The session screen is
-      reduced, but it still sits inside the normal application shell.
-- [ ] Recovery plans have no screen of their own. They are reachable from the
-      class they belong to, not from a list of everything pending.
-
 The timer holds at the class length once the class is over, so an old session
 does not show a clock that has been running for days. Before the class starts it
 shows the countdown instead of a zeroed timer.
+
+Verification at close: format, lint, typecheck, 111 unit tests, migration
+application and 23 row level security isolation checks all passing; production
+build succeeds.
+
+### Known gaps, none blocking
+
+- **The optional attention check-in is not built.** The specification asks for
+  one that is discreet and optional, and is equally explicit that Class Mode is
+  not surveillance and that a non-response must never be asserted as
+  distraction. Building it means deciding first what a non-response is allowed
+  to mean and how the student turns it off, which is a product decision rather
+  than a coding one. Recorded here as a future Class Mode enhancement, not as
+  unfinished work.
+- Class Mode has no dedicated full-screen layout. The session screen is reduced,
+  but it still sits inside the normal application shell.
+- Recovery plans have no screen of their own. They are reachable from the class
+  they belong to, not from a list of everything still pending.
+- A marker cannot be edited, only added and removed.
+- The marker offset comes from the browser clock, since only the browser knows
+  how long the screen has been open. It is clamped server side so a bad value
+  cannot land outside the day, but it is not independently verifiable.
 
 ## Later phases
 
