@@ -116,7 +116,13 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
                     {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
                   </span>
-                  <span className="ml-auto">
+                  <span className="ml-auto flex items-center gap-3">
+                    <Link
+                      href={`/sessions/${session.id}`}
+                      className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+                    >
+                      Abrir
+                    </Link>
                     <AddReminder kind="session" targetId={session.id} />
                   </span>
                 </li>

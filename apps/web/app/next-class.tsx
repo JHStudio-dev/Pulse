@@ -77,6 +77,13 @@ export function NextClass({
           </a>
         ) : null}
 
+        <Link
+          href={`/sessions/${session.id}`}
+          className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-sm underline-offset-4 hover:underline"
+        >
+          Modo clase
+        </Link>
+
         {subject ? (
           <Link
             href={`/subjects/${subject.id}`}
