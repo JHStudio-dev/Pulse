@@ -6,6 +6,7 @@ import {
   reminderFiresAt,
   reminderState,
   resolveReminders,
+  sessionEndsAt,
   sessionStartsAt,
   taskDueAt,
 } from './schedule';
@@ -180,5 +181,12 @@ describe('sessionStartsAt', () => {
   it('resolves the session start in the period timezone', () => {
     const session = makeSession({ date: '2026-03-02', startTime: '08:00' });
     expect(sessionStartsAt(session, TZ).toISOString()).toBe('2026-03-02T14:00:00.000Z');
+  });
+});
+
+describe('sessionEndsAt', () => {
+  it('resolves the session end in the period timezone', () => {
+    const session = makeSession({ date: '2026-03-02', endTime: '09:30' });
+    expect(sessionEndsAt(session, TZ).toISOString()).toBe('2026-03-02T15:30:00.000Z');
   });
 });

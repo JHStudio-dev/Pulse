@@ -20,6 +20,10 @@ export function sessionStartsAt(session: ClassSession, timeZone: TimeZone): Date
   return zonedTimeToDate(session.date, session.startTime, timeZone);
 }
 
+export function sessionEndsAt(session: ClassSession, timeZone: TimeZone): Date {
+  return zonedTimeToDate(session.date, session.endTime, timeZone);
+}
+
 /**
  * Applies the offset to a target instant.
  *
