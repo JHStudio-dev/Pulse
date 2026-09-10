@@ -14,3 +14,4 @@ export * from './supabase/task-repository';
 export * from './supabase/document-repository';
 export * from './supabase/inbox-repository';
 export * from './supabase/note-repository';
+export * from './supabase/reminder-repository';

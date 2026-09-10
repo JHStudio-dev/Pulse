@@ -5,6 +5,7 @@ import {
   createDocumentRepository,
   createInboxRepository,
   createNoteRepository,
+  createReminderRepository,
   createCampusConnectionRepository,
   createInstitutionRepository,
   createSubjectRepository,
@@ -44,6 +45,7 @@ export async function requireUser() {
       documents: createDocumentRepository(supabase),
       inbox: createInboxRepository(supabase),
       notes: createNoteRepository(supabase),
+      reminders: createReminderRepository(supabase),
     },
   };
 }

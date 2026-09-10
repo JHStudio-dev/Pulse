@@ -1,5 +1,6 @@
 import type {
   AcademicPeriod,
+  AssessmentId,
   AcademicPeriodId,
   CampusConnection,
   CampusConnectionId,
@@ -11,6 +12,8 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  Reminder,
+  ReminderId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -34,6 +37,7 @@ import type {
   DocumentRow,
   InboxItemRow,
   NoteRow,
+  ReminderRow,
   CampusInstanceRow,
   AttendanceRow,
   ClassSessionRow,
@@ -307,5 +311,22 @@ export function toNote(row: NoteRow): Note {
     markers: row.markers,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function toReminder(row: ReminderRow): Reminder {
+  return {
+    id: row.id as ReminderId,
+    userId: row.user_id as UserId,
+    target: {
+      kind: row.target_kind,
+      classSessionId: row.class_session_id as ClassSessionId | null,
+      taskId: row.task_id as TaskId | null,
+      assessmentId: row.assessment_id as AssessmentId | null,
+    },
+    kind: row.kind,
+    offsetMinutes: row.offset_minutes,
+    enabled: row.enabled,
+    createdAt: row.created_at,
   };
 }

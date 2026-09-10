@@ -181,3 +181,16 @@ export interface NoteRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface ReminderRow {
+  id: string;
+  user_id: string;
+  target_kind: 'class_session' | 'task' | 'assessment';
+  class_session_id: string | null;
+  task_id: string | null;
+  assessment_id: string | null;
+  kind: 'lead_time' | 'departure' | 'start';
+  offset_minutes: number;
+  enabled: boolean;
+  created_at: string;
+}

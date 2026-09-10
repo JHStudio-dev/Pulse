@@ -10,6 +10,8 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  Reminder,
+  ReminderId,
   Attendance,
   ClassSession,
   ClassSessionId,
@@ -153,6 +155,21 @@ export interface NoteRepository {
   remove(userId: UserId, id: NoteId): Promise<void>;
 }
 
+/**
+ * Reminder rules. Scheduling only: resolving when one fires and delivering it
+ * are separate concerns, so a channel can be added without touching this.
+ */
+export interface ReminderRepository {
+  listByUser(userId: UserId): Promise<Reminder[]>;
+  createForTask(userId: UserId, taskId: TaskId, offsetMinutes: number): Promise<Reminder>;
+  createForSession(
+    userId: UserId,
+    sessionId: ClassSessionId,
+    offsetMinutes: number,
+  ): Promise<Reminder>;
+  remove(userId: UserId, id: ReminderId): Promise<void>;
+}
+
 export interface TaskRepository {
   listByUser(userId: UserId): Promise<Task[]>;
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Task[]>;
@@ -179,4 +196,5 @@ export interface PulseDatabase {
   documents: DocumentRepository;
   inbox: InboxRepository;
   notes: NoteRepository;
+  reminders: ReminderRepository;
 }
