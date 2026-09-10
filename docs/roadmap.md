@@ -78,9 +78,12 @@ Also done:
 
 - [x] Calendar: month grid and agenda over classes and task deadlines
 
+Also done:
+
+- [x] Documents: private storage, upload, list, signed-URL open, delete
+
 Still to do in this phase:
 
-- [ ] Documents
 - [ ] Quick Capture and Inbox
 - [ ] Internal reminders
 - [ ] Demo data
