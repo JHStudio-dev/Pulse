@@ -66,9 +66,12 @@ Done:
 - [x] Class sessions generated from schedules
 - [x] Authenticated application shell
 
+Also done:
+
+- [x] Dashboard: next class with countdown, today's schedule, real attention signals
+
 Still to do in this phase:
 
-- [ ] Dashboard
 - [ ] Tasks
 - [ ] Basic calendar
 - [ ] Documents
