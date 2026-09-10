@@ -32,14 +32,14 @@ signed-in user, writable only by the service role.
 |---|---|
 | Identity | `profiles` |
 | Institutions | `universities`, `campus_instances`, `campus_connections` |
-| Academic | `academic_periods`, `subjects`, `subject_schedules`, `class_sessions`, `attendance` |
+| Academic | `academic_periods`, `subjects`, `subject_schedules`, `class_sessions`, `attendance`, `class_markers` |
 | Work | `tasks`, `task_items`, `assessments`, `grade_categories`, `grades` |
 | Content | `documents`, `notes`, `inbox_items` |
 | Recovery | `recovery_plans`, `recovery_items` |
 | Alerts | `reminders`, `notifications` |
 
 Deliberately **not** created yet, because their phases have not started:
-`class_markers`, `study_sessions`, `campus_sync_runs`, `campus_changes`,
+`study_sessions`, `campus_sync_runs`, `campus_changes`,
 `recordings`, `transcripts`, `transcript_segments`, `extracted_items`,
 `class_summaries`, `model_usage`. The specification lists them; building tables
 for unbuilt features only invites schema churn.
@@ -55,6 +55,10 @@ for unbuilt features only invites schema churn.
   timezone in `packages/core`, not stored per row.
 - **Documents keep history.** `replaces_document_id` links a campus file to the
   version it superseded, and `content_hash` supports duplicate detection.
+- **A marker belongs to a moment of a class.** `class_markers.offset_seconds`
+  stores how far into the session the student marked it, not a wall clock time,
+  so the point survives a session being rescheduled and lines up with a
+  recording later.
 - **A reminder has exactly one target**, enforced by a check constraint against
   `target_kind`. `departure` is distinct from `start` because an in-person class
   needs a leave-now reminder offset by travel time.

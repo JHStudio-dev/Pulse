@@ -111,6 +111,43 @@ rediscovered as a surprise:
 - The app icons are placeholder marks, because the visual identity is still an
   open decision.
 
+## Phase 2 — Classes and recovery
+
+**In progress.** Class Mode, attendance, markers, session notes and Recovery
+Mode are built and tested against real data in the development project.
+
+Delivered:
+
+- [x] `class_markers` table, deployed through the GitHub integration
+- [x] Class Mode: subject, professor, schedule, timer, quick note field and the
+      five marks — Nota, Duda, Importante, Tarea, Me perdí
+- [x] Each mark stores the minute of the class it belongs to, so the moment can
+      be found again
+- [x] Session notes: one note per class, rewritten in place
+- [x] Attendance: attended, partial, missed, cancelled, with an optional note
+- [x] Recovery Mode: a missed or partly attended class opens a plan with its
+      steps, ticked one by one, and the plan status follows the steps —
+      pending, recovering, recovered
+- [x] Correcting attendance to a class that was attended removes an untouched
+      plan; a plan with progress on it is the student's own work and stays
+- [x] Row level security isolation covers markers, attendance, recovery plans
+      and recovery steps
+
+Remaining in this phase:
+
+- [ ] Optional attention check-in. Deliberately not built yet: the
+      specification is explicit that Class Mode is not surveillance and that a
+      non-response must not be asserted as distraction, so the interaction
+      needs a design decision before code.
+- [ ] Class Mode has no dedicated full-screen layout. The session screen is
+      reduced, but it still sits inside the normal application shell.
+- [ ] Recovery plans have no screen of their own. They are reachable from the
+      class they belong to, not from a list of everything pending.
+
+The timer holds at the class length once the class is over, so an old session
+does not show a clock that has been running for days. Before the class starts it
+shows the countdown instead of a zeroed timer.
+
 ## Later phases
 
 Unchanged from the specification, and not to be started early:
@@ -118,7 +155,6 @@ Unchanged from the specification, and not to be started early:
 | Phase | Scope |
 |---|---|
 | 1.5 | Campus Sync integration, Review Changes, first connectors |
-| 2 | Class Mode, attendance, markers, Recovery Mode |
 | 2.5 | Recording, transcription, class processing |
 | 3 | Assessments, grade calculation, simulator, risk, day plan |
 | 3.5 | Ask, document search, RAG per subject |
