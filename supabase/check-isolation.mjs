@@ -278,10 +278,11 @@ async function main() {
   await actAs(db, studentA);
   const recordingRow = await db.query(
     `insert into recordings
-       (user_id, class_session_id, storage_path, mime_type, size_bytes, permission)
-     values ($1, $2, $3, 'audio/wav', 1024, 'own_permission')
+       (user_id, class_session_id, capture_mode, storage_path, mime_type, size_bytes,
+        has_microphone, permission)
+     values ($1, $2, 'in_person_audio', $3, 'audio/webm', 1024, true, 'own_permission')
      returning id`,
-    [studentA, foreignSessionId, `${studentA}/${foreignSessionId}/clase.wav`],
+    [studentA, foreignSessionId, `${studentA}/${foreignSessionId}/clase.webm`],
   );
   const foreignRecordingId = recordingRow.rows[0].id;
 
@@ -332,14 +333,61 @@ async function main() {
   try {
     await db.query(
       `insert into recordings
-         (user_id, class_session_id, storage_path, mime_type, size_bytes, permission)
-       values ($1, $2, $3, 'audio/wav', 1024, 'own_permission')`,
-      [studentB, foreignSessionId, `${studentB}/robada.wav`],
+         (user_id, class_session_id, capture_mode, storage_path, mime_type, size_bytes,
+          has_microphone, permission)
+       values ($1, $2, 'in_person_audio', $3, 'audio/webm', 1024, true, 'own_permission')`,
+      [studentB, foreignSessionId, `${studentB}/robada.webm`],
     );
   } catch {
     forgedRecording = true;
   }
   check('student B cannot record A class', forgedRecording, true);
+
+  // Capture shape: the database refuses combinations that later stages could
+  // not make sense of.
+  await actAs(db, studentA);
+
+  let rejectedVideoInPerson = false;
+  try {
+    await db.query(
+      `insert into recordings
+         (user_id, class_session_id, capture_mode, storage_path, mime_type, size_bytes,
+          has_video, has_microphone, permission)
+       values ($1, $2, 'in_person_audio', $3, 'video/webm', 1024, true, true, 'own_permission')`,
+      [studentA, foreignSessionId, `${studentA}/con-video.webm`],
+    );
+  } catch {
+    rejectedVideoInPerson = true;
+  }
+  check('an in-person recording cannot carry video', rejectedVideoInPerson, true);
+
+  let rejectedSilentCapture = false;
+  try {
+    await db.query(
+      `insert into recordings
+         (user_id, class_session_id, capture_mode, storage_path, mime_type, size_bytes,
+          has_video, permission)
+       values ($1, $2, 'virtual_meeting', $3, 'video/webm', 1024, true, 'own_permission')`,
+      [studentA, foreignSessionId, `${studentA}/muda.webm`],
+    );
+  } catch {
+    rejectedSilentCapture = true;
+  }
+  check('a capture with no audio source is refused', rejectedSilentCapture, true);
+
+  let rejectedHalfExtraction = false;
+  try {
+    await db.query(
+      `insert into recordings
+         (user_id, class_session_id, capture_mode, storage_path, mime_type, size_bytes,
+          has_video, has_system_audio, audio_storage_path, permission)
+       values ($1, $2, 'virtual_meeting', $3, 'video/webm', 1024, true, true, $4, 'own_permission')`,
+      [studentA, foreignSessionId, `${studentA}/media.webm`, `${studentA}/media.opus`],
+    );
+  } catch {
+    rejectedHalfExtraction = true;
+  }
+  check('extracted audio without a timestamp is refused', rejectedHalfExtraction, true);
 
   // Storage: a file lives under a folder named after its owner.
   await actAs(db, studentA);
