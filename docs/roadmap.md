@@ -70,9 +70,12 @@ Also done:
 
 - [x] Dashboard: next class with countdown, today's schedule, real attention signals
 
+Also done:
+
+- [x] Tasks: quick capture, edit, complete, computed priority, overdue state
+
 Still to do in this phase:
 
-- [ ] Tasks
 - [ ] Basic calendar
 - [ ] Documents
 - [ ] Quick Capture and Inbox
