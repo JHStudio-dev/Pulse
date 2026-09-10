@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/session';
 import { removeMarker, toggleRecoveryItem } from './actions';
 import { AttendanceForm } from './attendance-form';
 import { ClassMode } from './class-mode';
+import { Recordings } from './recordings';
 import { SessionNote } from './session-note';
 
 const MARKER_LABEL: Record<ClassMarkerKind, string> = {
@@ -40,12 +41,13 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const session = await db.sessions.findById(userId, id as ClassSessionId);
   if (!session) notFound();
 
-  const [subject, markers, attendance, plan, note, subjects] = await Promise.all([
+  const [subject, markers, attendance, plan, note, recordings, subjects] = await Promise.all([
     db.subjects.findById(userId, session.subjectId),
     db.markers.listBySession(userId, session.id),
     db.attendance.findBySession(userId, session.id),
     db.recovery.findBySession(userId, session.id),
     db.notes.findBySession(userId, session.id),
+    db.recordings.listBySession(userId, session.id),
     db.subjects.listByPeriod(userId, period.id),
   ]);
 
@@ -138,6 +140,8 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         </h2>
         <SessionNote sessionId={session.id} body={note?.body ?? ''} />
       </section>
+
+      <Recordings sessionId={session.id} recordings={recordings} />
 
       <section className="mt-8" aria-labelledby="attendance-heading">
         <h2 id="attendance-heading" className="text-sm font-medium">
