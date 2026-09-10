@@ -156,6 +156,12 @@ build succeeds.
   but it still sits inside the normal application shell.
 - Recovery plans have no screen of their own. They are reachable from the class
   they belong to, not from a list of everything still pending.
+- A plan reaches **recovered** only by ticking every step. There is no separate
+  "mark as recovered" action, so a student who considers a class recovered
+  without doing every step has to tick them anyway.
+- Notes are reachable from the class they belong to. The repository also lists
+  notes per subject, but no screen uses that yet, so there is no place to read
+  a subject's notes together.
 - A marker cannot be edited, only added and removed.
 - The marker offset comes from the browser clock, since only the browser knows
   how long the screen has been open. It is clamped server side so a bad value
