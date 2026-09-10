@@ -13,8 +13,13 @@ import { isActiveSection, NAV_SECTIONS } from './navigation';
 export function MainNav() {
   const pathname = usePathname();
 
+  // Scrolls within itself: with several sections the row no longer fits a
+  // phone, and letting it push the page would break every screen's layout.
   return (
-    <nav aria-label="Secciones" className="-mb-px flex gap-5 text-sm">
+    <nav
+      aria-label="Secciones"
+      className="-mb-px flex gap-5 overflow-x-auto text-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {NAV_SECTIONS.map((section) => {
         const active = isActiveSection(section.href, pathname);
 
@@ -25,8 +30,8 @@ export function MainNav() {
             aria-current={active ? 'page' : undefined}
             className={
               active
-                ? 'border-b-2 border-[color:var(--color-ink)] pb-2.5 font-medium'
-                : 'text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] border-b-2 border-transparent pb-2.5'
+                ? 'shrink-0 border-b-2 border-[color:var(--color-ink)] pb-2.5 font-medium'
+                : 'text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] shrink-0 border-b-2 border-transparent pb-2.5'
             }
           >
             {section.label}

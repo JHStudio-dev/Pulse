@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { AddReminder } from '@/app/reminders/add-reminder';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
@@ -107,10 +108,16 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             </p>
             <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
               {upcoming.map((session) => (
-                <li key={session.id} className="flex items-baseline justify-between gap-4 py-2.5">
+                <li
+                  key={session.id}
+                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5"
+                >
                   <span className="text-sm">{formatSessionDate(session.date)}</span>
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
                     {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
+                  </span>
+                  <span className="ml-auto">
+                    <AddReminder kind="session" targetId={session.id} />
                   </span>
                 </li>
               ))}

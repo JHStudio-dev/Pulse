@@ -11,6 +11,7 @@ import {
 } from '@pulse/core';
 import type { ClassSession, Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { loadReminders } from '@/lib/reminders';
 import { requireUser } from '@/lib/session';
 import { NextClass } from './next-class';
 import { TodaySchedule } from './today-schedule';
@@ -93,6 +94,10 @@ export default async function HomePage() {
     db.sessions.listInRange(userId, today, horizonEnd),
     db.tasks.listByUser(userId),
   ]);
+
+  const dueReminders = (await loadReminders(db, userId, period, now)).filter(
+    (entry) => entry.state === 'due',
+  );
 
   const openTasks = allTasks.filter(
     (task) =>
@@ -196,6 +201,35 @@ export default async function HomePage() {
           />
         )}
       </section>
+
+      {dueReminders.length > 0 ? (
+        <section className="mt-8" aria-labelledby="reminders-heading">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="reminders-heading" className="text-sm font-medium">
+              Recordatorios
+            </h2>
+            <Link
+              href="/reminders"
+              className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+            >
+              Ver todos
+            </Link>
+          </div>
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {dueReminders.slice(0, 5).map((entry) => (
+              <li
+                key={entry.reminder.id}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
+              >
+                <span className="text-sm">{entry.targetTitle}</span>
+                <span className="text-[color:var(--color-ink-muted)] text-xs">
+                  {entry.reminder.target.kind === 'task' ? 'Entrega' : 'Clase'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {overdueTasks.length + soonTasks.length > 0 ? (
         <section className="mt-8" aria-labelledby="tasks-heading">

@@ -2,6 +2,7 @@ import { isOverdue, resolveTaskPriority, type PriorityLevel } from '@pulse/core'
 import type { Subject, SubjectId, Task } from '@pulse/types';
 import { formatSessionDate } from '@/lib/format';
 import { toggleTaskDone } from './actions';
+import { AddReminder } from '@/app/reminders/add-reminder';
 import { EditTask } from './edit-task';
 
 /**
@@ -91,7 +92,12 @@ export function TaskList({
               </p>
             </div>
 
-            <EditTask task={task} subjects={subjects} />
+            <div className="flex items-center gap-3">
+              {task.dueDate !== null && !done ? (
+                <AddReminder kind="task" targetId={task.id} />
+              ) : null}
+              <EditTask task={task} subjects={subjects} />
+            </div>
           </li>
         );
       })}
