@@ -273,6 +273,74 @@ async function main() {
   }
   check('student B cannot remind on A task', forgedReminder, true);
 
+  // Recordings, and everything a later stage derives from one, belong to the
+  // student who uploaded them.
+  await actAs(db, studentA);
+  const recordingRow = await db.query(
+    `insert into recordings
+       (user_id, class_session_id, storage_path, mime_type, size_bytes, permission)
+     values ($1, $2, $3, 'audio/wav', 1024, 'own_permission')
+     returning id`,
+    [studentA, foreignSessionId, `${studentA}/${foreignSessionId}/clase.wav`],
+  );
+  const foreignRecordingId = recordingRow.rows[0].id;
+
+  const transcriptRow = await db.query(
+    `insert into transcripts (user_id, recording_id, language, full_text)
+     values ($1, $2, 'es', 'Contenido de la clase') returning id`,
+    [studentA, foreignRecordingId],
+  );
+  await db.query(
+    `insert into transcript_segments
+       (user_id, transcript_id, position, start_seconds, end_seconds, content)
+     values ($1, $2, 0, 0, 12.5, 'Primer fragmento')`,
+    [studentA, transcriptRow.rows[0].id],
+  );
+  await db.query(
+    `insert into extracted_items (user_id, class_session_id, transcript_id, kind, content)
+     values ($1, $2, $3, 'task', 'Entregar el informe')`,
+    [studentA, foreignSessionId, transcriptRow.rows[0].id],
+  );
+  await db.query(
+    `insert into class_summaries (user_id, class_session_id, transcript_id, headline)
+     values ($1, $2, $3, 'Integrales impropias')`,
+    [studentA, foreignSessionId, transcriptRow.rows[0].id],
+  );
+  await db.query(
+    `insert into model_usage (user_id, feature, provider, model, recording_id, unit, input_units)
+     values ($1, 'transcription', 'placeholder', 'placeholder', $2, 'seconds', 600)`,
+    [studentA, foreignRecordingId],
+  );
+
+  await actAs(db, studentB);
+  for (const table of [
+    'recordings',
+    'transcripts',
+    'transcript_segments',
+    'extracted_items',
+    'class_summaries',
+    'model_usage',
+  ]) {
+    const rows = await db.query(`select count(*)::int as n from ${table}`);
+    check(`student B cannot read A ${table}`, rows.rows[0].n, 0);
+  }
+
+  const deletedRecordings = await db.query('delete from recordings returning id');
+  check('student B cannot delete A recordings', deletedRecordings.rows.length, 0);
+
+  let forgedRecording = false;
+  try {
+    await db.query(
+      `insert into recordings
+         (user_id, class_session_id, storage_path, mime_type, size_bytes, permission)
+       values ($1, $2, $3, 'audio/wav', 1024, 'own_permission')`,
+      [studentB, foreignSessionId, `${studentB}/robada.wav`],
+    );
+  } catch {
+    forgedRecording = true;
+  }
+  check('student B cannot record A class', forgedRecording, true);
+
   // Storage: a file lives under a folder named after its owner.
   await actAs(db, studentA);
   await db.query(`insert into storage.objects (bucket_id, name) values ('documents', $1)`, [
@@ -298,6 +366,29 @@ async function main() {
     forgedUpload = true;
   }
   check('student B cannot upload into A folder', forgedUpload, true);
+
+  // The recordings bucket is separate and needs its own proof.
+  await actAs(db, studentA);
+  await db.query(`insert into storage.objects (bucket_id, name) values ('class-recordings', $1)`, [
+    `${studentA}/${foreignSessionId}/clase.wav`,
+  ]);
+
+  await actAs(db, studentB);
+  const otherRecordingFiles = await db.query(
+    `select count(*)::int as n from storage.objects where bucket_id = 'class-recordings'`,
+  );
+  check('student B cannot read A recording files', otherRecordingFiles.rows[0].n, 0);
+
+  let forgedRecordingUpload = false;
+  try {
+    await db.query(
+      `insert into storage.objects (bucket_id, name) values ('class-recordings', $1)`,
+      [`${studentA}/robada.wav`],
+    );
+  } catch {
+    forgedRecordingUpload = true;
+  }
+  check('student B cannot upload into A recordings folder', forgedRecordingUpload, true);
 
   await db.exec('reset role;');
   await db.close();
