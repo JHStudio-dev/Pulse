@@ -3,8 +3,10 @@
 import { useActionState, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { MAX_RECORDING_SECONDS } from '@pulse/core';
-import type { Recording, RecordingStatus } from '@pulse/types';
+import type { Recording, RecordingCapture, RecordingStatus } from '@pulse/types';
 import { describeRecordingType, formatDuration } from '@/lib/recordings';
+import { useRouter } from 'next/navigation';
+import { CapturePanel } from './capture-panel';
 import { formatSize } from '@/lib/uploads';
 import {
   deleteRecording,
@@ -31,6 +33,30 @@ const STATUS_LABEL: Record<RecordingStatus, string> = {
   ready: 'Lista',
   failed: 'Falló',
 };
+
+const CAPTURE_LABEL: Record<RecordingCapture, string> = {
+  virtual_meeting: 'Clase virtual',
+  in_person_audio: 'Clase presencial',
+  upload: 'Archivo subido',
+};
+
+const MODES: { value: RecordingCapture; label: string; hint: string }[] = [
+  {
+    value: 'virtual_meeting',
+    label: 'Grabar clase virtual',
+    hint: 'Captura la pestaña, ventana o pantalla que tú elijas, con el audio de la reunión.',
+  },
+  {
+    value: 'in_person_audio',
+    label: 'Grabar clase presencial',
+    hint: 'Solo el micrófono. No se graba video.',
+  },
+  {
+    value: 'upload',
+    label: 'Subir un archivo',
+    hint: 'Una grabación que ya tienes, tuya o material oficial de la clase.',
+  },
+];
 
 function UploadButton({ blocked }: { blocked: boolean }) {
   const { pending } = useFormStatus();
@@ -113,6 +139,7 @@ function UploadForm({ sessionId }: { sessionId: string }) {
   return (
     <form action={formAction} className="mt-4 space-y-3">
       <input type="hidden" name="sessionId" value={sessionId} />
+      <input type="hidden" name="captureMode" value="upload" />
       <input type="hidden" name="durationSeconds" value={duration ?? ''} />
 
       <div>
@@ -221,6 +248,7 @@ function RecordingRow({ recording }: { recording: Recording }) {
   });
 
   const detail = [
+    CAPTURE_LABEL[recording.captureMode],
     describeRecordingType(recording.mimeType),
     recording.durationSeconds === null
       ? 'Duración desconocida'
@@ -260,6 +288,13 @@ function RecordingRow({ recording }: { recording: Recording }) {
 
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">{detail}</p>
 
+      {recording.captureMode === 'virtual_meeting' && !recording.hasSystemAudio ? (
+        <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+          Sin audio de la reunión
+          {recording.hasMicrophone ? ': se grabó solo el micrófono.' : '.'}
+        </p>
+      ) : null}
+
       {recording.status === 'failed' && recording.failureReason ? (
         <p className="mt-1 text-xs">No se pudo procesar: {recording.failureReason}</p>
       ) : null}
@@ -283,6 +318,9 @@ export function Recordings({
   sessionId: string;
   recordings: Recording[];
 }) {
+  const [mode, setMode] = useState<RecordingCapture>('virtual_meeting');
+  const router = useRouter();
+
   return (
     <section className="mt-8" aria-labelledby="recordings-heading">
       <h2 id="recordings-heading" className="text-sm font-medium">
@@ -301,7 +339,35 @@ export function Recordings({
         </ul>
       )}
 
-      <UploadForm sessionId={sessionId} />
+      <div className="mt-6">
+        <fieldset>
+          <legend className="text-sm font-medium">Agregar una grabación</legend>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+            {MODES.map((option) => (
+              <label key={option.value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="capture-mode"
+                  value={option.value}
+                  checked={mode === option.value}
+                  onChange={() => setMode(option.value)}
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
+          {MODES.find((option) => option.value === mode)?.hint}
+        </p>
+
+        {mode === 'upload' ? (
+          <UploadForm sessionId={sessionId} />
+        ) : (
+          <CapturePanel sessionId={sessionId} mode={mode} onSaved={() => router.refresh()} />
+        )}
+      </div>
     </section>
   );
 }

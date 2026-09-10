@@ -1,7 +1,12 @@
 'use server';
 
 import { isRecordingDurationAllowed, MAX_RECORDING_SECONDS } from '@pulse/core';
-import type { ClassSessionId, RecordingId, RecordingPermission } from '@pulse/types';
+import type {
+  ClassSessionId,
+  RecordingCapture,
+  RecordingId,
+  RecordingPermission,
+} from '@pulse/types';
 import { uuidSchema } from '@pulse/validation';
 import { RECORDINGS_BUCKET } from '@pulse/database';
 import { revalidatePath } from 'next/cache';
@@ -21,6 +26,11 @@ export interface PlaybackResult {
 }
 
 const PERMISSIONS: readonly RecordingPermission[] = ['own_permission', 'official_material'];
+const CAPTURE_MODES: readonly RecordingCapture[] = ['virtual_meeting', 'in_person_audio', 'upload'];
+
+function flag(formData: FormData, key: string): boolean {
+  return String(formData.get(key) ?? '') === 'true';
+}
 
 function text(formData: FormData, key: string): string {
   return String(formData.get(key) ?? '').trim();
@@ -50,6 +60,27 @@ export async function uploadRecording(
   const permission = text(formData, 'permission') as RecordingPermission;
   if (!PERMISSIONS.includes(permission)) {
     return { error: 'Indica por qué puedes usar esta grabación', saved: false };
+  }
+
+  // Capture mode decides what the rest of the pipeline may assume, so it is
+  // validated rather than inferred from the file.
+  const captureMode = (text(formData, 'captureMode') || 'upload') as RecordingCapture;
+  if (!CAPTURE_MODES.includes(captureMode)) {
+    return { error: 'Tipo de grabación no válido', saved: false };
+  }
+
+  const hasVideo = captureMode === 'upload' ? false : flag(formData, 'hasVideo');
+  const hasSystemAudio = flag(formData, 'hasSystemAudio');
+  const hasMicrophone = flag(formData, 'hasMicrophone');
+
+  // The same invariants the database enforces, stated here so a rejection reads
+  // as a sentence rather than as a constraint violation.
+  if (captureMode === 'in_person_audio' && hasVideo) {
+    return { error: 'Una clase presencial se graba solo con audio', saved: false };
+  }
+
+  if (captureMode !== 'upload' && !hasSystemAudio && !hasMicrophone) {
+    return { error: 'Esa captura no trae audio, así que no se puede transcribir', saved: false };
   }
 
   const file = formData.get('file');
@@ -95,6 +126,10 @@ export async function uploadRecording(
   try {
     await db.recordings.create(userId, {
       classSessionId: sessionId,
+      captureMode,
+      hasVideo,
+      hasSystemAudio,
+      hasMicrophone,
       storagePath: objectPath,
       originalFilename: file.name.slice(0, 200),
       mimeType: file.type,
