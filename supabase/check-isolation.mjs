@@ -211,6 +211,50 @@ async function main() {
   }
   check('student B cannot mark A class', forgedMarker, true);
 
+  // Attendance and recovery follow the same rule: a class belongs to one
+  // student, and so does everything recorded about it.
+  await actAs(db, studentA);
+  await db.query(
+    `insert into attendance (user_id, class_session_id, status)
+     values ($1, $2, 'missed')`,
+    [studentA, foreignSessionId],
+  );
+  const planRow = await db.query(
+    `insert into recovery_plans (user_id, class_session_id)
+     values ($1, $2) returning id`,
+    [studentA, foreignSessionId],
+  );
+  await db.query(
+    `insert into recovery_items (user_id, recovery_plan_id, kind, label, position)
+     values ($1, $2, 'get_notes', 'Conseguir apuntes de la clase', 0)`,
+    [studentA, planRow.rows[0].id],
+  );
+
+  await actAs(db, studentB);
+  const otherAttendance = await db.query('select count(*)::int as n from attendance');
+  check('student B cannot read A attendance', otherAttendance.rows[0].n, 0);
+
+  const otherPlans = await db.query('select count(*)::int as n from recovery_plans');
+  check('student B cannot read A recovery plans', otherPlans.rows[0].n, 0);
+
+  const otherItems = await db.query('select count(*)::int as n from recovery_items');
+  check('student B cannot read A recovery steps', otherItems.rows[0].n, 0);
+
+  const tickedItems = await db.query('update recovery_items set done = true returning id');
+  check('student B cannot tick A recovery steps', tickedItems.rows.length, 0);
+
+  let forgedAttendance = false;
+  try {
+    await db.query(
+      `insert into attendance (user_id, class_session_id, status)
+       values ($1, $2, 'attended')`,
+      [studentB, foreignSessionId],
+    );
+  } catch {
+    forgedAttendance = true;
+  }
+  check('student B cannot mark attendance on A class', forgedAttendance, true);
+
   // Reminders must not be creatable against another student's task.
   await actAs(db, studentA);
   const taskRow = await db.query('select id from tasks limit 1');
