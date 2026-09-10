@@ -12,6 +12,8 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  Recording,
+  RecordingId,
   RecoveryItem,
   RecoveryItemId,
   RecoveryPlan,
@@ -44,6 +46,7 @@ import type {
   InboxItemRow,
   NoteRow,
   RecoveryItemRow,
+  RecordingRow,
   RecoveryPlanRow,
   ReminderRow,
   CampusInstanceRow,
@@ -349,6 +352,33 @@ export function toClassMarker(row: ClassMarkerRow): ClassMarker {
     note: row.note,
     offsetSeconds: row.offset_seconds,
     createdAt: row.created_at,
+  };
+}
+
+export function toRecording(row: RecordingRow): Recording {
+  return {
+    id: row.id as RecordingId,
+    userId: row.user_id as UserId,
+    classSessionId: row.class_session_id as ClassSessionId,
+    storagePath: row.storage_path,
+    originalFilename: row.original_filename,
+    mimeType: row.mime_type,
+    // bigint arrives as a number for the sizes Pulse accepts, but not always
+    // as one: PostgREST hands back a string once the value is large enough.
+    sizeBytes: Number(row.size_bytes),
+    durationSeconds: row.duration_seconds,
+    status: row.status,
+    queuedAt: row.queued_at,
+    processingStartedAt: row.processing_started_at,
+    processedAt: row.processed_at,
+    attempts: row.attempts,
+    failureReason: row.failure_reason,
+    permission: row.permission,
+    permissionConfirmedAt: row.permission_confirmed_at,
+    retain: row.retain,
+    deleteAfter: row.delete_after,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

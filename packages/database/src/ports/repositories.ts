@@ -10,6 +10,9 @@ import type {
   InboxItemId,
   Note,
   NoteId,
+  Recording,
+  RecordingId,
+  RecordingStatus,
   RecoveryItem,
   RecoveryItemId,
   RecoveryItemKind,
@@ -194,6 +197,48 @@ export interface ClassMarkerRepository {
   remove(userId: UserId, id: ClassMarkerId): Promise<void>;
 }
 
+/**
+ * Class recordings and the file behind each one.
+ *
+ * The row and the stored object are two writes that must not drift apart, so
+ * the repository never leaves one without the other: `create` is given a path
+ * that is already uploaded, and `remove` reports whether the row went so the
+ * caller can decide about the file.
+ */
+export interface RecordingRepository {
+  listBySession(userId: UserId, sessionId: ClassSessionId): Promise<Recording[]>;
+  findById(userId: UserId, id: RecordingId): Promise<Recording | null>;
+  create(
+    userId: UserId,
+    input: Omit<
+      Recording,
+      | 'id'
+      | 'userId'
+      | 'status'
+      | 'queuedAt'
+      | 'processingStartedAt'
+      | 'processedAt'
+      | 'attempts'
+      | 'failureReason'
+      | 'permissionConfirmedAt'
+      | 'retain'
+      | 'deleteAfter'
+      | 'createdAt'
+      | 'updatedAt'
+    >,
+  ): Promise<Recording>;
+  /** Moves a recording through the pipeline. Legality is decided in the domain. */
+  setStatus(
+    userId: UserId,
+    id: RecordingId,
+    status: RecordingStatus,
+    failureReason?: string | null,
+  ): Promise<Recording>;
+  remove(userId: UserId, id: RecordingId): Promise<void>;
+  /** Short lived playback URL. A path on its own grants nobody access. */
+  createSignedUrl(userId: UserId, id: RecordingId, expiresInSeconds: number): Promise<string>;
+}
+
 /** Recovery plans for missed classes, with their checklist. */
 export interface RecoveryRepository {
   findBySession(userId: UserId, sessionId: ClassSessionId): Promise<RecoveryPlan | null>;
@@ -236,6 +281,7 @@ export interface PulseDatabase {
   classSessions: ClassSessionRepository;
   attendance: AttendanceRepository;
   markers: ClassMarkerRepository;
+  recordings: RecordingRepository;
   recovery: RecoveryRepository;
   tasks: TaskRepository;
   documents: DocumentRepository;

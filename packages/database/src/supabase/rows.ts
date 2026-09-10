@@ -205,6 +205,29 @@ export interface ClassMarkerRow {
   created_at: string;
 }
 
+export interface RecordingRow {
+  id: string;
+  user_id: string;
+  class_session_id: string;
+  storage_path: string;
+  original_filename: string | null;
+  mime_type: string;
+  size_bytes: number;
+  duration_seconds: number | null;
+  status: 'uploaded' | 'queued' | 'transcribing' | 'analyzing' | 'ready' | 'failed';
+  queued_at: string | null;
+  processing_started_at: string | null;
+  processed_at: string | null;
+  attempts: number;
+  failure_reason: string | null;
+  permission: 'own_permission' | 'official_material';
+  permission_confirmed_at: string;
+  retain: boolean;
+  delete_after: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface RecoveryPlanRow {
   id: string;
   user_id: string;
