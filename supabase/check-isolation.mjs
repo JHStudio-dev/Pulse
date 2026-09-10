@@ -180,6 +180,37 @@ async function main() {
   const campuses = await db.query('select count(*)::int as n from campus_instances');
   check('campus instances are readable by any student', campuses.rows[0].n, 2);
 
+  // Markers must not be creatable against another student's class.
+  await actAs(db, studentA);
+  const sessionRow = await db.query(
+    `insert into class_sessions (user_id, subject_id, session_date, start_time, end_time, modality)
+     values ($1, $2, '2026-03-02', '08:00', '09:30', 'virtual') returning id`,
+    [studentA, subjectId],
+  );
+  const foreignSessionId = sessionRow.rows[0].id;
+
+  await db.query(
+    `insert into class_markers (user_id, class_session_id, kind, offset_seconds)
+     values ($1, $2, 'missed', 600)`,
+    [studentA, foreignSessionId],
+  );
+
+  await actAs(db, studentB);
+  const otherMarkers = await db.query('select count(*)::int as n from class_markers');
+  check('student B cannot read A markers', otherMarkers.rows[0].n, 0);
+
+  let forgedMarker = false;
+  try {
+    await db.query(
+      `insert into class_markers (user_id, class_session_id, kind, offset_seconds)
+       values ($1, $2, 'note', 0)`,
+      [studentB, foreignSessionId],
+    );
+  } catch {
+    forgedMarker = true;
+  }
+  check('student B cannot mark A class', forgedMarker, true);
+
   // Reminders must not be creatable against another student's task.
   await actAs(db, studentA);
   const taskRow = await db.query('select id from tasks limit 1');
