@@ -40,7 +40,7 @@ export default async function SubjectsPage() {
   );
 
   return (
-    <AppShell email={email}>
+    <AppShell email={email} subjects={subjects.map((s) => ({ id: s.id as string, name: s.name }))}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Materias</h1>

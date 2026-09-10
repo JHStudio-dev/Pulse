@@ -93,7 +93,7 @@ export default async function CalendarPage({
   const canGoForward = clampMonth(next, period.range.start, period.range.end) === next;
 
   return (
-    <AppShell email={email}>
+    <AppShell email={email} subjects={subjects.map((s) => ({ id: s.id as string, name: s.name }))}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendario</h1>

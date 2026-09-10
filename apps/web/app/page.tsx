@@ -139,7 +139,10 @@ export default async function HomePage() {
 
   if (subjects.length === 0) {
     return (
-      <AppShell email={email}>
+      <AppShell
+        email={email}
+        subjects={subjects.map((s) => ({ id: s.id as string, name: s.name }))}
+      >
         <h1 className="text-2xl font-semibold tracking-tight">{period.name}</h1>
         <div className="mt-10 border-t border-[color:var(--color-border)] pt-8">
           <h2 className="text-base font-medium">Aún no hay nada que organizar</h2>

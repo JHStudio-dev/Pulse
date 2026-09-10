@@ -39,7 +39,7 @@ export default async function TasksPage() {
   const ranked = sortTasksByPriority(open, { today }).map((entry) => entry.task);
 
   return (
-    <AppShell email={email}>
+    <AppShell email={email} subjects={options}>
       <h1 className="text-2xl font-semibold tracking-tight">Tareas</h1>
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
         {open.length === 0
