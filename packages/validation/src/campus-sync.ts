@@ -7,6 +7,11 @@ const looseTimestampSchema = z.string().trim().min(1).max(80);
 export const campusSyncCourseSnapshotSchema = z.object({
   externalId: externalIdSchema,
   sessionId: z.string().trim().max(120).optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  code: z.string().trim().min(1).max(120).optional(),
+  section: z.string().trim().min(1).max(120).optional(),
+  teacher: z.string().trim().min(1).max(300).optional(),
+  sourceUrl: httpUrlSchema.optional(),
 });
 
 export const campusSyncDocumentSnapshotSchema = z.object({

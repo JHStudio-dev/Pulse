@@ -7,6 +7,7 @@ import {
   parseChamiloAssignments,
   parseChamiloDocuments,
   parseChamiloEvents,
+  parseChamiloCoursePage,
   sanitizeCampusUrl,
 } from '../src/chamilo.ts';
 import type {
@@ -505,10 +506,12 @@ function mergeAssignmentEvents(
 }
 
 async function syncCourse() {
-  const course = currentCourseRef();
-  if (!course) {
+  const courseRef = currentCourseRef();
+  if (!courseRef) {
     throw new Error('Open a UJCV course before syncing');
   }
+
+  const course = parseChamiloCoursePage(document, courseRef, location.href);
 
   const [documents, assignments, announcements, agendaEvents] = await Promise.all([
     syncDocuments(course),

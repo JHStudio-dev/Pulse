@@ -81,6 +81,11 @@ export type CampusSyncEventSource = 'agenda' | 'assignment';
 export interface CampusSyncCourseSnapshot {
   externalId: string;
   sessionId?: string;
+  title?: string;
+  code?: string;
+  section?: string;
+  teacher?: string;
+  sourceUrl?: string;
 }
 
 export interface CampusSyncDocumentSnapshot {

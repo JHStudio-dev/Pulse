@@ -109,6 +109,81 @@ export function parseChamiloCourses(document: Document, baseUrl: string): Synced
   return [...courses.values()];
 }
 
+
+function cleanCourseTitle(value: string): string {
+  return cleanText(value)
+    .replace(/\s*[|·-]\s*(?:UJCVx|Campus UJCV|UJCV)\s*$/i, '')
+    .trim();
+}
+
+function findLabeledValue(document: Document, labels: RegExp): string | undefined {
+  const lines = (document.body.textContent ?? '')
+    .split('\n')
+    .map(cleanText)
+    .filter(Boolean);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    const inline = line.match(labels);
+
+    if (!inline) continue;
+
+    const value = cleanText(inline[1]);
+    if (value) return value;
+
+    const next = lines[index + 1];
+    if (next && !labels.test(next)) return next;
+  }
+
+  return undefined;
+}
+
+export function parseChamiloCoursePage(
+  document: Document,
+  course: CampusCourseRef,
+  pageUrl: string,
+): SyncedCourse {
+  const titleCandidates = [
+    document.querySelector<HTMLElement>('.page-header h1')?.textContent,
+    document.querySelector<HTMLElement>('.breadcrumb .active')?.textContent,
+    document.querySelector<HTMLElement>('main h1')?.textContent,
+    document.querySelector<HTMLElement>('h1')?.textContent,
+    document.title,
+  ];
+
+  const title =
+    titleCandidates
+      .map((value) => cleanCourseTitle(value ?? ''))
+      .find(
+        (value) =>
+          value.length > 0 &&
+          !/^(inicio|campus|curso|courses?|ujcvx?)$/i.test(value),
+      ) ?? course.externalId;
+
+  const teacher =
+    findLabeledValue(
+      document,
+      /^(?:profesor(?:es)?|docente(?:s)?|teacher)\s*:?\s*(.*)$/i,
+    ) ??
+    [...document.querySelectorAll<HTMLElement>('[class*="teacher"], [class*="professor"], [class*="trainer"]')]
+      .map((element) => cleanText(element.textContent))
+      .find((value) => value.length > 0);
+
+  const section =
+    findLabeledValue(document, /^(?:secci[oó]n|section)\s*:?\s*(.*)$/i) ??
+    (document.body.textContent ?? '').match(/\bsecci[oó]n\s+([A-Z0-9-]+)/i)?.[1];
+
+  return {
+    externalId: course.externalId,
+    title,
+    code: course.externalId,
+    sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
+    ...(course.sessionId !== undefined ? { sessionId: course.sessionId } : {}),
+    ...(section !== undefined ? { section } : {}),
+    ...(teacher !== undefined ? { teacher } : {}),
+  };
+}
+
 export function getChamiloDocumentId(value: string): string | null {
   try {
     return new URL(value).searchParams.get('id');
