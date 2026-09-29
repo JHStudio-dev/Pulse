@@ -9,6 +9,9 @@ import {
   getChamiloSessionId,
   parseChamiloDocuments,
   sanitizeCampusUrl,
+  parseChamiloAssignments,
+  getChamiloAssignmentId,
+  parseChamiloAssignmentDetail,
 } from './chamilo.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -139,4 +142,80 @@ it('parses a real nested UJCV document folder', () => {
       }),
     ]),
   );
+});
+
+describe('Chamilo assignments', () => {
+  it('reads an assignment id', () => {
+    expect(
+      getChamiloAssignmentId(
+        'https://campus.ujcv.edu.hn/main/work/work_list.php?cidReq=ADM2011C1&id=2074726',
+      ),
+    ).toBe('2074726');
+  });
+
+  it('parses the real UJCV assignment list', () => {
+    const fixtureUrl = new URL('../fixtures/chamilo-assignments.html', import.meta.url);
+
+    const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
+
+    const dom = new JSDOM(html, {
+      url: 'https://campus.ujcv.edu.hn/main/work/work.php?cidReq=ADM2011C1&id_session=0',
+    });
+
+    const assignments = parseChamiloAssignments(
+      dom.window.document,
+      {
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+      },
+      dom.window.location.href,
+    );
+
+    expect(assignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalId: '2074726',
+          courseExternalId: 'ADM2011C1',
+          title: 'Estudio de Caso 01. Proyecto Oxigeno Google',
+          dueAt: '2026-10-12T23:45:00',
+        }),
+      ]),
+    );
+  });
+});
+
+describe('Chamilo assignment detail', () => {
+  it('parses the real UJCV assignment detail', () => {
+    const fixtureUrl = new URL('../fixtures/chamilo-assignment-detail.html', import.meta.url);
+
+    const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
+
+    const dom = new JSDOM(html, {
+      url:
+        'https://campus.ujcv.edu.hn/main/work/work_list.php' +
+        '?cidReq=ADM2011C1&id_session=0&id=2074726',
+    });
+
+    const assignment = parseChamiloAssignmentDetail(
+      dom.window.document,
+      {
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+      },
+      dom.window.location.href,
+    );
+
+    expect(assignment).toEqual(
+      expect.objectContaining({
+        externalId: '2074726',
+        courseExternalId: 'ADM2011C1',
+        title: 'Estudio de Caso 01. Proyecto Oxigeno Google',
+        hasSubmission: false,
+      }),
+    );
+
+    expect(assignment?.description).toContain('Google y la evolución del liderazgo');
+
+    expect(assignment?.submissionUrl).toContain('/main/work/upload.php');
+  });
 });
