@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ChamiloProbe } from './chamilo.ts';
+import { ChamiloProbe } from './chamilo-api.ts';
 import { MoodleProbe } from './moodle.ts';
 import { attempt, createReport, evaluate, toMarkdown, type Report } from './report.ts';
 

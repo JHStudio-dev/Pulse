@@ -1,175 +1,149 @@
-import {
-  asRecordArray,
-  readString,
-  type CampusAnnouncement,
-  type CampusAssignment,
-  type CampusCourse,
-  type CampusMaterial,
-  type CampusProbe,
-  type Mechanism,
-} from './contract.ts';
+import type { SyncedCourse } from './connector-contract.ts';
 
-/**
- * Chamilo probe, targeting UJCV.
- *
- * Chamilo's REST module is frequently disabled, so this probe first asks
- * whether the API answers at all. When it does not, the finding is that the
- * official route is unavailable and the next mechanism down the list
- * (a session-aware extension) has to be evaluated instead.
- *
- * Authentication uses an API key the student generates in their own profile.
- * If the deployment does not expose one, the probe reports that rather than
- * asking for a password: Pulse never stores campus credentials.
- */
+const COURSE_PATH = /\/courses\/([^/]+)\/index\.php/i;
 
-interface ChamiloOptions {
-  baseUrl: string;
-  /** Chamilo API key from the student's own profile, when the module is on. */
-  apiKey?: string;
-  username?: string;
+function cleanText(value: string | null | undefined): string {
+  return value?.trim().replace(/\s+/g, ' ') ?? '';
 }
 
-export class ChamiloProbe implements CampusProbe {
-  readonly platform = 'chamilo';
-  readonly mechanism: Mechanism = 'official_api';
+export function sanitizeCampusUrl(value: string, baseUrl: string): string {
+  const url = new URL(value, baseUrl);
 
-  #baseUrl: string;
-  #apiKey: string | null;
-  #username: string | null;
+  url.searchParams.delete('sec_token');
+  url.searchParams.delete('hash');
 
-  constructor(options: ChamiloOptions) {
-    this.#baseUrl = options.baseUrl.replace(/\/+$/, '');
-    this.#apiKey = options.apiKey ?? null;
-    this.#username = options.username ?? null;
+  return url.toString();
+}
+
+export function getChamiloCourseId(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const match = url.pathname.match(COURSE_PATH);
+
+    if (match?.[1]) return match[1];
+
+    return url.searchParams.get('cidReq');
+  } catch {
+    return null;
   }
+}
 
-  /** True when the REST module answers, which decides the whole approach. */
-  async isRestAvailable(): Promise<{ available: boolean; status: number; detail: string }> {
-    const endpoint = `${this.#baseUrl}/main/webservices/api/v2.php`;
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ action: 'authenticate' }),
-      });
-
-      const text = await response.text();
-      const looksLikeApi = text.trim().startsWith('{') || text.trim().startsWith('[');
-
-      return {
-        available: response.ok && looksLikeApi,
-        status: response.status,
-        detail: looksLikeApi
-          ? `endpoint responded with JSON (${response.status})`
-          : `endpoint did not return JSON (${response.status}); REST module likely disabled`,
-      };
-    } catch (error) {
-      return {
-        available: false,
-        status: 0,
-        detail: error instanceof Error ? error.message : 'request failed',
-      };
-    }
+export function getChamiloSessionId(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.searchParams.get('id_session') ?? undefined;
+  } catch {
+    return undefined;
   }
+}
 
-  async #call(action: string, params: Record<string, string> = {}): Promise<unknown> {
-    if (this.#apiKey === null || this.#username === null) {
-      throw new Error('Chamilo API key and username are required for REST calls');
-    }
+export function parseChamiloCourses(document: Document, baseUrl: string): SyncedCourse[] {
+  const courses = new Map<string, SyncedCourse>();
 
-    const response = await fetch(`${this.#baseUrl}/main/webservices/api/v2.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        action,
-        username: this.#username,
-        api_key: this.#apiKey,
-        ...params,
-      }),
-    });
+  for (const anchor of document.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+    const href = anchor.href;
+    const externalId = getChamiloCourseId(href);
 
-    if (!response.ok) {
-      throw new Error(`${action} returned HTTP ${response.status}`);
-    }
+    if (!externalId) continue;
 
-    const body: unknown = await response.json();
-    if (body !== null && typeof body === 'object' && 'error' in body) {
-      const record = body as Record<string, unknown>;
-      throw new Error(`${action}: ${readString(record, 'message') ?? 'error'}`);
-    }
-    return body;
-  }
+    const title = cleanText(anchor.innerText || anchor.textContent);
+    if (!title) continue;
 
-  async getCourses(): Promise<CampusCourse[]> {
-    const data = await this.#call('course_list');
-    const record = (data ?? {}) as Record<string, unknown>;
-    const list = Array.isArray(data) ? data : record['data'];
+    const sourceUrl = sanitizeCampusUrl(href, baseUrl);
 
-    return asRecordArray(list).map((course) => ({
-      externalId: readString(course, 'id') ?? readString(course, 'code') ?? '',
-      name: readString(course, 'title') ?? readString(course, 'name') ?? 'Untitled',
-      code: readString(course, 'code'),
-      url: readString(course, 'url'),
-    }));
-  }
-
-  async getAssignments(courseId: string): Promise<CampusAssignment[]> {
-    const data = await this.#call('course_exercises', { course: courseId });
-    const record = (data ?? {}) as Record<string, unknown>;
-    const list = Array.isArray(data) ? data : record['data'];
-
-    return asRecordArray(list).map((item) => ({
-      externalId: readString(item, 'id') ?? '',
-      courseExternalId: courseId,
-      title: readString(item, 'title') ?? 'Untitled',
-      description: readString(item, 'description'),
-      dueDate: readString(item, 'end_time')?.slice(0, 10) ?? null,
-      url: readString(item, 'url'),
-    }));
-  }
-
-  async getMaterials(courseId: string): Promise<CampusMaterial[]> {
-    const data = await this.#call('course_documents', { course: courseId });
-    const record = (data ?? {}) as Record<string, unknown>;
-    const list = Array.isArray(data) ? data : record['data'];
-
-    return asRecordArray(list).map((item) => {
-      const url = readString(item, 'url');
-      return {
-        externalId: readString(item, 'id') ?? '',
-        courseExternalId: courseId,
-        title: readString(item, 'title') ?? readString(item, 'path') ?? 'Untitled',
-        url,
-        mimeType: null,
-        sizeBytes: null,
-        downloadable: url !== null,
-      };
+    courses.set(externalId, {
+      externalId,
+      sessionId: getChamiloSessionId(href),
+      title,
+      sourceUrl,
     });
   }
 
-  async getAnnouncements(courseId: string): Promise<CampusAnnouncement[]> {
-    const data = await this.#call('course_announcements', { course: courseId });
-    const record = (data ?? {}) as Record<string, unknown>;
-    const list = Array.isArray(data) ? data : record['data'];
+  return [...courses.values()];
+}
 
-    return asRecordArray(list).map((item) => ({
-      externalId: readString(item, 'id') ?? '',
-      courseExternalId: courseId,
-      title: readString(item, 'title') ?? 'Untitled',
-      body: readString(item, 'content'),
-      publishedAt: readString(item, 'date'),
+import type { CampusCourseRef, SyncedDocument } from './connector-contract.ts';
+
+export function getChamiloDocumentId(value: string): string | null {
+  try {
+    return new URL(value).searchParams.get('id');
+  } catch {
+    return null;
+  }
+}
+
+export function getChamiloDirectoryPath(value: string): string | undefined {
+  try {
+    return new URL(value).searchParams.get('curdirpath') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function parseChamiloDocuments(
+  document: Document,
+  course: CampusCourseRef,
+  pageUrl: string,
+): SyncedDocument[] {
+  const documents: SyncedDocument[] = [];
+
+  for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
+    const anchors = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+
+    if (anchors.length === 0) continue;
+
+    const links = anchors.map((anchor) => ({
+      text: cleanText(anchor.innerText || anchor.textContent),
+      href: sanitizeCampusUrl(anchor.href, pageUrl),
     }));
+
+    const namedLink = links.find((link) => link.text && getChamiloDocumentId(link.href));
+    if (!namedLink) continue;
+
+    const externalId = getChamiloDocumentId(namedLink.href);
+    if (!externalId) continue;
+
+    const isFolder = links.some((link) => {
+      try {
+        return new URL(link.href).searchParams.get('action') === 'downloadfolder';
+      } catch {
+        return false;
+      }
+    });
+
+    const isFile = links.some((link) => {
+      try {
+        const url = new URL(link.href);
+
+        return (
+          url.searchParams.get('action') === 'download' ||
+          url.pathname.includes('/main/document/showinframes.php') ||
+          url.pathname.includes(`/courses/${course.externalId}/document/`)
+        );
+      } catch {
+        return false;
+      }
+    });
+
+    if (!isFolder && !isFile) continue;
+
+    const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')]
+      .map((cell) => cleanText(cell.innerText || cell.textContent))
+      .filter(Boolean);
+
+    const metadata = cells.filter((value) => value !== namedLink.text);
+
+    documents.push({
+      externalId,
+      courseExternalId: course.externalId,
+      name: namedLink.text,
+      kind: isFolder ? 'folder' : 'file',
+      path: getChamiloDirectoryPath(pageUrl),
+      size: metadata[0],
+      updatedAt: metadata[1],
+      sourceUrl: namedLink.href,
+    });
   }
 
-  async checkFileAccess(
-    url: string,
-  ): Promise<{ ok: boolean; status: number; contentType: string | null }> {
-    const response = await fetch(url, { method: 'HEAD' });
-    return {
-      ok: response.ok,
-      status: response.status,
-      contentType: response.headers.get('content-type'),
-    };
-  }
+  return documents;
 }
