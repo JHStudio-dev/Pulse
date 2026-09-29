@@ -1,17 +1,38 @@
 {
   "manifest_version": 3,
   "name": "Pulse Campus Companion",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Local campus sync feasibility companion for Pulse.",
-  "permissions": ["activeTab", "scripting"],
-  "host_permissions": ["https://campus.ujcv.edu.hn/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://campus.ujcv.edu.hn/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
+  ],
   "action": {
     "default_popup": "popup.html"
   },
   "content_scripts": [
     {
-      "matches": ["https://campus.ujcv.edu.hn/*"],
-      "js": ["content.js"]
+      "matches": [
+        "https://campus.ujcv.edu.hn/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    },
+    {
+      "matches": [
+        "http://localhost:3000/campus-sync/*",
+        "http://127.0.0.1:3000/campus-sync/*"
+      ],
+      "js": [
+        "bridge.js"
+      ]
     }
   ]
 }

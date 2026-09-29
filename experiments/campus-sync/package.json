@@ -8,7 +8,7 @@
     "probe": "node src/run.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
-    "build:companion": "esbuild companion/content.ts companion/popup.ts --bundle --outdir=companion --platform=browser --format=iife --target=chrome120"
+    "build:companion": "esbuild companion/content.ts companion/popup.ts companion/bridge.ts --bundle --outdir=companion --platform=browser --format=iife --target=chrome120"
   },
   "devDependencies": {
     "@types/chrome": "file:...",
