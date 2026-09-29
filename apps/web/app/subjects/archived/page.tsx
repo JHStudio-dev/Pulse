@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
 import { restoreSubject } from '../actions';
+import { DeleteSubjectButton } from './delete-subject-button';
 
 export default async function ArchivedSubjectsPage() {
   const { userId, email, db } = await requireUser();
@@ -24,6 +25,10 @@ export default async function ArchivedSubjectsPage() {
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
         {period.name}
       </p>
+      <p className="text-[color:var(--color-ink-muted)] mt-2 max-w-xl text-xs">
+        Restaurar vuelve a mostrar la materia. Eliminar permanentemente borra la materia, sus
+        horarios y su vínculo de Campus Sync; no se puede deshacer.
+      </p>
 
       {archived.length === 0 ? (
         <p className="text-[color:var(--color-ink-muted)] mt-8 text-sm">
@@ -41,15 +46,22 @@ export default async function ArchivedSubjectsPage() {
                 </p>
               </div>
 
-              <form action={restoreSubject}>
-                <input type="hidden" name="subjectId" value={subject.id} />
-                <button
-                  type="submit"
-                  className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs"
-                >
-                  Restaurar
-                </button>
-              </form>
+              <div className="flex flex-wrap items-center gap-3">
+                <form action={restoreSubject}>
+                  <input type="hidden" name="subjectId" value={subject.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs"
+                  >
+                    Restaurar
+                  </button>
+                </form>
+
+                <DeleteSubjectButton
+                  subjectId={subject.id}
+                  subjectName={subject.name}
+                />
+              </div>
             </li>
           ))}
         </ul>

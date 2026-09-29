@@ -149,6 +149,7 @@ export interface SubjectRepository {
   ): Promise<Subject>;
   archive(userId: UserId, id: SubjectId): Promise<void>;
   restore(userId: UserId, id: SubjectId): Promise<Subject>;
+  remove(userId: UserId, id: SubjectId): Promise<void>;
 }
 
 export interface SubjectScheduleRepository {

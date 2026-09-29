@@ -82,3 +82,21 @@ export async function restoreSubject(formData: FormData): Promise<void> {
   revalidatePath('/subjects/archived');
   revalidatePath('/');
 }
+
+
+export async function deleteSubjectPermanently(formData: FormData): Promise<void> {
+  const subject = uuidSchema.safeParse(String(formData.get('subjectId') ?? ''));
+  if (!subject.success) return;
+
+  const { userId, db } = await requireUser();
+  const subjectId = subject.data as SubjectId;
+  const owned = await db.subjects.findById(userId, subjectId);
+
+  if (!owned || owned.archivedAt === null) return;
+
+  await db.subjects.remove(userId, subjectId);
+
+  revalidatePath('/subjects');
+  revalidatePath('/subjects/archived');
+  revalidatePath('/');
+}

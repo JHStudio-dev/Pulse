@@ -117,5 +117,15 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
       if (!data) throw new DatabaseError('not_found', `Subject ${id} not found`);
       return toSubject(data as SubjectRow);
     },
+
+    async remove(userId: UserId, id: SubjectId): Promise<void> {
+      const { error } = await client
+        .from(TABLE)
+        .delete()
+        .eq('user_id', userId)
+        .eq('id', id);
+
+      if (error) throw translateError(error);
+    },
   };
 }
