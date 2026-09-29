@@ -1,4 +1,10 @@
-import type { CampusConnection, CampusInstanceId, UserId } from '@pulse/types';
+import type {
+  CampusConnection,
+  CampusConnectionId,
+  CampusInstanceId,
+  UserId,
+} from '@pulse/types';
+import { DatabaseError } from '../ports/errors';
 import type { CampusConnectionRepository } from '../ports/repositories';
 import type { PulseSupabaseClient } from './client';
 import { translateError } from './errors';
@@ -39,6 +45,42 @@ export function createCampusConnectionRepository(
         .single();
 
       if (error) throw translateError(error);
+      return toCampusConnection(data as CampusConnectionRow);
+    },
+
+    async markSyncSuccess(userId: UserId, id: CampusConnectionId): Promise<CampusConnection> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({
+          status: 'connected',
+          last_synced_at: new Date().toISOString(),
+          last_error: null,
+        })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Campus connection ${id} not found`);
+      return toCampusConnection(data as CampusConnectionRow);
+    },
+
+    async markSyncError(
+      userId: UserId,
+      id: CampusConnectionId,
+      errorMessage: string,
+    ): Promise<CampusConnection> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({ status: 'error', last_error: errorMessage })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Campus connection ${id} not found`);
       return toCampusConnection(data as CampusConnectionRow);
     },
   };

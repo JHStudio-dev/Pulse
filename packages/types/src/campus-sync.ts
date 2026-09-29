@@ -75,3 +75,63 @@ export interface CampusSyncItemInput {
 }
 
 export type CampusSyncItemDraft = Omit<CampusSyncItemInput, 'contentHash'>;
+
+export type CampusSyncEventSource = 'agenda' | 'assignment';
+
+export interface CampusSyncCourseSnapshot {
+  externalId: string;
+  sessionId?: string;
+}
+
+export interface CampusSyncDocumentSnapshot {
+  externalId: string;
+  courseExternalId: string;
+  name: string;
+  kind: 'file' | 'folder';
+  path?: string;
+  size?: string;
+  updatedAt?: string;
+  sourceUrl: string;
+}
+
+export interface CampusSyncAssignmentSnapshot {
+  externalId: string;
+  courseExternalId: string;
+  title: string;
+  description?: string;
+  dueAt?: string;
+  sourceUrl: string;
+  submissionUrl?: string;
+  hasSubmission?: boolean;
+}
+
+export interface CampusSyncAnnouncementSnapshot {
+  externalId: string;
+  courseExternalId: string;
+  title: string;
+  author?: string;
+  content?: string;
+  updatedAt?: string;
+  sourceUrl: string;
+}
+
+export interface CampusSyncEventSnapshot {
+  externalId?: string;
+  courseExternalId: string;
+  title: string;
+  description?: string;
+  startsAt: string;
+  endsAt?: string;
+  allDay: boolean;
+  sourceType: CampusSyncEventSource;
+  sourceExternalId?: string;
+  sourceUrl?: string;
+}
+
+export interface CampusSyncSnapshot {
+  course: CampusSyncCourseSnapshot;
+  documents: CampusSyncDocumentSnapshot[];
+  assignments: CampusSyncAssignmentSnapshot[];
+  announcements: CampusSyncAnnouncementSnapshot[];
+  events: CampusSyncEventSnapshot[];
+}

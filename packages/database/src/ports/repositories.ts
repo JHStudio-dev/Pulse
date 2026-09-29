@@ -68,6 +68,12 @@ export interface InstitutionRepository {
 export interface CampusConnectionRepository {
   findByUser(userId: UserId): Promise<CampusConnection | null>;
   selectCampus(userId: UserId, campusInstanceId: CampusInstanceId): Promise<CampusConnection>;
+  markSyncSuccess(userId: UserId, id: CampusConnectionId): Promise<CampusConnection>;
+  markSyncError(
+    userId: UserId,
+    id: CampusConnectionId,
+    errorMessage: string,
+  ): Promise<CampusConnection>;
 }
 
 
