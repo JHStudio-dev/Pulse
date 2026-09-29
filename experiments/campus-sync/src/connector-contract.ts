@@ -5,6 +5,7 @@ export interface CampusCourseRef {
 
 export interface SyncedCourse extends CampusCourseRef {
   title: string;
+  code?: string;
   section?: string;
   teacher?: string;
   sourceUrl: string;
