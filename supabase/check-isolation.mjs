@@ -135,6 +135,40 @@ async function main() {
     [studentA, subjectId],
   );
 
+
+  const campusInstanceRow = await db.query(
+    `select id from campus_instances where platform = 'chamilo' limit 1`,
+  );
+  const campusConnectionRow = await db.query(
+    `insert into campus_connections (user_id, campus_instance_id, status)
+     values ($1, $2, 'connected') returning id`,
+    [studentA, campusInstanceRow.rows[0].id],
+  );
+  const campusConnectionId = campusConnectionRow.rows[0].id;
+
+  const subjectLinkRow = await db.query(
+    `insert into campus_subject_links
+       (user_id, campus_connection_id, subject_id, external_course_id, external_session_id)
+     values ($1, $2, $3, 'ADM2011C1', '0') returning id`,
+    [studentA, campusConnectionId, subjectId],
+  );
+  const subjectLinkId = subjectLinkRow.rows[0].id;
+
+  const syncRunRow = await db.query(
+    `insert into campus_sync_runs
+       (user_id, subject_link_id, discovered_count, new_count)
+     values ($1, $2, 1, 1) returning id`,
+    [studentA, subjectLinkId],
+  );
+  const syncRunId = syncRunRow.rows[0].id;
+
+  await db.query(
+    `insert into campus_sync_items
+       (user_id, campus_subject_link_id, last_sync_run_id, kind, external_id, content_hash, payload)
+     values ($1, $2, $3, 'assignment', '2074726', 'hash-1', '{"title":"Caso Google"}'::jsonb)`,
+    [studentA, subjectLinkId, syncRunId],
+  );
+
   const ownSubjects = await db.query('select count(*)::int as n from subjects');
   check('student A sees their own subject', ownSubjects.rows[0].n, 1);
 
@@ -148,6 +182,29 @@ async function main() {
 
   const otherPeriods = await db.query('select count(*)::int as n from academic_periods');
   check('student B cannot read A periods', otherPeriods.rows[0].n, 0);
+
+
+  const otherSubjectLinks = await db.query('select count(*)::int as n from campus_subject_links');
+  check('student B cannot read A campus subject links', otherSubjectLinks.rows[0].n, 0);
+
+  const otherSyncRuns = await db.query('select count(*)::int as n from campus_sync_runs');
+  check('student B cannot read A campus sync runs', otherSyncRuns.rows[0].n, 0);
+
+  const otherSyncItems = await db.query('select count(*)::int as n from campus_sync_items');
+  check('student B cannot read A campus sync items', otherSyncItems.rows[0].n, 0);
+
+  let forgedCampusLink = false;
+  try {
+    await db.query(
+      `insert into campus_subject_links
+         (user_id, campus_connection_id, subject_id, external_course_id)
+       values ($1, $2, $3, 'FORGED')`,
+      [studentB, campusConnectionId, subjectId],
+    );
+  } catch {
+    forgedCampusLink = true;
+  }
+  check('student B cannot link A campus connection', forgedCampusLink, true);
 
   const otherProfiles = await db.query('select count(*)::int as n from profiles');
   check('student B sees only their own profile', otherProfiles.rows[0].n, 1);

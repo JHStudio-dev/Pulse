@@ -2,6 +2,7 @@ export * from './primitives';
 export * from './ids';
 export * from './profile';
 export * from './institution';
+export * from './campus-sync';
 export * from './academic';
 export * from './classroom';
 export * from './work';
