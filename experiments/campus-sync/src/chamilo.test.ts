@@ -15,6 +15,8 @@ import {
   getChamiloAnnouncementId,
   parseChamiloAnnouncementDetail,
   parseChamiloAnnouncements,
+  parseChamiloAgendaDateRange,
+  parseChamiloEvents,
 } from './chamilo.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -293,5 +295,63 @@ describe('Chamilo announcements', () => {
     );
 
     expect(announcement?.content).toContain('Les doy la bienvenida al espacio virtual');
+  });
+});
+
+describe('Chamilo agenda', () => {
+  it('reads a Spanish agenda date range', () => {
+    expect(
+      parseChamiloAgendaDateRange('2 de octubre de 2026 - 3 de octubre de 2026 viernes'),
+    ).toEqual({
+      startDate: '2026-10-02',
+      endDate: '2026-10-03',
+    });
+  });
+
+  it('parses the real UJCV agenda', () => {
+    const fixtureUrl = new URL('../fixtures/chamilo-agenda.html', import.meta.url);
+
+    const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
+
+    const dom = new JSDOM(html, {
+      url: 'https://campus.ujcv.edu.hn/main/calendar/agenda.php' + '?cidReq=ADM2011C1&id_session=0',
+    });
+
+    const events = parseChamiloEvents(
+      dom.window.document,
+      {
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+      },
+      dom.window.location.href,
+    );
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'Ejercicio 2.',
+          startsAt: '2026-10-02',
+          endsAt: '2026-10-03',
+          allDay: true,
+          sourceType: 'agenda',
+        }),
+
+        expect.objectContaining({
+          title: 'FERIADO SEMANA MORAZÁNICA',
+          startsAt: '2026-10-05',
+          endsAt: '2026-10-11',
+          allDay: true,
+          sourceType: 'agenda',
+        }),
+
+        expect.objectContaining({
+          title: 'Entrega de tarea Estudio de Caso 01. Proyecto Oxigeno Google',
+          startsAt: '2026-10-12T23:45:00',
+          allDay: false,
+          sourceType: 'assignment',
+          sourceExternalId: '2074726',
+        }),
+      ]),
+    );
   });
 });

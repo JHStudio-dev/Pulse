@@ -4,6 +4,7 @@ import type {
   SyncedAssignment,
   SyncedCourse,
   SyncedDocument,
+  SyncedEvent,
 } from './connector-contract.ts';
 
 const COURSE_PATH = /\/courses\/([^/]+)\/index\.php/i;
@@ -433,4 +434,126 @@ export function parseChamiloAnnouncementDetail(
     content: readAnnouncementContent(document, title),
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
   };
+}
+
+interface AgendaDateRange {
+  startDate: string;
+  endDate?: string;
+}
+
+function normalizeSpanishDate(value: string): string | undefined {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  const match = normalized.match(/(\d{1,2}) de ([a-z]+) de (\d{4})/);
+
+  if (!match) return undefined;
+
+  const [, dayText, monthText, yearText] = match;
+  const month = CHAMILO_MONTHS[monthText!];
+
+  if (!month) return undefined;
+
+  return `${yearText}-${String(month).padStart(2, '0')}-${String(dayText).padStart(2, '0')}`;
+}
+
+export function parseChamiloAgendaDateRange(value: string): AgendaDateRange | null {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  const matches = [...normalized.matchAll(/(\d{1,2}) de ([a-z]+) de (\d{4})/g)];
+
+  if (matches.length === 0) return null;
+
+  const startDate = normalizeSpanishDate(matches[0]![0]);
+  if (!startDate) return null;
+
+  const endDate = matches.length > 1 ? normalizeSpanishDate(matches[1]![0]) : undefined;
+
+  return {
+    startDate,
+    endDate,
+  };
+}
+
+export function parseChamiloEvents(
+  document: Document,
+  course: CampusCourseRef,
+  pageUrl: string,
+): SyncedEvent[] {
+  const events: SyncedEvent[] = [];
+  let currentRange: AgendaDateRange | null = null;
+
+  for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
+    const rowText = cleanText(row.textContent);
+
+    const range = parseChamiloAgendaDateRange(rowText);
+
+    if (range) {
+      currentRange = range;
+      continue;
+    }
+
+    if (!currentRange) continue;
+
+    const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')].map((cell) =>
+      cleanText(cell.innerText || cell.textContent),
+    );
+
+    if (cells.length === 0) continue;
+
+    const timeText = cells[0] ?? '';
+    const titleText = [...cells].reverse().find(Boolean);
+
+    if (!titleText) continue;
+
+    const normalizedTime = timeText
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase();
+
+    const allDay = normalizedTime === 'todo el dia';
+    const timeMatch = timeText.match(/^(\d{1,2}):(\d{2})$/);
+
+    if (!allDay && !timeMatch) continue;
+
+    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+
+    const assignmentLink = links.find((anchor) => getChamiloAssignmentId(anchor.href));
+
+    const assignmentId = assignmentLink ? getChamiloAssignmentId(assignmentLink.href) : null;
+
+    let title = titleText;
+
+    if (assignmentLink && assignmentId) {
+      const assignmentTitle = cleanText(assignmentLink.innerText || assignmentLink.textContent);
+
+      if (titleText.startsWith('Entrega de tarea') && assignmentTitle) {
+        title = `Entrega de tarea ${assignmentTitle}`;
+      }
+    }
+
+    const startsAt = allDay
+      ? currentRange.startDate
+      : `${currentRange.startDate}T${String(timeMatch![1]).padStart(2, '0')}:${timeMatch![2]}:00`;
+
+    events.push({
+      courseExternalId: course.externalId,
+      title,
+      startsAt,
+      endsAt: allDay ? currentRange.endDate : undefined,
+      allDay,
+      sourceType: assignmentId ? 'assignment' : 'agenda',
+      sourceExternalId: assignmentId ?? undefined,
+      sourceUrl: assignmentLink
+        ? sanitizeCampusUrl(assignmentLink.href, pageUrl)
+        : sanitizeCampusUrl(pageUrl, pageUrl),
+    });
+  }
+
+  return events;
 }
