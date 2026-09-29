@@ -97,6 +97,12 @@ function inspectCurrentPage() {
   };
 }
 
+function courseHomeUrl(course: CampusCourseRef): string {
+  const url = new URL(`/courses/${encodeURIComponent(course.externalId)}/index.php`, CAMPUS_BASE);
+  url.searchParams.set('id_session', course.sessionId ?? '0');
+  return url.toString();
+}
+
 function courseToolUrl(path: string, course: CampusCourseRef): string {
   const url = new URL(path, CAMPUS_BASE);
 
@@ -511,7 +517,9 @@ async function syncCourse() {
     throw new Error('Open a UJCV course before syncing');
   }
 
-  const course = parseChamiloCoursePage(document, courseRef, location.href);
+  const courseUrl = courseHomeUrl(courseRef);
+  const coursePage = await fetchDocument(courseUrl);
+  const course = parseChamiloCoursePage(coursePage, courseRef, courseUrl);
 
   const [documents, assignments, announcements, agendaEvents] = await Promise.all([
     syncDocuments(course),
