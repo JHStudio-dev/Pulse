@@ -118,6 +118,18 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     if (!snapshot || busy) return;
     if (mode === 'link' && !subjectId) return;
 
+    if (
+      confirmSchedule &&
+      scheduleDraft &&
+      (scheduleDraft.weekdays.length === 0 ||
+        !scheduleDraft.startTime ||
+        !scheduleDraft.endTime ||
+        scheduleDraft.startTime >= scheduleDraft.endTime)
+    ) {
+      setStatus('Revisa los días y las horas antes de confirmar el horario.');
+      return;
+    }
+
     setBusy(true);
     setResult(null);
     setStatus(mode === 'create' ? 'Creando materia y guardando…' : 'Vinculando y guardando…');
@@ -332,8 +344,8 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
           <div className="mt-5">
             <p className="text-sm font-medium">Crear desde el campus</p>
             <p className="text-[color:var(--color-ink-muted)] mt-1 max-w-xl text-xs">
-              Pulse crea la materia con el nombre, código y docente detectados. La modalidad y el
-              horario quedan sin confirmar hasta tener datos fiables del campus.
+              Pulse crea la materia con el nombre, código y docente detectados. Si confirmas el
+              horario sugerido, también guarda esos días y horas.
             </p>
             <button
               type="button"

@@ -23,7 +23,7 @@ function payloadBoolean(item: CampusSyncItem, key: string): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
 
-function parseCampusDueAt(value: string | null): { dueDate: string | null; dueTime: string | null } {
+export function parseCampusDueAt(value: string | null): { dueDate: string | null; dueTime: string | null } {
   if (!value) return { dueDate: null, dueTime: null };
 
   const match = value.match(/^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/);
@@ -35,7 +35,7 @@ function parseCampusDueAt(value: string | null): { dueDate: string | null; dueTi
   };
 }
 
-function parseCampusSize(value: string | null): number | null {
+export function parseCampusSize(value: string | null): number | null {
   if (!value) return null;
 
   const match = value.trim().match(/^(\d+(?:\.\d+)?)(B|KB|KIB|MB|MIB|GB|GIB)$/i);

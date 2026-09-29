@@ -149,10 +149,18 @@ function scheduleHintLines(document: Document): string[] {
   const signal = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|horario|clase|aula|sal[oó]n|virtual|presencial|meet|zoom|teams)\b/i;
   const time = /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\s*(?:-|–|—|a|hasta)\s*\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b/i;
 
-  for (const line of lines) {
-    if (line.length > 500) continue;
-    if (!signal.test(line) || !time.test(line)) continue;
-    results.add(line);
+  for (let index = 0; index < lines.length; index += 1) {
+    const windows = [
+      lines[index],
+      [lines[index], lines[index + 1]].filter(Boolean).join(' '),
+      [lines[index], lines[index + 1], lines[index + 2]].filter(Boolean).join(' '),
+    ];
+
+    for (const candidate of windows) {
+      if (!candidate || candidate.length > 500) continue;
+      if (!signal.test(candidate) || !time.test(candidate)) continue;
+      results.add(candidate);
+    }
   }
 
   return [...results].slice(0, 20);

@@ -123,8 +123,8 @@ async function applyConfirmedSchedule(
     await schedules.create(userId, {
       subjectId: subject.id,
       weekday,
-      startTime: schedule.startTime as never,
-      endTime: schedule.endTime as never,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
       modality: schedule.modality,
       meetingUrl: schedule.meetingUrl,
       location: schedule.location,
