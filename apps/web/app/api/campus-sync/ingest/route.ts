@@ -6,6 +6,7 @@ import {
   createCampusSyncRepository,
   createDocumentRepository,
   createSubjectRepository,
+  createSubjectScheduleRepository,
   createTaskRepository,
 } from '@pulse/database';
 import type {
@@ -88,6 +89,63 @@ async function enrichSubjectFromSnapshot(
   });
 }
 
+
+async function applyConfirmedSchedule(
+  userId: UserId,
+  subject: Subject,
+  schedule: {
+    weekdays: readonly (1 | 2 | 3 | 4 | 5 | 6 | 7)[];
+    startTime: string;
+    endTime: string;
+    modality: Subject['defaultModality'];
+    meetingUrl: string | null;
+    location: {
+      campus: string | null;
+      building: string | null;
+      room: string | null;
+    };
+  },
+  schedules: ReturnType<typeof createSubjectScheduleRepository>,
+  subjects: ReturnType<typeof createSubjectRepository>,
+): Promise<Subject> {
+  const existing = await schedules.listBySubject(userId, subject.id);
+
+  for (const weekday of schedule.weekdays) {
+    const duplicate = existing.some(
+      (item) =>
+        item.weekday === weekday &&
+        item.startTime === schedule.startTime &&
+        item.endTime === schedule.endTime,
+    );
+
+    if (duplicate) continue;
+
+    await schedules.create(userId, {
+      subjectId: subject.id,
+      weekday,
+      startTime: schedule.startTime as never,
+      endTime: schedule.endTime as never,
+      modality: schedule.modality,
+      meetingUrl: schedule.meetingUrl,
+      location: schedule.location,
+      activeRange: null,
+    });
+  }
+
+  const updates: Partial<Omit<Subject, 'id' | 'userId'>> = {};
+
+  if (subject.defaultModality === 'unconfirmed' && schedule.modality !== 'unconfirmed') {
+    updates.defaultModality = schedule.modality;
+  }
+
+  if (subject.defaultMeetingUrl === null && schedule.meetingUrl !== null) {
+    updates.defaultMeetingUrl = schedule.meetingUrl;
+  }
+
+  if (Object.keys(updates).length === 0) return subject;
+  return subjects.update(userId, subject.id, updates);
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -123,6 +181,7 @@ export async function POST(request: Request) {
   const campusSync = createCampusSyncRepository(supabase);
   const tasks = createTaskRepository(supabase);
   const documents = createDocumentRepository(supabase);
+  const schedules = createSubjectScheduleRepository(supabase);
 
   const connection = await connections.findByUser(userId);
   if (!connection) {
@@ -186,6 +245,16 @@ export async function POST(request: Request) {
     connection.campusInstanceId,
     subjects,
   );
+
+  if (parsed.data.schedule) {
+    subject = await applyConfirmedSchedule(
+      userId,
+      subject,
+      parsed.data.schedule,
+      schedules,
+      subjects,
+    );
+  }
 
   const subjectLink = await campusSync.upsertSubjectLink(userId, {
     campusConnectionId: connection.id,

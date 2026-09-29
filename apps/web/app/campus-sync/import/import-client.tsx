@@ -1,9 +1,29 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { CampusSyncSnapshot } from '@pulse/types';
+import { inferCampusScheduleSuggestions } from '@pulse/core';
+import type { CampusSyncSnapshot, Modality, Weekday } from '@pulse/types';
 
 type SubjectOption = { id: string; name: string; code: string | null };
+
+
+type ScheduleDraft = {
+  weekdays: Weekday[];
+  startTime: string;
+  endTime: string;
+  modality: Modality;
+  meetingUrl: string;
+};
+
+const DAY_LABELS: ReadonlyArray<{ value: Weekday; label: string }> = [
+  { value: 1, label: 'Lun' },
+  { value: 2, label: 'Mar' },
+  { value: 3, label: 'Mié' },
+  { value: 4, label: 'Jue' },
+  { value: 5, label: 'Vie' },
+  { value: 6, label: 'Sáb' },
+  { value: 7, label: 'Dom' },
+];
 
 type SyncResult = {
   runId: string;
@@ -35,6 +55,8 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [status, setStatus] = useState('Buscando datos del Campus Companion…');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
+  const [confirmSchedule, setConfirmSchedule] = useState(false);
 
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
@@ -43,6 +65,20 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
       const received = event.data.snapshot;
       setSnapshot(received);
+
+      const suggested = inferCampusScheduleSuggestions(received)[0];
+      setScheduleDraft(
+        suggested
+          ? {
+              weekdays: [...suggested.weekdays],
+              startTime: suggested.startTime,
+              endTime: suggested.endTime,
+              modality: suggested.modality,
+              meetingUrl: suggested.meetingUrl ?? '',
+            }
+          : null,
+      );
+      setConfirmSchedule(false);
       setStatus(`${received.course.title ?? received.course.externalId} listo para importar.`);
     };
 
@@ -62,6 +98,11 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
       window.removeEventListener('message', receive);
     };
   }, []);
+
+  const scheduleSuggestions = useMemo(
+    () => (snapshot ? inferCampusScheduleSuggestions(snapshot) : []),
+    [snapshot],
+  );
 
   const counts = useMemo(() => {
     if (!snapshot) return null;
@@ -89,6 +130,18 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
           mode,
           ...(mode === 'link' ? { subjectId } : {}),
           snapshot,
+          ...(confirmSchedule && scheduleDraft
+            ? {
+                schedule: {
+                  weekdays: scheduleDraft.weekdays,
+                  startTime: scheduleDraft.startTime,
+                  endTime: scheduleDraft.endTime,
+                  modality: scheduleDraft.modality,
+                  meetingUrl: scheduleDraft.meetingUrl.trim() || null,
+                  location: { campus: null, building: null, room: null },
+                },
+              }
+            : {}),
         }),
       });
 
@@ -144,6 +197,136 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
               {counts.documents} documentos · {counts.assignments} tareas · {counts.announcements}{' '}
               anuncios · {counts.events} eventos
             </p>
+          </div>
+
+
+          <div className="mt-6 border-t border-[color:var(--color-border)] pt-5">
+            <p className="text-sm font-medium">Horario detectado</p>
+
+            {scheduleDraft && scheduleSuggestions[0] ? (
+              <>
+                <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                  Aproximación del campus · confianza {scheduleSuggestions[0].confidence === 'high' ? 'alta' : 'media'}.
+                  Revísala antes de guardarla.
+                </p>
+
+                <div className="mt-4 grid gap-4">
+                  <fieldset>
+                    <legend className="text-xs font-medium">Días</legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {DAY_LABELS.map((day) => {
+                        const checked = scheduleDraft.weekdays.includes(day.value);
+                        return (
+                          <label
+                            key={day.value}
+                            className="flex items-center gap-1.5 rounded-md border border-[color:var(--color-border)] px-2 py-1 text-xs"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setScheduleDraft((current) =>
+                                  current
+                                    ? {
+                                        ...current,
+                                        weekdays: checked
+                                          ? current.weekdays.filter((value) => value !== day.value)
+                                          : [...current.weekdays, day.value].sort(),
+                                      }
+                                    : current,
+                                )
+                              }
+                            />
+                            {day.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-xs">
+                      Inicio
+                      <input
+                        type="time"
+                        value={scheduleDraft.startTime}
+                        onChange={(event) =>
+                          setScheduleDraft((current) =>
+                            current ? { ...current, startTime: event.target.value } : current,
+                          )
+                        }
+                        className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                      />
+                    </label>
+                    <label className="text-xs">
+                      Fin
+                      <input
+                        type="time"
+                        value={scheduleDraft.endTime}
+                        onChange={(event) =>
+                          setScheduleDraft((current) =>
+                            current ? { ...current, endTime: event.target.value } : current,
+                          )
+                        }
+                        className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="text-xs">
+                    Modalidad
+                    <select
+                      value={scheduleDraft.modality}
+                      onChange={(event) =>
+                        setScheduleDraft((current) =>
+                          current
+                            ? { ...current, modality: event.target.value as Modality }
+                            : current,
+                        )
+                      }
+                      className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                    >
+                      <option value="unconfirmed">Sin confirmar</option>
+                      <option value="virtual">Virtual</option>
+                      <option value="in_person">Presencial</option>
+                      <option value="hybrid">Híbrida</option>
+                    </select>
+                  </label>
+
+                  <label className="text-xs">
+                    Enlace de clase
+                    <input
+                      type="url"
+                      value={scheduleDraft.meetingUrl}
+                      onChange={(event) =>
+                        setScheduleDraft((current) =>
+                          current ? { ...current, meetingUrl: event.target.value } : current,
+                        )
+                      }
+                      placeholder="Opcional"
+                      className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                    />
+                  </label>
+
+                  <p className="text-[color:var(--color-ink-muted)] text-xs">
+                    Evidencia: {scheduleSuggestions[0].evidence}
+                  </p>
+
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={confirmSchedule}
+                      onChange={(event) => setConfirmSchedule(event.target.checked)}
+                    />
+                    Confirmar y guardar este horario
+                  </label>
+                </div>
+              </>
+            ) : (
+              <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                No encontré un horario suficientemente claro. Puedes configurarlo manualmente después.
+              </p>
+            )}
           </div>
 
           <div className="mt-5">

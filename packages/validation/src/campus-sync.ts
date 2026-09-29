@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { httpUrlSchema, shortText } from './primitives';
+import { modalitySchema, locationSchema } from './academic';
+import { httpUrlSchema, shortText, timeOfDaySchema, weekdaySchema } from './primitives';
 
 const externalIdSchema = z.string().trim().min(1).max(240);
 const looseTimestampSchema = z.string().trim().min(1).max(80);
@@ -12,6 +13,8 @@ export const campusSyncCourseSnapshotSchema = z.object({
   section: z.string().trim().min(1).max(120).optional(),
   teacher: z.string().trim().min(1).max(300).optional(),
   sourceUrl: httpUrlSchema.optional(),
+  scheduleHints: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  meetingUrls: z.array(httpUrlSchema).max(10).optional(),
 });
 
 export const campusSyncDocumentSnapshotSchema = z.object({
@@ -69,15 +72,35 @@ export const campusSyncSnapshotSchema = z.object({
 
 export type CampusSyncSnapshotInput = z.infer<typeof campusSyncSnapshotSchema>;
 
+export const campusSyncConfirmedScheduleSchema = z
+  .object({
+    weekdays: z.array(weekdaySchema).min(1).max(7),
+    startTime: timeOfDaySchema,
+    endTime: timeOfDaySchema,
+    modality: modalitySchema,
+    meetingUrl: httpUrlSchema.nullable().default(null),
+    location: locationSchema.default({
+      campus: null,
+      building: null,
+      room: null,
+    }),
+  })
+  .refine((schedule) => schedule.startTime < schedule.endTime, {
+    message: 'End time must be after start time',
+    path: ['endTime'],
+  });
+
 export const campusSyncIngestRequestSchema = z.discriminatedUnion('mode', [
   z.object({
     mode: z.literal('link'),
     subjectId: z.uuid(),
     snapshot: campusSyncSnapshotSchema,
+    schedule: campusSyncConfirmedScheduleSchema.optional(),
   }),
   z.object({
     mode: z.literal('create'),
     snapshot: campusSyncSnapshotSchema,
+    schedule: campusSyncConfirmedScheduleSchema.optional(),
   }),
 ]);
 
