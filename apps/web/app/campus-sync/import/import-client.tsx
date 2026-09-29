@@ -17,9 +17,14 @@ type SyncResult = {
   };
 };
 
-type BridgeMessage =
-  | { type: 'pulse:campus-sync:snapshot'; snapshot: CampusSyncSnapshot }
-  | { type: string };
+function isSnapshotMessage(value: unknown): value is {
+  type: 'pulse:campus-sync:snapshot';
+  snapshot: CampusSyncSnapshot;
+} {
+  if (!value || typeof value !== 'object') return false;
+  const message = value as { type?: unknown; snapshot?: unknown };
+  return message.type === 'pulse:campus-sync:snapshot' && message.snapshot !== undefined;
+}
 
 export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [snapshot, setSnapshot] = useState<CampusSyncSnapshot | null>(null);
@@ -29,9 +34,9 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [result, setResult] = useState<SyncResult | null>(null);
 
   useEffect(() => {
-    const receive = (event: MessageEvent<BridgeMessage>) => {
+    const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window) return;
-      if (event.data?.type !== 'pulse:campus-sync:snapshot') return;
+      if (!isSnapshotMessage(event.data)) return;
 
       const received = event.data.snapshot;
       setSnapshot(received);

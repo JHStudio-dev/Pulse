@@ -59,6 +59,7 @@ inspect?.addEventListener('click', async () => {
     output.textContent = error instanceof Error ? error.message : String(error);
   } finally {
     setBusy(false);
+    await refreshPendingState();
   }
 });
 
@@ -109,6 +110,7 @@ sync?.addEventListener('click', async () => {
     output.textContent = error instanceof Error ? error.message : String(error);
   } finally {
     setBusy(false);
+    await refreshPendingState();
   }
 });
 
