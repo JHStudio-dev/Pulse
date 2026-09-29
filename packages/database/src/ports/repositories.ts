@@ -2,8 +2,16 @@ import type {
   AcademicPeriod,
   AcademicPeriodId,
   CampusConnection,
+  CampusConnectionId,
   CampusInstance,
   CampusInstanceId,
+  CampusSubjectLink,
+  CampusSubjectLinkId,
+  CampusSyncItem,
+  CampusSyncItemInput,
+  CampusSyncRun,
+  CampusSyncRunId,
+  CampusSyncSummary,
   DocumentId,
   DocumentRecord,
   InboxItem,
@@ -54,12 +62,50 @@ export interface InstitutionRepository {
 
 /**
  * The student's campus. A connection is created on selection with status
- * disconnected: it records which campus they belong to, and says nothing about
- * synchronization, which does not exist yet.
+ * disconnected: it records which campus they belong to without storing campus
+ * credentials. Synchronization state is tracked separately.
  */
 export interface CampusConnectionRepository {
   findByUser(userId: UserId): Promise<CampusConnection | null>;
   selectCampus(userId: UserId, campusInstanceId: CampusInstanceId): Promise<CampusConnection>;
+}
+
+
+export interface CampusSyncRepository {
+  findSubjectLink(
+    userId: UserId,
+    campusConnectionId: CampusConnectionId,
+    externalCourseId: string,
+    externalSessionId: string | null,
+  ): Promise<CampusSubjectLink | null>;
+  upsertSubjectLink(
+    userId: UserId,
+    input: {
+      campusConnectionId: CampusConnectionId;
+      subjectId: SubjectId;
+      externalCourseId: string;
+      externalSessionId: string | null;
+    },
+  ): Promise<CampusSubjectLink>;
+  startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun>;
+  listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]>;
+  upsertItem(
+    userId: UserId,
+    subjectLinkId: CampusSubjectLinkId,
+    runId: CampusSyncRunId,
+    item: CampusSyncItemInput,
+  ): Promise<CampusSyncItem>;
+  completeRun(
+    userId: UserId,
+    runId: CampusSyncRunId,
+    summary: CampusSyncSummary,
+  ): Promise<CampusSyncRun>;
+  failRun(
+    userId: UserId,
+    runId: CampusSyncRunId,
+    errorMessage: string,
+    summary?: CampusSyncSummary,
+  ): Promise<CampusSyncRun>;
 }
 
 export interface ProfileRepository {
@@ -276,6 +322,7 @@ export interface TaskRepository {
 export interface PulseDatabase {
   institutions: InstitutionRepository;
   campusConnections: CampusConnectionRepository;
+  campusSync: CampusSyncRepository;
   profiles: ProfileRepository;
   academicPeriods: AcademicPeriodRepository;
   subjects: SubjectRepository;

@@ -5,6 +5,12 @@ import type {
   CampusConnection,
   CampusConnectionId,
   CampusInstance,
+  CampusSubjectLink,
+  CampusSubjectLinkId,
+  CampusSyncItem,
+  CampusSyncItemId,
+  CampusSyncRun,
+  CampusSyncRunId,
   CampusInstanceId,
   DocumentId,
   DocumentRecord,
@@ -42,6 +48,9 @@ import type {
 import type {
   AcademicPeriodRow,
   CampusConnectionRow,
+  CampusSubjectLinkRow,
+  CampusSyncItemRow,
+  CampusSyncRunRow,
   DocumentRow,
   InboxItemRow,
   NoteRow,
@@ -278,6 +287,54 @@ export function toCampusConnection(row: CampusConnectionRow): CampusConnection {
     lastError: row.last_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+
+export function toCampusSubjectLink(row: CampusSubjectLinkRow): CampusSubjectLink {
+  return {
+    id: row.id as CampusSubjectLinkId,
+    userId: row.user_id as UserId,
+    campusConnectionId: row.campus_connection_id as CampusConnectionId,
+    subjectId: row.subject_id as SubjectId,
+    externalCourseId: row.external_course_id,
+    externalSessionId: row.external_session_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function toCampusSyncRun(row: CampusSyncRunRow): CampusSyncRun {
+  return {
+    id: row.id as CampusSyncRunId,
+    userId: row.user_id as UserId,
+    subjectLinkId: row.subject_link_id as CampusSubjectLinkId,
+    status: row.status,
+    discoveredCount: row.discovered_count,
+    newCount: row.new_count,
+    changedCount: row.changed_count,
+    unchangedCount: row.unchanged_count,
+    ignoredCount: row.ignored_count,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    errorMessage: row.error_message,
+  };
+}
+
+export function toCampusSyncItem(row: CampusSyncItemRow): CampusSyncItem {
+  return {
+    id: row.id as CampusSyncItemId,
+    userId: row.user_id as UserId,
+    subjectLinkId: row.campus_subject_link_id as CampusSubjectLinkId,
+    lastSyncRunId: row.last_sync_run_id as CampusSyncRunId,
+    kind: row.kind,
+    externalId: row.external_id,
+    sourceUrl: row.source_url,
+    contentHash: row.content_hash,
+    payload: row.payload as CampusSyncItem['payload'],
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+    appliedAt: row.applied_at,
   };
 }
 

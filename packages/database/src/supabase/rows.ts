@@ -143,6 +143,48 @@ export interface CampusConnectionRow {
   updated_at: string;
 }
 
+
+export interface CampusSubjectLinkRow {
+  id: string;
+  user_id: string;
+  campus_connection_id: string;
+  subject_id: string;
+  external_course_id: string;
+  external_session_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampusSyncRunRow {
+  id: string;
+  user_id: string;
+  subject_link_id: string;
+  status: 'running' | 'completed' | 'failed';
+  discovered_count: number;
+  new_count: number;
+  changed_count: number;
+  unchanged_count: number;
+  ignored_count: number;
+  started_at: string;
+  completed_at: string | null;
+  error_message: string | null;
+}
+
+export interface CampusSyncItemRow {
+  id: string;
+  user_id: string;
+  campus_subject_link_id: string;
+  last_sync_run_id: string;
+  kind: 'document' | 'assignment' | 'announcement' | 'event';
+  external_id: string;
+  source_url: string | null;
+  content_hash: string;
+  payload: Record<string, unknown>;
+  first_seen_at: string;
+  last_seen_at: string;
+  applied_at: string | null;
+}
+
 export interface DocumentRow {
   id: string;
   user_id: string;

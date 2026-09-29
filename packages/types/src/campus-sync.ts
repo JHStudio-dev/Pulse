@@ -73,3 +73,5 @@ export interface CampusSyncItemInput {
   contentHash: string;
   payload: JsonObject;
 }
+
+export type CampusSyncItemDraft = Omit<CampusSyncItemInput, 'contentHash'>;

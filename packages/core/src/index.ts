@@ -6,3 +6,4 @@ export * from './risk/index';
 export * from './recordings/index';
 export * from './recovery/index';
 export * from './reminders/index';
+export * from './campus-sync/index';
