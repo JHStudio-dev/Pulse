@@ -44,3 +44,23 @@ describe('Chamilo course metadata', () => {
     expect(course.title).toBe('ADM2011C1');
   });
 });
+
+
+it('reads a title from a same-course navigation link', () => {
+  const dom = new JSDOM(`
+    <html>
+      <head><title>UJCVx</title></head>
+      <body>
+        <a href="/courses/CAF1302A1/index.php?id_session=0">Contabilidad Financiera I</a>
+      </body>
+    </html>
+  `);
+
+  const course = parseChamiloCoursePage(
+    dom.window.document,
+    { externalId: 'CAF1302A1', sessionId: '0' },
+    'https://campus.ujcv.edu.hn/courses/CAF1302A1/index.php?id_session=0',
+  );
+
+  expect(course.title).toBe('Contabilidad Financiera I');
+});

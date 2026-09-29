@@ -143,11 +143,53 @@ export function parseChamiloCoursePage(
   course: CampusCourseRef,
   pageUrl: string,
 ): SyncedCourse {
+  const sameCourseLinkTitles = [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
+    .map((anchor) => {
+      const href = resolveAnchorUrl(anchor, pageUrl);
+      if (!href || getChamiloCourseId(href) !== course.externalId) return '';
+      return cleanCourseTitle(
+        anchor.innerText ||
+          anchor.textContent ||
+          anchor.getAttribute('title') ||
+          anchor.getAttribute('aria-label') ||
+          '',
+      );
+    })
+    .filter(Boolean);
+
+  const selectorCandidates = [
+    '.page-header h1',
+    '.page-header h2',
+    '.course-title',
+    '[class*="course-title"]',
+    '.breadcrumb .active',
+    '.breadcrumb li:last-child',
+    'main h1',
+    'main h2',
+    'h1',
+    'h2',
+    '.panel-title',
+  ]
+    .flatMap((selector) =>
+      [...document.querySelectorAll<HTMLElement>(selector)].map(
+        (element) =>
+          element.innerText ||
+          element.textContent ||
+          element.getAttribute('title') ||
+          element.getAttribute('aria-label') ||
+          '',
+      ),
+    );
+
+  const metaTitle =
+    document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content ??
+    document.querySelector<HTMLMetaElement>('meta[name="twitter:title"]')?.content ??
+    '';
+
   const titleCandidates = [
-    document.querySelector<HTMLElement>('.page-header h1')?.textContent,
-    document.querySelector<HTMLElement>('.breadcrumb .active')?.textContent,
-    document.querySelector<HTMLElement>('main h1')?.textContent,
-    document.querySelector<HTMLElement>('h1')?.textContent,
+    ...sameCourseLinkTitles,
+    ...selectorCandidates,
+    metaTitle,
     document.title,
   ];
 
@@ -157,7 +199,8 @@ export function parseChamiloCoursePage(
       .find(
         (value) =>
           value.length > 0 &&
-          !/^(inicio|campus|curso|courses?|ujcvx?)$/i.test(value),
+          value !== course.externalId &&
+          !/^(inicio|campus|curso|courses?|ujcvx?|principal|home)$/i.test(value),
       ) ?? course.externalId;
 
   const teacher =

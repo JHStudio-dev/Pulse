@@ -479,6 +479,49 @@ async function syncEvents(course: CampusCourseRef): Promise<SyncedEvent[]> {
   }
 }
 
+
+function inferCourseMetadataFromAnnouncements(
+  course: SyncedCourse,
+  announcements: SyncedAnnouncement[],
+): SyncedCourse {
+  const authors = [
+    ...new Set(
+      announcements
+        .map((announcement) => announcement.author?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
+
+  const welcome = announcements
+    .map((announcement) => announcement.title)
+    .find((title) => /bienvenida.*(?:clase|curso)/i.test(title));
+
+  let inferredTitle: string | undefined;
+  let inferredSection: string | undefined;
+
+  if (welcome) {
+    const match = welcome.match(
+      /bienvenida(?:\s+a\s+la)?\s+(?:clase|curso)\s+(.+?)(?:\s*[-–—]\s*secci[oó]n\s+([a-z0-9-]+))?$/i,
+    );
+
+    inferredTitle = match?.[1] ? cleanText(match[1]) : undefined;
+    inferredSection = match?.[2] ? cleanText(match[2]) : undefined;
+  }
+
+  return {
+    ...course,
+    ...(course.title === course.externalId && inferredTitle
+      ? { title: inferredTitle }
+      : {}),
+    ...(course.teacher === undefined && authors.length === 1
+      ? { teacher: authors[0] }
+      : {}),
+    ...(course.section === undefined && inferredSection
+      ? { section: inferredSection }
+      : {}),
+  };
+}
+
 function mergeAssignmentEvents(
   course: CampusCourseRef,
   events: SyncedEvent[],
@@ -529,9 +572,10 @@ async function syncCourse() {
   ]);
 
   const events = mergeAssignmentEvents(course, agendaEvents, assignments);
+  const enrichedCourse = inferCourseMetadataFromAnnouncements(course, announcements);
 
   return {
-    course,
+    course: enrichedCourse,
     documents,
     assignments,
     announcements,
