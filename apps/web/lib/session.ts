@@ -11,6 +11,7 @@ import {
   createRecoveryRepository,
   createReminderRepository,
   createCampusConnectionRepository,
+  createCampusSyncRepository,
   createInstitutionRepository,
   createSubjectRepository,
   createSubjectScheduleRepository,
@@ -41,6 +42,7 @@ export async function requireUser() {
     db: {
       institutions: createInstitutionRepository(supabase),
       campusConnections: createCampusConnectionRepository(supabase),
+      campusSync: createCampusSyncRepository(supabase),
       periods: createAcademicPeriodRepository(supabase),
       subjects: createSubjectRepository(supabase),
       schedules: createSubjectScheduleRepository(supabase),

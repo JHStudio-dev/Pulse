@@ -63,3 +63,10 @@ export const campusSyncSnapshotSchema = z.object({
 });
 
 export type CampusSyncSnapshotInput = z.infer<typeof campusSyncSnapshotSchema>;
+
+export const campusSyncIngestRequestSchema = z.object({
+  subjectId: z.uuid(),
+  snapshot: campusSyncSnapshotSchema,
+});
+
+export type CampusSyncIngestRequest = z.infer<typeof campusSyncIngestRequestSchema>;
