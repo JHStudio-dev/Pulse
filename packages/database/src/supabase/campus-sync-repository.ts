@@ -1,5 +1,8 @@
 import type {
   CampusConnectionId,
+  CampusSyncItemId,
+  DocumentId,
+  TaskId,
   CampusSubjectLink,
   CampusSubjectLinkId,
   CampusSyncItem,
@@ -159,6 +162,50 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
         .single();
 
       if (error) throw translateError(error);
+      return toCampusSyncItem(data as CampusSyncItemRow);
+    },
+
+    async markTaskApplied(
+      userId: UserId,
+      itemId: CampusSyncItemId,
+      taskId: TaskId,
+    ): Promise<CampusSyncItem> {
+      const { data, error } = await client
+        .from(ITEMS)
+        .update({
+          applied_task_id: taskId,
+          applied_document_id: null,
+          applied_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('id', itemId)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Campus sync item ${itemId} not found`);
+      return toCampusSyncItem(data as CampusSyncItemRow);
+    },
+
+    async markDocumentApplied(
+      userId: UserId,
+      itemId: CampusSyncItemId,
+      documentId: DocumentId,
+    ): Promise<CampusSyncItem> {
+      const { data, error } = await client
+        .from(ITEMS)
+        .update({
+          applied_task_id: null,
+          applied_document_id: documentId,
+          applied_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('id', itemId)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Campus sync item ${itemId} not found`);
       return toCampusSyncItem(data as CampusSyncItemRow);
     },
 

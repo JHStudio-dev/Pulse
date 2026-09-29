@@ -3,7 +3,9 @@ import type {
   CampusSubjectLinkId,
   CampusSyncItemId,
   CampusSyncRunId,
+  DocumentId,
   SubjectId,
+  TaskId,
   UserId,
 } from './ids';
 import type { Instant } from './primitives';
@@ -64,6 +66,8 @@ export interface CampusSyncItem {
   firstSeenAt: Instant;
   lastSeenAt: Instant;
   appliedAt: Instant | null;
+  appliedTaskId: TaskId | null;
+  appliedDocumentId: DocumentId | null;
 }
 
 export interface CampusSyncItemInput {

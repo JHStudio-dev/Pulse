@@ -8,6 +8,25 @@ import type { DocumentRow } from './rows';
 
 const TABLE = 'documents';
 
+function toDocumentRow(
+  changes: Partial<Omit<DocumentRecord, 'id' | 'userId'>>,
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (changes.subjectId !== undefined) row['subject_id'] = changes.subjectId;
+  if (changes.classSessionId !== undefined) row['class_session_id'] = changes.classSessionId;
+  if (changes.title !== undefined) row['title'] = changes.title;
+  if (changes.source !== undefined) row['source'] = changes.source;
+  if (changes.storagePath !== undefined) row['storage_path'] = changes.storagePath;
+  if (changes.externalUrl !== undefined) row['external_url'] = changes.externalUrl;
+  if (changes.mimeType !== undefined) row['mime_type'] = changes.mimeType;
+  if (changes.sizeBytes !== undefined) row['size_bytes'] = changes.sizeBytes;
+  if (changes.contentHash !== undefined) row['content_hash'] = changes.contentHash;
+  if (changes.replacesDocumentId !== undefined) {
+    row['replaces_document_id'] = changes.replacesDocumentId;
+  }
+  return row;
+}
+
 export function createDocumentRepository(client: PulseSupabaseClient): DocumentRepository {
   return {
     async listBySubject(userId: UserId, subjectId: SubjectId): Promise<DocumentRecord[]> {
@@ -57,6 +76,24 @@ export function createDocumentRepository(client: PulseSupabaseClient): DocumentR
         .single();
 
       if (error) throw translateError(error);
+      return toDocument(data as DocumentRow);
+    },
+
+    async update(
+      userId: UserId,
+      id: DocumentId,
+      changes: Partial<Omit<DocumentRecord, 'id' | 'userId'>>,
+    ): Promise<DocumentRecord> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update(toDocumentRow(changes))
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Document ${id} not found`);
       return toDocument(data as DocumentRow);
     },
 

@@ -183,6 +183,8 @@ export interface CampusSyncItemRow {
   first_seen_at: string;
   last_seen_at: string;
   applied_at: string | null;
+  applied_task_id: string | null;
+  applied_document_id: string | null;
 }
 
 export interface DocumentRow {

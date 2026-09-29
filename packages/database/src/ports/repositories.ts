@@ -8,6 +8,7 @@ import type {
   CampusSubjectLink,
   CampusSubjectLinkId,
   CampusSyncItem,
+  CampusSyncItemId,
   CampusSyncItemInput,
   CampusSyncRun,
   CampusSyncRunId,
@@ -101,6 +102,16 @@ export interface CampusSyncRepository {
     runId: CampusSyncRunId,
     item: CampusSyncItemInput,
   ): Promise<CampusSyncItem>;
+  markTaskApplied(
+    userId: UserId,
+    itemId: CampusSyncItemId,
+    taskId: TaskId,
+  ): Promise<CampusSyncItem>;
+  markDocumentApplied(
+    userId: UserId,
+    itemId: CampusSyncItemId,
+    documentId: DocumentId,
+  ): Promise<CampusSyncItem>;
   completeRun(
     userId: UserId,
     runId: CampusSyncRunId,
@@ -190,6 +201,11 @@ export interface DocumentRepository {
   create(
     userId: UserId,
     input: Omit<DocumentRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+  ): Promise<DocumentRecord>;
+  update(
+    userId: UserId,
+    id: DocumentId,
+    changes: Partial<Omit<DocumentRecord, 'id' | 'userId'>>,
   ): Promise<DocumentRecord>;
   remove(userId: UserId, id: DocumentId): Promise<void>;
   createSignedUrl(userId: UserId, id: DocumentId, expiresInSeconds: number): Promise<string>;
