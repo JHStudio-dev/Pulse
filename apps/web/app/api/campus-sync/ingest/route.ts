@@ -53,6 +53,38 @@ async function createSubjectFromSnapshot(
   });
 }
 
+
+async function enrichSubjectFromSnapshot(
+  userId: UserId,
+  subject: Subject,
+  snapshot: CampusSyncSnapshot,
+  campusInstanceId: Subject['campusInstanceId'],
+  subjects: ReturnType<typeof createSubjectRepository>,
+): Promise<Subject> {
+  const title = snapshot.course.title?.trim();
+  const teacher = snapshot.course.teacher?.trim();
+  const code = snapshot.course.code?.trim() || snapshot.course.externalId;
+
+  const shouldReplaceName =
+    Boolean(title) &&
+    title !== snapshot.course.externalId &&
+    (subject.name === snapshot.course.externalId || subject.name === subject.code);
+
+  const shouldAddTeacher = Boolean(teacher) && !subject.professorName;
+  const shouldSetCampus = subject.campusInstanceId === null;
+
+  if (!shouldReplaceName && !shouldAddTeacher && !shouldSetCampus) {
+    return subject;
+  }
+
+  return subjects.update(userId, subject.id, {
+    ...(shouldReplaceName ? { name: title! } : {}),
+    ...(subject.code === null ? { code } : {}),
+    ...(shouldAddTeacher ? { professorName: teacher! } : {}),
+    ...(shouldSetCampus ? { campusInstanceId } : {}),
+  });
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -137,6 +169,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'active_period_not_found' }, { status: 409 });
     }
   }
+
+  subject = await enrichSubjectFromSnapshot(
+    userId,
+    subject,
+    snapshot,
+    connection.campusInstanceId,
+    subjects,
+  );
 
   const subjectLink = await campusSync.upsertSubjectLink(userId, {
     campusConnectionId: connection.id,
