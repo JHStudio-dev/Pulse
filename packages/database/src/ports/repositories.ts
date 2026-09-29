@@ -136,6 +136,7 @@ export interface AcademicPeriodRepository {
 
 export interface SubjectRepository {
   listByPeriod(userId: UserId, periodId: AcademicPeriodId): Promise<Subject[]>;
+  listArchivedByPeriod(userId: UserId, periodId: AcademicPeriodId): Promise<Subject[]>;
   findById(userId: UserId, id: SubjectId): Promise<Subject | null>;
   create(
     userId: UserId,
@@ -147,6 +148,7 @@ export interface SubjectRepository {
     changes: Partial<Omit<Subject, 'id' | 'userId'>>,
   ): Promise<Subject>;
   archive(userId: UserId, id: SubjectId): Promise<void>;
+  restore(userId: UserId, id: SubjectId): Promise<Subject>;
 }
 
 export interface SubjectScheduleRepository {

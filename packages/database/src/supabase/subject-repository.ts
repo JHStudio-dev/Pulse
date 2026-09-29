@@ -30,6 +30,22 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
       return (data as SubjectRow[]).map(toSubject);
     },
 
+    async listArchivedByPeriod(
+      userId: UserId,
+      periodId: AcademicPeriodId,
+    ): Promise<Subject[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select('*')
+        .eq('user_id', userId)
+        .eq('academic_period_id', periodId)
+        .not('archived_at', 'is', null)
+        .order('name');
+
+      if (error) throw translateError(error);
+      return (data as SubjectRow[]).map(toSubject);
+    },
+
     async findById(userId: UserId, id: SubjectId): Promise<Subject | null> {
       const { data, error } = await client
         .from(TABLE)
@@ -86,6 +102,20 @@ export function createSubjectRepository(client: PulseSupabaseClient): SubjectRep
         .eq('id', id);
 
       if (error) throw translateError(error);
+    },
+
+    async restore(userId: UserId, id: SubjectId): Promise<Subject> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({ archived_at: null })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Subject ${id} not found`);
+      return toSubject(data as SubjectRow);
     },
   };
 }

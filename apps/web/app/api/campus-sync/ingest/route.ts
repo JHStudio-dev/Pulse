@@ -170,6 +170,10 @@ export async function POST(request: Request) {
     }
   }
 
+  if (subject.archivedAt !== null) {
+    subject = await subjects.restore(userId, subject.id);
+  }
+
   subject = await enrichSubjectFromSnapshot(
     userId,
     subject,

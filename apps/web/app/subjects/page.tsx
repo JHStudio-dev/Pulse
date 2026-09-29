@@ -46,7 +46,15 @@ export default async function SubjectsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Materias</h1>
           <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">{period.name}</p>
         </div>
-        {subjects.length > 0 ? <NewSubject /> : null}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/subjects/archived"
+            className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-sm underline-offset-4 hover:underline"
+          >
+            Archivadas
+          </Link>
+          {subjects.length > 0 ? <NewSubject /> : null}
+        </div>
       </div>
 
       {subjects.length === 0 ? (

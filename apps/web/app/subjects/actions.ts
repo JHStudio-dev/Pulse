@@ -1,6 +1,7 @@
 'use server';
 
-import { createSubjectSchema } from '@pulse/validation';
+import type { SubjectId } from '@pulse/types';
+import { createSubjectSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
 import { requireUser } from '@/lib/session';
 
@@ -67,4 +68,17 @@ export async function createSubject(
   revalidatePath('/subjects');
   revalidatePath('/');
   return { error: null };
+}
+
+
+export async function restoreSubject(formData: FormData): Promise<void> {
+  const subject = uuidSchema.safeParse(String(formData.get('subjectId') ?? ''));
+  if (!subject.success) return;
+
+  const { userId, db } = await requireUser();
+  await db.subjects.restore(userId, subject.data as SubjectId);
+
+  revalidatePath('/subjects');
+  revalidatePath('/subjects/archived');
+  revalidatePath('/');
 }
