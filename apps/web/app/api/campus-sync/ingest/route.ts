@@ -4,7 +4,9 @@ import {
   createAcademicPeriodRepository,
   createCampusConnectionRepository,
   createCampusSyncRepository,
+  createDocumentRepository,
   createSubjectRepository,
+  createTaskRepository,
 } from '@pulse/database';
 import type {
   CampusSyncItem,
@@ -16,6 +18,7 @@ import type {
 } from '@pulse/types';
 import { campusSyncIngestRequestSchema } from '@pulse/validation';
 import { createClient } from '@/lib/supabase-server';
+import { applyCampusSyncItem } from '@/lib/campus-sync-apply';
 
 function itemKey(item: Pick<CampusSyncItem, 'kind' | 'externalId'>): string {
   return `${item.kind}:${item.externalId}`;
@@ -118,6 +121,8 @@ export async function POST(request: Request) {
   const periods = createAcademicPeriodRepository(supabase);
   const connections = createCampusConnectionRepository(supabase);
   const campusSync = createCampusSyncRepository(supabase);
+  const tasks = createTaskRepository(supabase);
+  const documents = createDocumentRepository(supabase);
 
   const connection = await connections.findByUser(userId);
   if (!connection) {
@@ -213,7 +218,19 @@ export async function POST(request: Request) {
       else if (state === 'changed') summary.changedCount += 1;
       else summary.unchangedCount += 1;
 
-      await campusSync.upsertItem(userId, subjectLink.id, run.id, item);
+      const persisted = await campusSync.upsertItem(userId, subjectLink.id, run.id, item);
+
+      if (
+        state !== 'unchanged' ||
+        (persisted.kind === 'assignment' && persisted.appliedTaskId === null) ||
+        (persisted.kind === 'document' && persisted.appliedDocumentId === null)
+      ) {
+        await applyCampusSyncItem(userId, subject.id, persisted, {
+          tasks,
+          documents,
+          campusSync,
+        });
+      }
     }
 
     const completed = await campusSync.completeRun(userId, run.id, summary);

@@ -110,7 +110,14 @@ export async function openDocument(formData: FormData): Promise<void> {
 
   const { userId, db } = await requireUser();
 
+  const document = await db.documents.findById(userId, parsedId.data as DocumentId);
+  if (!document) return;
+
+  if (document.storagePath === null && document.externalUrl !== null) {
+    redirect(document.externalUrl);
+  }
+
   // Short lived: long enough to open, not to share around.
-  const url = await db.documents.createSignedUrl(userId, parsedId.data as DocumentId, 60);
+  const url = await db.documents.createSignedUrl(userId, document.id, 60);
   redirect(url);
 }
