@@ -1,22 +1,81 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Pulse Campus Companion</title>
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pulse Campus Companion</title>
+    <style>
+      :root {
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
+        background: #ffffff;
+      }
 
-<body>
-<main>
-  <h1>Pulse</h1>
-  <p id="status">Checking campus…</p>
+      body {
+        width: 440px;
+        margin: 0;
+        padding: 16px;
+      }
 
-  <button id="inspect" type="button">
-    Inspect page
-  </button>
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+      }
 
-  <pre id="output"></pre>
+      #status {
+        margin: 0 0 14px;
+        color: #4b5563;
+      }
 
-  <script src="popup.js"></script>
-</main>
-</body>
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      button {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #f9fafb;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.6;
+      }
+
+      pre {
+        max-height: 460px;
+        overflow: auto;
+        margin: 0;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Pulse</h1>
+    <p id="status">Ready.</p>
+
+    <div class="actions">
+      <button id="inspect" type="button">Inspect page</button>
+      <button id="sync" type="button">Sync course</button>
+    </div>
+
+    <pre id="output">Open a UJCV course and inspect or sync it.</pre>
+
+    <script src="popup.js"></script>
+  </body>
 </html>

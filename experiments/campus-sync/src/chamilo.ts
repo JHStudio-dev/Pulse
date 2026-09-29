@@ -13,6 +13,45 @@ function cleanText(value: string | null | undefined): string {
   return value?.trim().replace(/\s+/g, ' ') ?? '';
 }
 
+function normalizeDocumentSize(value: string): string | undefined {
+  const matches = value.match(/\d+(?:\.\d+)?\s*(?:[kmgt](?:i?b)?|bytes?|b)\b/gi);
+  const last = matches?.at(-1);
+  return last?.replace(/\s+/g, '') || undefined;
+}
+
+function normalizeDocumentUpdatedAt(value: string): string | undefined {
+  const match = value.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+  return match?.[0].replace(' ', 'T');
+}
+
+function visibleCellText(cell: HTMLTableCellElement): string {
+  const clone = cell.cloneNode(true) as HTMLTableCellElement;
+
+  for (const element of clone.querySelectorAll<HTMLElement>('[hidden], [aria-hidden="true"], [style]')) {
+    const style = element.getAttribute('style')?.replace(/\s+/g, '').toLowerCase() ?? '';
+
+    if (element.hasAttribute('hidden') || element.getAttribute('aria-hidden') === 'true' || style.includes('display:none')) {
+      element.remove();
+    }
+  }
+
+  return cleanText(clone.textContent);
+}
+
+function resolveAnchorUrl(anchor: HTMLAnchorElement, baseUrl: string): string | null {
+  const href = anchor.getAttribute('href')?.trim();
+
+  if (!href || href.startsWith('#') || href.toLowerCase().startsWith('javascript:')) {
+    return null;
+  }
+
+  try {
+    return sanitizeCampusUrl(href, baseUrl);
+  } catch {
+    return null;
+  }
+}
+
 export function sanitizeCampusUrl(value: string, baseUrl: string): string {
   const url = new URL(value, baseUrl);
 
@@ -48,28 +87,27 @@ export function parseChamiloCourses(document: Document, baseUrl: string): Synced
   const courses = new Map<string, SyncedCourse>();
 
   for (const anchor of document.querySelectorAll<HTMLAnchorElement>('a[href]')) {
-    const href = anchor.href;
-    const externalId = getChamiloCourseId(href);
+    const sourceUrl = resolveAnchorUrl(anchor, baseUrl);
+    if (!sourceUrl) continue;
 
+    const externalId = getChamiloCourseId(sourceUrl);
     if (!externalId) continue;
 
     const title = cleanText(anchor.innerText || anchor.textContent);
     if (!title) continue;
 
-    const sourceUrl = sanitizeCampusUrl(href, baseUrl);
+    const sessionId = getChamiloSessionId(sourceUrl);
 
     courses.set(externalId, {
       externalId,
-      sessionId: getChamiloSessionId(href),
       title,
       sourceUrl,
+      ...(sessionId !== undefined ? { sessionId } : {}),
     });
   }
 
   return [...courses.values()];
 }
-
-import type { CampusCourseRef, SyncedDocument } from './connector-contract.ts';
 
 export function getChamiloDocumentId(value: string): string | null {
   try {
@@ -99,12 +137,20 @@ export function parseChamiloDocuments(
 
     if (anchors.length === 0) continue;
 
-    const links = anchors.map((anchor) => ({
-      text: cleanText(anchor.innerText || anchor.textContent),
-      href: sanitizeCampusUrl(anchor.href, pageUrl),
-    }));
+    const links = anchors
+      .map((anchor) => {
+        const href = resolveAnchorUrl(anchor, pageUrl);
+        if (!href) return null;
+
+        return {
+          text: cleanText(anchor.innerText || anchor.textContent),
+          href,
+        };
+      })
+      .filter((link): link is { text: string; href: string } => link !== null);
 
     const namedLink = links.find((link) => link.text && getChamiloDocumentId(link.href));
+
     if (!namedLink) continue;
 
     const externalId = getChamiloDocumentId(namedLink.href);
@@ -135,26 +181,34 @@ export function parseChamiloDocuments(
     if (!isFolder && !isFile) continue;
 
     const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')]
-      .map((cell) => cleanText(cell.innerText || cell.textContent))
-      .filter(Boolean);
+      .filter((cell) => cell.parentElement === row);
 
-    const metadata = cells.filter((value) => value !== namedLink.text);
+    const metadata = cells
+      .map(visibleCellText)
+      .filter((value) => value && value !== namedLink.text);
+
+    const path = getChamiloDirectoryPath(pageUrl);
+    const size = metadata
+      .map(normalizeDocumentSize)
+      .find((value): value is string => value !== undefined);
+    const updatedAt = metadata
+      .map(normalizeDocumentUpdatedAt)
+      .find((value): value is string => value !== undefined);
 
     documents.push({
       externalId,
       courseExternalId: course.externalId,
       name: namedLink.text,
       kind: isFolder ? 'folder' : 'file',
-      path: getChamiloDirectoryPath(pageUrl),
-      size: metadata[0],
-      updatedAt: metadata[1],
       sourceUrl: namedLink.href,
+      ...(path !== undefined ? { path } : {}),
+      ...(size !== undefined ? { size } : {}),
+      ...(updatedAt !== undefined ? { updatedAt } : {}),
     });
   }
 
   return documents;
 }
-
 export function getChamiloAssignmentId(value: string): string | null {
   try {
     const url = new URL(value);
@@ -185,16 +239,29 @@ export function parseChamiloAssignments(
   const assignments: SyncedAssignment[] = [];
 
   for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
-    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')]
+      .map((anchor) => {
+        const href = resolveAnchorUrl(anchor, pageUrl);
+        if (!href) return null;
 
-    const assignmentLink = links.find((anchor) => getChamiloAssignmentId(anchor.href));
+        return { anchor, href };
+      })
+      .filter(
+        (link): link is { anchor: HTMLAnchorElement; href: string } => link !== null,
+      );
+
+    const assignmentLink = links.find(
+      (link) => getChamiloAssignmentId(link.href) !== null,
+    );
 
     if (!assignmentLink) continue;
 
     const externalId = getChamiloAssignmentId(assignmentLink.href);
     if (!externalId) continue;
 
-    const title = cleanText(assignmentLink.innerText || assignmentLink.textContent);
+    const title = cleanText(
+      assignmentLink.anchor.innerText || assignmentLink.anchor.textContent,
+    );
 
     if (!title) continue;
 
@@ -210,8 +277,8 @@ export function parseChamiloAssignments(
       externalId,
       courseExternalId: course.externalId,
       title,
-      dueAt,
-      sourceUrl: sanitizeCampusUrl(assignmentLink.href, pageUrl),
+      sourceUrl: assignmentLink.href,
+      ...(dueAt !== undefined ? { dueAt } : {}),
     });
   }
 
@@ -223,16 +290,41 @@ function pageLines(document: Document): string[] {
 }
 
 function readAssignmentDescription(document: Document): string | undefined {
-  const lines = pageLines(document);
+  const heading = [...document.querySelectorAll<HTMLElement>('h1, h2, h3, h4')]
+    .find((element) => cleanText(element.textContent) === 'Descripción');
 
+  const panel = heading?.closest<HTMLElement>('.panel');
+  const body = panel?.querySelector<HTMLElement>('.panel-body');
+
+  if (body) {
+    const blocks = [...body.querySelectorAll<HTMLElement>('p, li')]
+      .map((element) => cleanText(element.textContent))
+      .filter(Boolean);
+
+    const description = blocks.join('\n').trim();
+    if (description) return description;
+  }
+
+  const lines = pageLines(document);
   const start = lines.findIndex((line) => line === 'Descripción');
   if (start === -1) return undefined;
 
-  const end = lines.findIndex((line, index) => index > start && line === 'Tipo');
+  const stopLabels = new Set([
+    'Tipo',
+    'Profesores',
+    'Creado con UJCVx',
+    '© 2026',
+  ]);
 
-  const descriptionLines = lines.slice(start + 1, end === -1 ? undefined : end);
+  const end = lines.findIndex(
+    (line, index) => index > start && stopLabels.has(line),
+  );
 
-  const description = descriptionLines.join('\n').trim();
+  const description = lines
+    .slice(start + 1, end === -1 ? undefined : end)
+    .filter((line) => !line.includes('jqGrid(') && !line.startsWith('$(function()'))
+    .join('\n')
+    .trim();
 
   return description || undefined;
 }
@@ -255,16 +347,11 @@ function hasChamiloSubmission(document: Document): boolean {
   if (!submissionTable) return false;
 
   const text = cleanText(submissionTable.textContent);
-
   if (text.includes('Sin registros que mostrar')) return false;
 
-  return [...submissionTable.querySelectorAll('tbody tr')].some((row) => {
-    const cells = [...row.querySelectorAll('td')]
-      .map((cell) => cleanText(cell.textContent))
-      .filter(Boolean);
-
-    return cells.length > 0;
-  });
+  return [...submissionTable.querySelectorAll('tbody tr')].some((row) =>
+    [...row.querySelectorAll('td')].some((cell) => cleanText(cell.textContent).length > 0),
+  );
 }
 
 export function parseChamiloAssignmentDetail(
@@ -281,18 +368,24 @@ export function parseChamiloAssignmentDetail(
 
   if (!heading) return null;
 
+  const description = readAssignmentDescription(document);
+
   const submissionLink = document.querySelector<HTMLAnchorElement>(
     'a[href*="/main/work/upload.php"]',
   );
+
+  const submissionUrl = submissionLink
+    ? sanitizeCampusUrl(submissionLink.href, pageUrl)
+    : undefined;
 
   return {
     externalId,
     courseExternalId: course.externalId,
     title: heading,
-    description: readAssignmentDescription(document),
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
-    submissionUrl: submissionLink ? sanitizeCampusUrl(submissionLink.href, pageUrl) : undefined,
     hasSubmission: hasChamiloSubmission(document),
+    ...(description !== undefined ? { description } : {}),
+    ...(submissionUrl !== undefined ? { submissionUrl } : {}),
   };
 }
 
@@ -363,16 +456,29 @@ export function parseChamiloAnnouncements(
   const announcements: SyncedAnnouncement[] = [];
 
   for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
-    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')]
+      .map((anchor) => {
+        const href = resolveAnchorUrl(anchor, pageUrl);
+        if (!href) return null;
 
-    const announcementLink = links.find((anchor) => getChamiloAnnouncementId(anchor.href));
+        return { anchor, href };
+      })
+      .filter(
+        (link): link is { anchor: HTMLAnchorElement; href: string } => link !== null,
+      );
+
+    const announcementLink = links.find((link) =>
+      getChamiloAnnouncementId(link.href),
+    );
 
     if (!announcementLink) continue;
 
     const externalId = getChamiloAnnouncementId(announcementLink.href);
     if (!externalId) continue;
 
-    const title = cleanText(announcementLink.innerText || announcementLink.textContent);
+    const title = cleanText(
+      announcementLink.anchor.innerText || announcementLink.anchor.textContent,
+    );
 
     if (!title) continue;
 
@@ -380,15 +486,19 @@ export function parseChamiloAnnouncements(
       .map((cell) => cleanText(cell.innerText || cell.textContent))
       .filter(Boolean);
 
+    const author = cells[1];
+
+    const updatedAt = cells
+      .map(normalizeSpanishDateTime)
+      .find((value): value is string => value !== undefined);
+
     announcements.push({
       externalId,
       courseExternalId: course.externalId,
       title,
-      author: cells[1],
-      updatedAt: cells
-        .map(normalizeSpanishDateTime)
-        .find((value): value is string => value !== undefined),
-      sourceUrl: sanitizeCampusUrl(announcementLink.href, pageUrl),
+      sourceUrl: announcementLink.href,
+      ...(author !== undefined ? { author } : {}),
+      ...(updatedAt !== undefined ? { updatedAt } : {}),
     });
   }
 
@@ -396,19 +506,27 @@ export function parseChamiloAnnouncements(
 }
 
 function readAnnouncementContent(document: Document, title: string): string | undefined {
-  const lines = pageLines(document);
-
-  const start = lines.findIndex((line) => line === title);
-  if (start === -1) return undefined;
-
-  const end = lines.findIndex(
-    (line, index) => index > start && line.startsWith('Última actualización'),
+  const heading = [...document.querySelectorAll('h1, h2, h3, h4')].find(
+    (element) => cleanText(element.textContent) === title,
   );
 
-  const content = lines
-    .slice(start + 1, end === -1 ? undefined : end)
-    .join('\n')
-    .trim();
+  const table = heading?.closest('table');
+  if (!table) return undefined;
+
+  const rows = [...table.querySelectorAll('tbody > tr')];
+
+  const contentRow = rows.find((row) => {
+    const text = cleanText(row.textContent);
+
+    return text.length > 0 && !text.includes(title) && !text.startsWith('Última actualización');
+  });
+
+  if (!contentRow) return undefined;
+
+  const content = [...contentRow.querySelectorAll('p, li')]
+    .map((element) => cleanText(element.textContent))
+    .filter(Boolean)
+    .join('\n');
 
   return content || undefined;
 }
@@ -427,12 +545,14 @@ export function parseChamiloAnnouncementDetail(
 
   if (!title) return null;
 
+  const content = readAnnouncementContent(document, title);
+
   return {
     externalId,
     courseExternalId: course.externalId,
     title,
-    content: readAnnouncementContent(document, title),
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
+    ...(content !== undefined ? { content } : {}),
   };
 }
 
@@ -476,7 +596,7 @@ export function parseChamiloAgendaDateRange(value: string): AgendaDateRange | nu
 
   return {
     startDate,
-    endDate,
+    ...(endDate !== undefined ? { endDate } : {}),
   };
 }
 
@@ -488,51 +608,64 @@ export function parseChamiloEvents(
   const events: SyncedEvent[] = [];
   let currentRange: AgendaDateRange | null = null;
 
-  for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
-    const rowText = cleanText(row.textContent);
+  const listTable = document.querySelector('.fc-list-table');
+  const rows = listTable
+    ? listTable.querySelectorAll<HTMLTableRowElement>('tbody tr')
+    : document.querySelectorAll<HTMLTableRowElement>('table tbody tr');
 
-    const range = parseChamiloAgendaDateRange(rowText);
-
-    if (range) {
-      currentRange = range;
+  for (const row of rows) {
+    if (row.classList.contains('fc-list-heading')) {
+      const rowText = cleanText(row.textContent);
+      currentRange = parseChamiloAgendaDateRange(rowText);
       continue;
     }
 
-    if (!currentRange) continue;
+    if (!currentRange || !row.classList.contains('fc-list-item')) continue;
 
-    const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')].map((cell) =>
-      cleanText(cell.innerText || cell.textContent),
-    );
+    const timeCell = row.querySelector<HTMLElement>('.fc-list-item-time');
+    const titleCell = row.querySelector<HTMLElement>('.fc-list-item-title');
 
-    if (cells.length === 0) continue;
-
-    const timeText = cells[0] ?? '';
-    const titleText = [...cells].reverse().find(Boolean);
-
-    if (!titleText) continue;
+    const timeText = cleanText(timeCell?.innerText || timeCell?.textContent);
+    if (!timeText || !titleCell) continue;
 
     const normalizedTime = timeText
       .normalize('NFD')
       .replace(/\p{Diacritic}/gu, '')
       .toLowerCase();
 
-    const allDay = normalizedTime === 'todo el dia';
+    const compactTime = normalizedTime.replace(/\s+/g, '');
+    const allDay = compactTime === 'todoeldia';
     const timeMatch = timeText.match(/^(\d{1,2}):(\d{2})$/);
 
     if (!allDay && !timeMatch) continue;
 
-    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+    const links = [...titleCell.querySelectorAll<HTMLAnchorElement>('a')]
+      .map((anchor) => {
+        const href = resolveAnchorUrl(anchor, pageUrl);
+        return { anchor, href };
+      });
 
-    const assignmentLink = links.find((anchor) => getChamiloAssignmentId(anchor.href));
+    const assignmentLink = links.find(
+      (link) => link.href !== null && getChamiloAssignmentId(link.href) !== null,
+    );
 
-    const assignmentId = assignmentLink ? getChamiloAssignmentId(assignmentLink.href) : null;
+    const assignmentId = assignmentLink?.href
+      ? getChamiloAssignmentId(assignmentLink.href)
+      : null;
 
-    let title = titleText;
+    const visibleTitle = cleanText(
+      titleCell.querySelector('a:not([href])')?.textContent ||
+        titleCell.querySelector('a')?.textContent ||
+        titleCell.textContent,
+    );
 
-    if (assignmentLink && assignmentId) {
-      const assignmentTitle = cleanText(assignmentLink.innerText || assignmentLink.textContent);
+    if (!visibleTitle) continue;
 
-      if (titleText.startsWith('Entrega de tarea') && assignmentTitle) {
+    let title = visibleTitle;
+
+    if (assignmentLink && assignmentId && visibleTitle.startsWith('Entrega de tarea')) {
+      const assignmentTitle = cleanText(assignmentLink.anchor.textContent);
+      if (assignmentTitle && !visibleTitle.includes(assignmentTitle)) {
         title = `Entrega de tarea ${assignmentTitle}`;
       }
     }
@@ -541,19 +674,24 @@ export function parseChamiloEvents(
       ? currentRange.startDate
       : `${currentRange.startDate}T${String(timeMatch![1]).padStart(2, '0')}:${timeMatch![2]}:00`;
 
+    const endsAt = allDay ? currentRange.endDate : undefined;
+
     events.push({
       courseExternalId: course.externalId,
       title,
       startsAt,
-      endsAt: allDay ? currentRange.endDate : undefined,
       allDay,
       sourceType: assignmentId ? 'assignment' : 'agenda',
-      sourceExternalId: assignmentId ?? undefined,
-      sourceUrl: assignmentLink
-        ? sanitizeCampusUrl(assignmentLink.href, pageUrl)
+      sourceUrl: assignmentLink?.href
+        ? assignmentLink.href
         : sanitizeCampusUrl(pageUrl, pageUrl),
+      ...(endsAt !== undefined ? { endsAt } : {}),
+      ...(assignmentId !== null && assignmentId !== undefined
+        ? { sourceExternalId: assignmentId }
+        : {}),
     });
   }
 
   return events;
 }
+

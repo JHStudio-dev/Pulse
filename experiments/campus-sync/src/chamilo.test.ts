@@ -18,9 +18,6 @@ import {
   parseChamiloAgendaDateRange,
   parseChamiloEvents,
 } from './chamilo.ts';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { JSDOM } from 'jsdom';
 
 describe('Chamilo URLs', () => {
   it('reads a course id from a course page', () => {
@@ -83,7 +80,7 @@ describe('Chamilo documents', () => {
 
 describe('Chamilo document parser', () => {
   it('parses the real UJCV document table', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-documents-root.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-documents-root.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
     const dom = new JSDOM(html, {
@@ -114,10 +111,24 @@ describe('Chamilo document parser', () => {
         }),
       ]),
     );
+
+    expect(documents.find((item) => item.externalId === '688912')).toEqual(
+      expect.objectContaining({
+        size: '5.8M',
+        updatedAt: '2026-09-14T09:16:43',
+      }),
+    );
+
+    expect(documents.find((item) => item.externalId === '689126')).toEqual(
+      expect.objectContaining({
+        size: '330.56k',
+        updatedAt: '2026-09-14T09:17:01',
+      }),
+    );
   });
 });
 it('parses a real nested UJCV document folder', () => {
-  const fixtureUrl = new URL('../fixtures/chamilo-documents-first-partial.html', import.meta.url);
+  const fixtureUrl = new URL('./fixtures/chamilo-documents-first-partial.html', import.meta.url);
 
   const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -159,7 +170,7 @@ describe('Chamilo assignments', () => {
   });
 
   it('parses the real UJCV assignment list', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-assignments.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-assignments.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -187,11 +198,35 @@ describe('Chamilo assignments', () => {
       ]),
     );
   });
+
+  it('resolves relative assignment links from fetched HTML', () => {
+    const dom = new JSDOM(`
+      <table><tbody><tr>
+        <td><a href="work_list.php?cidReq=ADM2011C1&id_session=0&id=2074726">Estudio de Caso 01. Proyecto Oxigeno Google</a></td>
+        <td>2026-10-12 23:45:00</td>
+      </tr></tbody></table>
+    `);
+
+    const assignments = parseChamiloAssignments(
+      dom.window.document,
+      { externalId: 'ADM2011C1', sessionId: '0' },
+      'https://campus.ujcv.edu.hn/main/work/work.php?cidReq=ADM2011C1&id_session=0',
+    );
+
+    expect(assignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalId: '2074726',
+          title: 'Estudio de Caso 01. Proyecto Oxigeno Google',
+        }),
+      ]),
+    );
+  });
 });
 
 describe('Chamilo assignment detail', () => {
   it('parses the real UJCV assignment detail', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-assignment-detail.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-assignment-detail.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -220,6 +255,8 @@ describe('Chamilo assignment detail', () => {
     );
 
     expect(assignment?.description).toContain('Google y la evolución del liderazgo');
+    expect(assignment?.description).not.toContain('jqGrid');
+    expect(assignment?.description).not.toContain('Creado con UJCVx');
 
     expect(assignment?.submissionUrl).toContain('/main/work/upload.php');
   });
@@ -235,7 +272,7 @@ describe('Chamilo announcements', () => {
   });
 
   it('parses the real UJCV announcement list', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-announcements.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-announcements.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -266,8 +303,32 @@ describe('Chamilo announcements', () => {
     );
   });
 
+  it('resolves relative announcement links from fetched HTML', () => {
+    const dom = new JSDOM(`
+      <table><tbody><tr>
+        <td><a href="announcements.php?cidReq=ADM2011C1&id_session=0&action=view&id=297645">BIENVENIDA CLASE ADMINISTRACIÓN I - SECCIÓN C</a></td>
+        <td>SAN MARTIN CHINCHILLA, LIDIA VICTORIA</td>
+      </tr></tbody></table>
+    `);
+
+    const announcements = parseChamiloAnnouncements(
+      dom.window.document,
+      { externalId: 'ADM2011C1', sessionId: '0' },
+      'https://campus.ujcv.edu.hn/main/announcements/announcements.php?cidReq=ADM2011C1&id_session=0',
+    );
+
+    expect(announcements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalId: '297645',
+          title: 'BIENVENIDA CLASE ADMINISTRACIÓN I - SECCIÓN C',
+        }),
+      ]),
+    );
+  });
+
   it('parses the real UJCV announcement detail', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-announcement-detail.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-announcement-detail.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -309,7 +370,7 @@ describe('Chamilo agenda', () => {
   });
 
   it('parses the real UJCV agenda', () => {
-    const fixtureUrl = new URL('../fixtures/chamilo-agenda.html', import.meta.url);
+    const fixtureUrl = new URL('./fixtures/chamilo-agenda.html', import.meta.url);
 
     const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
 
@@ -353,5 +414,7 @@ describe('Chamilo agenda', () => {
         }),
       ]),
     );
+
+    expect(events.some((event) => event.title === 'Todo el día')).toBe(false);
   });
 });
