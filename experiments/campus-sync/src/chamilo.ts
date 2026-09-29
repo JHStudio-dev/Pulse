@@ -138,6 +138,50 @@ function findLabeledValue(document: Document, labels: RegExp): string | undefine
   return undefined;
 }
 
+
+function scheduleHintLines(document: Document): string[] {
+  const results = new Set<string>();
+  const lines = (document.body.textContent ?? '')
+    .split('\n')
+    .map(cleanText)
+    .filter(Boolean);
+
+  const signal = /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|horario|clase|aula|sal[oó]n|virtual|presencial|meet|zoom|teams)\b/i;
+  const time = /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\s*(?:-|–|—|a|hasta)\s*\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b/i;
+
+  for (const line of lines) {
+    if (line.length > 500) continue;
+    if (!signal.test(line) || !time.test(line)) continue;
+    results.add(line);
+  }
+
+  return [...results].slice(0, 20);
+}
+
+function courseMeetingUrls(document: Document, baseUrl: string): string[] {
+  const results = new Set<string>();
+
+  for (const anchor of document.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+    const href = resolveAnchorUrl(anchor, baseUrl);
+    if (!href) continue;
+
+    try {
+      const host = new URL(href).hostname.toLowerCase();
+      if (
+        host === 'meet.google.com' ||
+        host.endsWith('.zoom.us') ||
+        host === 'teams.microsoft.com'
+      ) {
+        results.add(href);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [...results];
+}
+
 export function parseChamiloCoursePage(
   document: Document,
   course: CampusCourseRef,
@@ -216,6 +260,9 @@ export function parseChamiloCoursePage(
     findLabeledValue(document, /^(?:secci[oó]n|section)\s*:?\s*(.*)$/i) ??
     (document.body.textContent ?? '').match(/\bsecci[oó]n\s+([A-Z0-9-]+)/i)?.[1];
 
+  const scheduleHints = scheduleHintLines(document);
+  const meetingUrls = courseMeetingUrls(document, pageUrl);
+
   return {
     externalId: course.externalId,
     title,
@@ -224,6 +271,8 @@ export function parseChamiloCoursePage(
     ...(course.sessionId !== undefined ? { sessionId: course.sessionId } : {}),
     ...(section !== undefined ? { section } : {}),
     ...(teacher !== undefined ? { teacher } : {}),
+    ...(scheduleHints.length > 0 ? { scheduleHints } : {}),
+    ...(meetingUrls.length > 0 ? { meetingUrls } : {}),
   };
 }
 

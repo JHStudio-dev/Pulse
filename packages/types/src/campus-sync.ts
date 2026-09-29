@@ -8,7 +8,8 @@ import type {
   TaskId,
   UserId,
 } from './ids';
-import type { Instant } from './primitives';
+import type { Modality } from './academic';
+import type { Instant, TimeOfDay, Weekday } from './primitives';
 
 export type CampusSyncItemKind = 'document' | 'assignment' | 'announcement' | 'event';
 
@@ -90,6 +91,8 @@ export interface CampusSyncCourseSnapshot {
   section?: string;
   teacher?: string;
   sourceUrl?: string;
+  scheduleHints?: string[];
+  meetingUrls?: string[];
 }
 
 export interface CampusSyncDocumentSnapshot {
@@ -143,4 +146,17 @@ export interface CampusSyncSnapshot {
   assignments: CampusSyncAssignmentSnapshot[];
   announcements: CampusSyncAnnouncementSnapshot[];
   events: CampusSyncEventSnapshot[];
+}
+
+export type CampusScheduleConfidence = 'high' | 'medium';
+
+export interface CampusScheduleSuggestion {
+  weekdays: Weekday[];
+  startTime: TimeOfDay;
+  endTime: TimeOfDay;
+  modality: Modality;
+  meetingUrl: string | null;
+  confidence: CampusScheduleConfidence;
+  evidence: string;
+  source: 'campus_text' | 'agenda';
 }

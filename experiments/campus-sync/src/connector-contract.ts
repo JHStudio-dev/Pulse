@@ -9,6 +9,8 @@ export interface SyncedCourse extends CampusCourseRef {
   section?: string;
   teacher?: string;
   sourceUrl: string;
+  scheduleHints?: string[];
+  meetingUrls?: string[];
 }
 
 export interface SyncedDocument {

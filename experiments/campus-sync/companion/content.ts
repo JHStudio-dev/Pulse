@@ -492,6 +492,17 @@ function inferCourseMetadataFromAnnouncements(
     ),
   ];
 
+  const announcementScheduleHints = announcements
+    .flatMap((announcement) => [announcement.title, announcement.content ?? ''])
+    .map((value) => value.trim().replace(/\s+/g, ' '))
+    .filter(
+      (value) =>
+        value.length > 0 &&
+        value.length <= 500 &&
+        /\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b/i.test(value) &&
+        /\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\s*(?:-|–|—|a|hasta)\s*\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?\b/i.test(value),
+    );
+
   const welcome = announcements
     .map((announcement) => announcement.title)
     .find((title) => /bienvenida.*(?:clase|curso)/i.test(title));
@@ -508,6 +519,11 @@ function inferCourseMetadataFromAnnouncements(
     inferredSection = match?.[2] ? cleanText(match[2]) : undefined;
   }
 
+  const scheduleHints = [
+    ...(course.scheduleHints ?? []),
+    ...announcementScheduleHints,
+  ].filter((value, index, values) => values.indexOf(value) === index);
+
   return {
     ...course,
     ...(course.title === course.externalId && inferredTitle
@@ -519,6 +535,7 @@ function inferCourseMetadataFromAnnouncements(
     ...(course.section === undefined && inferredSection
       ? { section: inferredSection }
       : {}),
+    ...(scheduleHints.length > 0 ? { scheduleHints } : {}),
   };
 }
 
