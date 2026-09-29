@@ -1,5 +1,6 @@
 import type {
   CampusCourseRef,
+  SyncedAnnouncement,
   SyncedAssignment,
   SyncedCourse,
   SyncedDocument,
@@ -291,5 +292,145 @@ export function parseChamiloAssignmentDetail(
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
     submissionUrl: submissionLink ? sanitizeCampusUrl(submissionLink.href, pageUrl) : undefined,
     hasSubmission: hasChamiloSubmission(document),
+  };
+}
+
+export function getChamiloAnnouncementId(value: string): string | null {
+  try {
+    const url = new URL(value);
+
+    if (!url.pathname.endsWith('/main/announcements/announcements.php')) {
+      return null;
+    }
+
+    if (url.searchParams.get('action') !== 'view') {
+      return null;
+    }
+
+    return url.searchParams.get('id');
+  } catch {
+    return null;
+  }
+}
+
+const CHAMILO_MONTHS: Record<string, number> = {
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
+
+function normalizeSpanishDateTime(value: string): string | undefined {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+
+  const match = normalized.match(/(\d{1,2}) de ([a-z]+) (\d{4}) a las (\d{1,2}):(\d{2}) (am|pm)/);
+
+  if (!match) return undefined;
+
+  const [, dayText, monthText, yearText, hourText, minuteText, period] = match;
+
+  const month = CHAMILO_MONTHS[monthText!];
+  if (!month) return undefined;
+
+  let hour = Number(hourText);
+
+  if (period === 'pm' && hour !== 12) hour += 12;
+  if (period === 'am' && hour === 12) hour = 0;
+
+  return [
+    `${yearText}-${String(month).padStart(2, '0')}-${String(dayText).padStart(2, '0')}`,
+    `${String(hour).padStart(2, '0')}:${minuteText}:00`,
+  ].join('T');
+}
+
+export function parseChamiloAnnouncements(
+  document: Document,
+  course: CampusCourseRef,
+  pageUrl: string,
+): SyncedAnnouncement[] {
+  const announcements: SyncedAnnouncement[] = [];
+
+  for (const row of document.querySelectorAll<HTMLTableRowElement>('table tbody tr')) {
+    const links = [...row.querySelectorAll<HTMLAnchorElement>('a[href]')];
+
+    const announcementLink = links.find((anchor) => getChamiloAnnouncementId(anchor.href));
+
+    if (!announcementLink) continue;
+
+    const externalId = getChamiloAnnouncementId(announcementLink.href);
+    if (!externalId) continue;
+
+    const title = cleanText(announcementLink.innerText || announcementLink.textContent);
+
+    if (!title) continue;
+
+    const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')]
+      .map((cell) => cleanText(cell.innerText || cell.textContent))
+      .filter(Boolean);
+
+    announcements.push({
+      externalId,
+      courseExternalId: course.externalId,
+      title,
+      author: cells[1],
+      updatedAt: cells
+        .map(normalizeSpanishDateTime)
+        .find((value): value is string => value !== undefined),
+      sourceUrl: sanitizeCampusUrl(announcementLink.href, pageUrl),
+    });
+  }
+
+  return announcements;
+}
+
+function readAnnouncementContent(document: Document, title: string): string | undefined {
+  const lines = pageLines(document);
+
+  const start = lines.findIndex((line) => line === title);
+  if (start === -1) return undefined;
+
+  const end = lines.findIndex(
+    (line, index) => index > start && line.startsWith('Última actualización'),
+  );
+
+  const content = lines
+    .slice(start + 1, end === -1 ? undefined : end)
+    .join('\n')
+    .trim();
+
+  return content || undefined;
+}
+
+export function parseChamiloAnnouncementDetail(
+  document: Document,
+  course: CampusCourseRef,
+  pageUrl: string,
+): SyncedAnnouncement | null {
+  const externalId = getChamiloAnnouncementId(pageUrl);
+  if (!externalId) return null;
+
+  const title = [...document.querySelectorAll('h1, h2, h3, h4')]
+    .map((element) => cleanText(element.textContent))
+    .find((text) => text && text !== 'Eliminar');
+
+  if (!title) return null;
+
+  return {
+    externalId,
+    courseExternalId: course.externalId,
+    title,
+    content: readAnnouncementContent(document, title),
+    sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
   };
 }

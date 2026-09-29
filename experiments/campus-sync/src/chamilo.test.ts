@@ -12,6 +12,9 @@ import {
   parseChamiloAssignments,
   getChamiloAssignmentId,
   parseChamiloAssignmentDetail,
+  getChamiloAnnouncementId,
+  parseChamiloAnnouncementDetail,
+  parseChamiloAnnouncements,
 } from './chamilo.ts';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -217,5 +220,78 @@ describe('Chamilo assignment detail', () => {
     expect(assignment?.description).toContain('Google y la evolución del liderazgo');
 
     expect(assignment?.submissionUrl).toContain('/main/work/upload.php');
+  });
+});
+
+describe('Chamilo announcements', () => {
+  it('reads an announcement id', () => {
+    expect(
+      getChamiloAnnouncementId(
+        'https://campus.ujcv.edu.hn/main/announcements/announcements.php?cidReq=ADM2011C1&action=view&id=297645',
+      ),
+    ).toBe('297645');
+  });
+
+  it('parses the real UJCV announcement list', () => {
+    const fixtureUrl = new URL('../fixtures/chamilo-announcements.html', import.meta.url);
+
+    const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
+
+    const dom = new JSDOM(html, {
+      url:
+        'https://campus.ujcv.edu.hn/main/announcements/announcements.php' +
+        '?cidReq=ADM2011C1&id_session=0',
+    });
+
+    const announcements = parseChamiloAnnouncements(
+      dom.window.document,
+      {
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+      },
+      dom.window.location.href,
+    );
+
+    expect(announcements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalId: '297645',
+          courseExternalId: 'ADM2011C1',
+          title: 'BIENVENIDA CLASE ADMINISTRACIÓN I - SECCIÓN C',
+          updatedAt: '2026-09-16T10:08:00',
+        }),
+      ]),
+    );
+  });
+
+  it('parses the real UJCV announcement detail', () => {
+    const fixtureUrl = new URL('../fixtures/chamilo-announcement-detail.html', import.meta.url);
+
+    const html = readFileSync(fileURLToPath(fixtureUrl), 'utf8');
+
+    const dom = new JSDOM(html, {
+      url:
+        'https://campus.ujcv.edu.hn/main/announcements/announcements.php' +
+        '?cidReq=ADM2011C1&id_session=0&action=view&id=297645',
+    });
+
+    const announcement = parseChamiloAnnouncementDetail(
+      dom.window.document,
+      {
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+      },
+      dom.window.location.href,
+    );
+
+    expect(announcement).toEqual(
+      expect.objectContaining({
+        externalId: '297645',
+        courseExternalId: 'ADM2011C1',
+        title: 'BIENVENIDA CLASE ADMINISTRACIÓN I - SECCIÓN C',
+      }),
+    );
+
+    expect(announcement?.content).toContain('Les doy la bienvenida al espacio virtual');
   });
 });
