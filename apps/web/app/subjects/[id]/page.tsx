@@ -6,7 +6,7 @@ import { AddReminder } from '@/app/reminders/add-reminder';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
-import { deleteSchedule } from './actions';
+import { archiveSubject, deleteSchedule } from './actions';
 import { deleteDocument, openDocument } from './document-actions';
 import { GenerateSessions } from './generate-sessions';
 import { ScheduleForm } from './schedule-form';
@@ -36,12 +36,26 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
         Materias
       </Link>
 
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">{subject.name}</h1>
-      <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-sm">
-        {subject.code ? `${subject.code} · ` : ''}
-        {MODALITY_LABEL[subject.defaultModality]}
-        {subject.professorName ? ` · ${subject.professorName}` : ''}
-      </p>
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{subject.name}</h1>
+          <p className="text-[color:var(--color-ink-muted)] mt-1.5 text-sm">
+            {subject.code ? `${subject.code} · ` : ''}
+            {MODALITY_LABEL[subject.defaultModality]}
+            {subject.professorName ? ` · ${subject.professorName}` : ''}
+          </p>
+        </div>
+
+        <form action={archiveSubject}>
+          <input type="hidden" name="subjectId" value={subject.id} />
+          <button
+            type="submit"
+            className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs"
+          >
+            Archivar materia
+          </button>
+        </form>
+      </div>
 
       <section className="mt-8" aria-labelledby="schedule-heading">
         <h2 id="schedule-heading" className="text-sm font-medium">

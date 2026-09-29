@@ -3,6 +3,7 @@
 import type { SubjectId, SubjectScheduleId } from '@pulse/types';
 import { createSubjectScheduleSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/session';
 
 export interface ScheduleResult {
@@ -73,4 +74,21 @@ export async function deleteSchedule(formData: FormData): Promise<void> {
   await db.schedules.remove(userId, schedule.data as SubjectScheduleId);
 
   revalidatePath(`/subjects/${subject.data}`);
+}
+
+
+export async function archiveSubject(formData: FormData): Promise<void> {
+  const subject = uuidSchema.safeParse(String(formData.get('subjectId') ?? ''));
+  if (!subject.success) return;
+
+  const { userId, db } = await requireUser();
+  const subjectId = subject.data as SubjectId;
+  const owned = await db.subjects.findById(userId, subjectId);
+  if (!owned) return;
+
+  await db.subjects.archive(userId, subjectId);
+
+  revalidatePath('/subjects');
+  revalidatePath('/');
+  redirect('/subjects');
 }
