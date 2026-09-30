@@ -50,6 +50,26 @@ describe('Chamilo deadlines', () => {
       .toBeUndefined();
   });
 
+  it('reads a deadline when a td contains the label instead of a th', () => {
+    const dom = new JSDOM(`
+      <html><body><h3>Entrega de ensayo</h3>
+        <table><tbody><tr><td>Fecha de entrega:</td><td>12/10/2026 23:45</td></tr></tbody></table>
+      </body></html>
+    `);
+    expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
+      .toBe('2026-10-12T23:45:00');
+  });
+
+  it('does not use an unrelated date when assignment details have no labeled deadline', () => {
+    const dom = new JSDOM(`
+      <html><body><h3>Entrega de ensayo</h3>
+        <table><tbody><tr><th>Última entrega</th><td>2026-09-30 07:00:00</td></tr></tbody></table>
+      </body></html>
+    `);
+    expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
+      .toBeUndefined();
+  });
+
   it('reads a labeled deadline from assignment details', () => {
     const dom = new JSDOM(`
       <html><body><h3>Entrega de ensayo</h3>

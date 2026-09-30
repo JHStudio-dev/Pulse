@@ -667,18 +667,27 @@ export function parseChamiloAssignmentDetail(
     ? sanitizeCampusUrl(submissionLink.href, pageUrl)
     : undefined;
 
-  const deadlineCells = [...document.querySelectorAll<HTMLTableRowElement>('tr')].filter(
-    (row) => /fecha\s*(?:l[ií]mite|de\s+entrega)|vencimiento|vence\s*:/i.test(
-      row.querySelector('th, td')?.textContent ?? '',
-    ),
-  );
-  const deadlineCandidates = [
-    ...deadlineCells.flatMap((row) =>
-      [...row.querySelectorAll<HTMLTableCellElement>('td')]
-        .slice(1)
-        .flatMap((cell) => [cell.getAttribute('title') ?? '', cell.textContent ?? '']),
-    ),
-  ];
+  const deadlineCandidates = [...document.querySelectorAll<HTMLTableRowElement>('tr')]
+    .flatMap((row) => {
+      const cells = [...row.children].filter(
+        (element) => element.tagName === 'TH' || element.tagName === 'TD',
+      );
+      const labelIndex = cells.findIndex((cell) =>
+        /^(?:fecha\s*(?:l[ií]mite|de\s+entrega)|vencimiento|vence\s*:)/i.test(
+          cleanText(cell.textContent),
+        ),
+      );
+
+      if (labelIndex === -1) return [];
+
+      const labelCell = cells[labelIndex]!;
+      return [
+        labelCell.textContent ?? '',
+        ...cells
+          .slice(labelIndex + 1)
+          .flatMap((cell) => [cell.getAttribute('title') ?? '', cell.textContent ?? '']),
+      ];
+    });
   const dueAt = deadlineCandidates
     .map(normalizeChamiloDateTime)
     .find((value): value is string => value !== undefined);
