@@ -5,12 +5,13 @@ import {
   fromSubject,
   fromTimeOfDay,
   toClassSession,
+  toReminder,
   toSubject,
   toSubjectSchedule,
   toTask,
   toTimeOfDay,
 } from './mappers';
-import type { ClassSessionRow, SubjectRow, SubjectScheduleRow, TaskRow } from './rows';
+import type { ClassSessionRow, ReminderRow, SubjectRow, SubjectScheduleRow, TaskRow } from './rows';
 
 const NOW = '2026-03-01T00:00:00.000Z';
 
@@ -171,5 +172,26 @@ describe('toTask', () => {
 
   it('trims a present due time', () => {
     expect(toTask({ ...row, due_time: '23:59:00' }).dueTime).toBe('23:59');
+  });
+});
+
+describe('toReminder', () => {
+  const row: ReminderRow = {
+    id: 'reminder-1',
+    user_id: 'user-1',
+    target_kind: 'task',
+    class_session_id: null,
+    task_id: 'task-1',
+    assessment_id: null,
+    kind: 'lead_time',
+    offset_minutes: 180,
+    message: 'Revisar el ensayo antes de entregar',
+    enabled: true,
+    created_at: NOW,
+  };
+
+  it('preserves the optional reminder message', () => {
+    expect(toReminder(row).message).toBe('Revisar el ensayo antes de entregar');
+    expect(toReminder({ ...row, message: null }).message).toBeNull();
   });
 });
