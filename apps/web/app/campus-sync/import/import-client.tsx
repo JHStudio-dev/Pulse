@@ -109,6 +109,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     return {
       documents: snapshot.documents.length,
       assignments: snapshot.assignments.length,
+      assignmentsWithDueDate: snapshot.assignments.filter((assignment) => Boolean(assignment.dueAt)).length,
       announcements: snapshot.announcements.length,
       events: snapshot.events.length,
     };
@@ -209,6 +210,14 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
               {counts.documents} documentos · {counts.assignments} tareas · {counts.announcements}{' '}
               anuncios · {counts.events} eventos
             </p>
+            {counts.assignments > 0 ? (
+              <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                Fechas detectadas: {counts.assignmentsWithDueDate} de {counts.assignments} tareas.
+                {counts.assignmentsWithDueDate === 0
+                  ? ' El campus no proporcionó fechas reconocibles para este curso.'
+                  : ''}
+              </p>
+            ) : null}
           </div>
 
 
