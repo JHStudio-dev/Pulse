@@ -397,6 +397,7 @@ export function toReminder(row: ReminderRow): Reminder {
     },
     kind: row.kind,
     offsetMinutes: row.offset_minutes,
+    message: row.message,
     enabled: row.enabled,
     createdAt: row.created_at,
   };

@@ -1,4 +1,5 @@
 import type { ClassSessionId, Reminder, ReminderId, TaskId, UserId } from '@pulse/types';
+import { DatabaseError } from '../ports/errors';
 import type { ReminderRepository } from '../ports/repositories';
 import type { PulseSupabaseClient } from './client';
 import { translateError } from './errors';
@@ -27,7 +28,12 @@ export function createReminderRepository(client: PulseSupabaseClient): ReminderR
      * rejects a task belonging to someone else, so a forged id cannot produce a
      * reminder even if it reached this far.
      */
-    async createForTask(userId: UserId, taskId: TaskId, offsetMinutes: number): Promise<Reminder> {
+    async createForTask(
+      userId: UserId,
+      taskId: TaskId,
+      offsetMinutes: number,
+      message: string | null = null,
+    ): Promise<Reminder> {
       const { data, error } = await client
         .from(TABLE)
         .insert({
@@ -36,6 +42,7 @@ export function createReminderRepository(client: PulseSupabaseClient): ReminderR
           task_id: taskId,
           kind: 'lead_time',
           offset_minutes: offsetMinutes,
+          message,
         })
         .select()
         .single();
@@ -48,6 +55,7 @@ export function createReminderRepository(client: PulseSupabaseClient): ReminderR
       userId: UserId,
       sessionId: ClassSessionId,
       offsetMinutes: number,
+      message: string | null = null,
     ): Promise<Reminder> {
       const { data, error } = await client
         .from(TABLE)
@@ -58,11 +66,35 @@ export function createReminderRepository(client: PulseSupabaseClient): ReminderR
           // `start` when it fires at the session, a lead time otherwise.
           kind: offsetMinutes === 0 ? 'start' : 'lead_time',
           offset_minutes: offsetMinutes,
+          message,
         })
         .select()
         .single();
 
       if (error) throw translateError(error);
+      return toReminder(data as ReminderRow);
+    },
+
+    async update(
+      userId: UserId,
+      id: ReminderId,
+      changes: { offsetMinutes?: number; message?: string | null; enabled?: boolean },
+    ): Promise<Reminder> {
+      const update: Record<string, unknown> = {};
+      if (changes.offsetMinutes !== undefined) update['offset_minutes'] = changes.offsetMinutes;
+      if (changes.message !== undefined) update['message'] = changes.message;
+      if (changes.enabled !== undefined) update['enabled'] = changes.enabled;
+
+      const { data, error } = await client
+        .from(TABLE)
+        .update(update)
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Reminder ${id} not found`);
       return toReminder(data as ReminderRow);
     },
 

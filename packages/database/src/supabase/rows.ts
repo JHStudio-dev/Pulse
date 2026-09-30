@@ -235,6 +235,7 @@ export interface ReminderRow {
   assessment_id: string | null;
   kind: 'lead_time' | 'departure' | 'start';
   offset_minutes: number;
+  message: string | null;
   enabled: boolean;
   created_at: string;
 }

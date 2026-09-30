@@ -31,6 +31,8 @@ export interface Reminder {
   kind: ReminderKind;
   /** Minutes before the target instant. */
   offsetMinutes: number;
+  /** Optional note shown with the reminder. */
+  message: string | null;
   enabled: boolean;
   createdAt: Instant;
 }

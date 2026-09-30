@@ -246,11 +246,17 @@ export interface NoteRepository {
  */
 export interface ReminderRepository {
   listByUser(userId: UserId): Promise<Reminder[]>;
-  createForTask(userId: UserId, taskId: TaskId, offsetMinutes: number): Promise<Reminder>;
+  createForTask(userId: UserId, taskId: TaskId, offsetMinutes: number, message?: string | null): Promise<Reminder>;
   createForSession(
     userId: UserId,
     sessionId: ClassSessionId,
     offsetMinutes: number,
+    message?: string | null,
+  ): Promise<Reminder>;
+  update(
+    userId: UserId,
+    id: ReminderId,
+    changes: { offsetMinutes?: number; message?: string | null; enabled?: boolean },
   ): Promise<Reminder>;
   remove(userId: UserId, id: ReminderId): Promise<void>;
 }
