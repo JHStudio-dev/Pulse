@@ -192,6 +192,9 @@ async function syncAssignments(
         ...assignment,
         ...detail,
         ...(assignment.dueAt !== undefined ? { dueAt: assignment.dueAt } : {}),
+        ...(detail.dueAt !== undefined && assignment.dueAt === undefined
+          ? { dueAt: detail.dueAt }
+          : {}),
       };
     }),
   );

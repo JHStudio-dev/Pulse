@@ -398,12 +398,115 @@ export function getChamiloAssignmentId(value: string): string | null {
   }
 }
 
-function normalizeChamiloDateTime(value: string): string | undefined {
-  const match = value.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+const CHAMILO_DATE_MONTHS: Record<string, number> = {
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
 
-  if (!match) return undefined;
+function toChamiloTimestamp(
+  year: number,
+  month: number,
+  day: number,
+  hour?: number,
+  minute?: number,
+): string | undefined {
+  if (
+    year < 2000 ||
+    year > 2100 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    (hour !== undefined && (hour < 0 || hour > 23)) ||
+    (minute !== undefined && (minute < 0 || minute > 59))
+  ) {
+    return undefined;
+  }
 
-  return match[0].replace(' ', 'T');
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  const isoDate = [
+    String(year).padStart(4, '0'),
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
+
+  if (hour === undefined || minute === undefined) return isoDate;
+  return `${isoDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+}
+
+export function normalizeChamiloDateTime(value: string): string | undefined {
+  const text = value.trim();
+  const iso = text.match(
+    /\b(20\d{2})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::\d{2})?)?\b/,
+  );
+
+  if (iso) {
+    return toChamiloTimestamp(
+      Number(iso[1]),
+      Number(iso[2]),
+      Number(iso[3]),
+      iso[4] === undefined ? undefined : Number(iso[4]),
+      iso[5] === undefined ? undefined : Number(iso[5]),
+    );
+  }
+
+  const numeric = text.match(
+    /\b(\d{1,2})[\/-](\d{1,2})[\/-](20\d{2})(?:[T\s]+(\d{1,2}):(\d{2})(?::\d{2})?)?\b/,
+  );
+
+  if (numeric) {
+    return toChamiloTimestamp(
+      Number(numeric[3]),
+      Number(numeric[2]),
+      Number(numeric[1]),
+      numeric[4] === undefined ? undefined : Number(numeric[4]),
+      numeric[5] === undefined ? undefined : Number(numeric[5]),
+    );
+  }
+
+  const normalized = text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+  const spanish = normalized.match(
+    /\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})(?:\s+(?:a\s+las\s+)?(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?)?)?/,
+  );
+  if (!spanish) return undefined;
+
+  let hour = spanish[4] === undefined ? undefined : Number(spanish[4]);
+  const period = spanish[6]?.replace(/\./g, '');
+
+  if (hour !== undefined && period) {
+    if (hour < 1 || hour > 12) return undefined;
+    if (period === 'pm' && hour < 12) hour += 12;
+    if (period === 'am' && hour === 12) hour = 0;
+  }
+
+  return toChamiloTimestamp(
+    Number(spanish[3]),
+    CHAMILO_DATE_MONTHS[spanish[2]!]!,
+    Number(spanish[1]),
+    hour,
+    spanish[5] === undefined ? undefined : Number(spanish[5]),
+  );
 }
 
 export function parseChamiloAssignments(
@@ -440,11 +543,22 @@ export function parseChamiloAssignments(
 
     if (!title) continue;
 
-    const cells = [...row.querySelectorAll<HTMLTableCellElement>('td')]
-      .map((cell) => cleanText(cell.innerText || cell.textContent))
-      .filter(Boolean);
+    const deadlineCell = row.querySelector<HTMLTableCellElement>(
+      'td[aria-describedby$="_expires_on"], td[aria-describedby$="_due_date"], td[data-field="dueAt"]',
+    );
 
-    const dueAt = cells
+    const textValues = (cell: HTMLTableCellElement): string[] => [
+      cell.getAttribute('title') ?? '',
+      cell.getAttribute('data-date') ?? '',
+      cell.innerText || cell.textContent || '',
+    ];
+
+    const deadlineValues = deadlineCell
+      ? textValues(deadlineCell)
+      : [...row.querySelectorAll<HTMLTableCellElement>('td')]
+          .flatMap(textValues);
+
+    const dueAt = deadlineValues
       .map(normalizeChamiloDateTime)
       .find((value): value is string => value !== undefined);
 
@@ -553,12 +667,29 @@ export function parseChamiloAssignmentDetail(
     ? sanitizeCampusUrl(submissionLink.href, pageUrl)
     : undefined;
 
+  const deadlineCells = [...document.querySelectorAll<HTMLTableRowElement>('tr')].filter(
+    (row) => /fecha\s*(?:l[ií]mite|de\s+entrega)|vencimiento|vence\s*:/i.test(
+      row.querySelector('th, td')?.textContent ?? '',
+    ),
+  );
+  const deadlineCandidates = [
+    ...deadlineCells.flatMap((row) =>
+      [...row.querySelectorAll<HTMLTableCellElement>('td')]
+        .slice(1)
+        .flatMap((cell) => [cell.getAttribute('title') ?? '', cell.textContent ?? '']),
+    ),
+  ];
+  const dueAt = deadlineCandidates
+    .map(normalizeChamiloDateTime)
+    .find((value): value is string => value !== undefined);
+
   return {
     externalId,
     courseExternalId: course.externalId,
     title: heading,
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
     hasSubmission: hasChamiloSubmission(document),
+    ...(dueAt !== undefined ? { dueAt } : {}),
     ...(description !== undefined ? { description } : {}),
     ...(submissionUrl !== undefined ? { submissionUrl } : {}),
   };

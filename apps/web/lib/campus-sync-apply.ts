@@ -110,8 +110,7 @@ async function applyAssignment(
     subjectId,
     title,
     description,
-    dueDate: due.dueDate,
-    dueTime: due.dueTime,
+    ...(due.dueDate !== null ? { dueDate: due.dueDate, dueTime: due.dueTime } : {}),
   };
 
   if (item.appliedTaskId) {
