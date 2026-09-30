@@ -495,6 +495,55 @@ async function main() {
   }
   check('student B cannot upload into A recordings folder', forgedRecordingUpload, true);
 
+
+  // Deleting a subject clears nullable links, not the owning user_id.
+  // Keep the surviving task, document, note and inbox item associated
+  // with the student even when their former subject no longer exists.
+  await actAs(db, studentA);
+  await db.query(
+    `insert into documents
+       (user_id, subject_id, title, source, external_url)
+     values ($1, $2, 'Apuntes', 'link', 'https://example.test/document')`,
+    [studentA, subjectId],
+  );
+  await db.query(
+    `insert into notes (user_id, subject_id, body)
+     values ($1, $2, 'Notas de clase')`,
+    [studentA, subjectId],
+  );
+  await db.query(
+    `insert into inbox_items (user_id, subject_id, raw_text)
+     values ($1, $2, 'Una entrega')`,
+    [studentA, subjectId],
+  );
+
+  const removedSubject = await db.query(
+    'delete from subjects where id = $1 returning id',
+    [subjectId],
+  );
+  check('student A deletes their subject', removedSubject.rows.length, 1);
+
+  for (const table of ['tasks', 'documents', 'notes', 'inbox_items']) {
+    const detached = await db.query(
+      `select count(*)::int as n from ${table}
+       where user_id = $1 and subject_id is null`,
+      [studentA],
+    );
+    check(`${table} survive subject deletion with owner intact`, detached.rows[0].n, 1);
+  }
+
+  const orphanLinks = await db.query(
+    'select count(*)::int as n from campus_subject_links where subject_id = $1',
+    [subjectId],
+  );
+  check('campus links cascade after subject deletion', orphanLinks.rows[0].n, 0);
+
+  const keptUsage = await db.query(
+    'select count(*)::int as n from model_usage where user_id = $1 and recording_id is null',
+    [studentA],
+  );
+  check('model usage keeps its owner when a class recording cascades', keptUsage.rows[0].n, 1);
+
   await db.exec('reset role;');
   await db.close();
 
