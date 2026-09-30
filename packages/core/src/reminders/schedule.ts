@@ -90,7 +90,7 @@ export function resolveReminders(
 
     if (reminder.target.kind === 'task' && reminder.target.taskId !== null) {
       const task = targets.tasks.get(reminder.target.taskId);
-      if (!task) continue;
+      if (!task || task.status === 'done' || task.status === 'submitted') continue;
       targetAt = taskDueAt(task, timeZone);
       targetTitle = task.title;
     }

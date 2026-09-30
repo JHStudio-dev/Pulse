@@ -42,6 +42,7 @@ function makeReminder(overrides: Partial<Reminder> = {}): Reminder {
     target: { kind: 'task', classSessionId: null, taskId: 'task-1' as TaskId, assessmentId: null },
     kind: 'lead_time',
     offsetMinutes: 1440,
+    message: null,
     enabled: true,
     createdAt: NOW,
     ...overrides,
@@ -127,6 +128,11 @@ describe('resolveReminders', () => {
     expect(
       resolveReminders([makeReminder({ enabled: false })], targets, TZ, new Date(NOW)),
     ).toEqual([]);
+  });
+
+  it('does not show reminders for completed tasks', () => {
+    const targets = { ...emptyTargets, tasks: new Map([['task-1', makeTask({ status: 'done' })]]) };
+    expect(resolveReminders([makeReminder()], targets, TZ, new Date(NOW))).toEqual([]);
   });
 
   it('ignores a reminder for a cancelled class', () => {

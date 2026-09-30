@@ -182,6 +182,76 @@ export async function createSessionReminder(
   return { error: null, saved: true };
 }
 
+export async function updateReminder(
+  _previous: ReminderResult,
+  formData: FormData,
+): Promise<ReminderResult> {
+  const id = uuidSchema.safeParse(text(formData, 'reminderId'));
+  if (!id.success) return { error: 'Recordatorio no válido', saved: false };
+
+  const { userId, db } = await requireUser();
+  const period = await db.periods.findActive(userId);
+  if (!period) return { error: 'No hay período activo', saved: false };
+
+  const reminder = (await db.reminders.listByUser(userId)).find((item) => item.id === id.data);
+  if (!reminder || !reminder.enabled) {
+    return { error: 'Recordatorio no encontrado', saved: false };
+  }
+
+  let targetAt: Date | null = null;
+  if (reminder.target.kind === 'task' && reminder.target.taskId) {
+    const task = await db.tasks.findById(userId, reminder.target.taskId);
+    if (!task || task.status === 'done' || task.status === 'submitted') {
+      return { error: 'La tarea ya no está pendiente', saved: false };
+    }
+    targetAt = taskDueAt(task, period.timeZone);
+  }
+  if (reminder.target.kind === 'class_session' && reminder.target.classSessionId) {
+    const session = await db.sessions.findById(userId, reminder.target.classSessionId);
+    if (!session || session.status === 'cancelled') {
+      return { error: 'La clase ya no está disponible', saved: false };
+    }
+    targetAt = sessionStartsAt(session, period.timeZone);
+  }
+
+  if (!targetAt || targetAt.getTime() <= Date.now()) {
+    return { error: 'La fecha de este recordatorio ya pasó', saved: false };
+  }
+
+  const message = text(formData, 'message');
+  if (message.length > 500) return { error: 'El mensaje admite hasta 500 caracteres', saved: false };
+
+  const offset = resolveOffset(formData, targetAt, period.timeZone);
+  if (typeof offset === 'string') return { error: offset, saved: false };
+  if (offset > 525600 || reminderFiresAt(targetAt, offset).getTime() <= Date.now()) {
+    return { error: 'Elige un momento futuro antes de la fecha límite', saved: false };
+  }
+
+  const all = await db.reminders.listByUser(userId);
+  if (all.some((item) =>
+    item.id !== reminder.id &&
+    item.enabled &&
+    item.target.kind === reminder.target.kind &&
+    item.target.taskId === reminder.target.taskId &&
+    item.target.classSessionId === reminder.target.classSessionId &&
+    item.offsetMinutes === offset
+  )) {
+    return { error: 'Ya tienes otro recordatorio para ese momento', saved: false };
+  }
+
+  try {
+    await db.reminders.update(userId, reminder.id, {
+      offsetMinutes: offset,
+      message: message || null,
+    });
+  } catch {
+    return { error: 'No se pudo actualizar el recordatorio', saved: false };
+  }
+
+  refresh();
+  return { error: null, saved: true };
+}
+
 export async function deleteReminder(formData: FormData): Promise<void> {
   const parsedId = uuidSchema.safeParse(String(formData.get('reminderId') ?? ''));
   if (!parsedId.success) return;

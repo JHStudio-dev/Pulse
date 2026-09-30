@@ -4,10 +4,11 @@ import { AppShell } from '@/components/app-shell';
 import { loadReminders } from '@/lib/reminders';
 import { requireUser } from '@/lib/session';
 import { deleteReminder } from './actions';
+import { EditReminder } from './edit-reminder';
 
 /** "3 días antes", "Al empezar" — describes the rule, not the clock. */
 function describeOffset(minutes: number, kind: string): string {
-  if (minutes === 0) return kind === 'task' ? 'El mismo día' : 'Al empezar';
+  if (minutes === 0) return kind === 'task' ? 'A la hora límite' : 'Al empezar';
   if (minutes < 60) return `${minutes} min antes`;
   if (minutes < 1440) return `${Math.round(minutes / 60)} h antes`;
   const days = Math.round(minutes / 1440);
@@ -36,9 +37,19 @@ function ReminderRow({ entry, timeZone }: { entry: ResolvedReminder; timeZone: s
         {describeOffset(reminder.offsetMinutes, reminder.target.kind)}
       </span>
 
+      {reminder.message ? (
+        <p className="text-[color:var(--color-ink-muted)] basis-full text-xs">
+          {reminder.message}
+        </p>
+      ) : null}
+
       <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
         {formatMoment(entry.firesAt, timeZone)}
       </span>
+
+      {entry.state !== 'expired' ? (
+        <EditReminder entry={entry} timeZone={timeZone} />
+      ) : null}
 
       <form action={deleteReminder}>
         <input type="hidden" name="reminderId" value={reminder.id} />
@@ -73,7 +84,7 @@ export default async function RemindersPage() {
     <AppShell email={email} subjects={subjects.map((s) => ({ id: s.id as string, name: s.name }))}>
       <h1 className="text-2xl font-semibold tracking-tight">Recordatorios</h1>
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
-        Los avisos aparecen dentro de Pulse. Todavía no se envían por correo ni notificaciones.
+        Los avisos y mensajes aparecen dentro de Pulse. El envío por correo está pendiente de configuración.
       </p>
 
       {resolved.length === 0 ? (
