@@ -9,7 +9,9 @@ const field =
   'mt-1.5 w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-2 text-sm';
 
 const TASK_CHOICES = [
-  { value: '0', label: 'El mismo día' },
+  { value: '0', label: 'En el momento de la entrega' },
+  { value: '60', label: '1 hora antes' },
+  { value: '180', label: '3 horas antes' },
   { value: '1440', label: '1 día antes' },
   { value: '4320', label: '3 días antes' },
   { value: '10080', label: '7 días antes' },
@@ -38,10 +40,12 @@ function SubmitButton() {
 function Form({
   kind,
   targetId,
+  dueDate,
   close,
 }: {
   kind: 'task' | 'session';
   targetId: string;
+  dueDate?: string | null;
   close: () => void;
 }) {
   const action = kind === 'task' ? createTaskReminder : createSessionReminder;
@@ -59,6 +63,26 @@ function Form({
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name={kind === 'task' ? 'taskId' : 'sessionId'} value={targetId} />
+
+      {kind === 'task' && !dueDate ? (
+        <div className="rounded-md border border-[color:var(--color-border)] p-3">
+          <p className="mb-2 text-sm font-medium">Esta tarea no tiene fecha límite</p>
+          <p className="text-[color:var(--color-ink-muted)] mb-3 text-xs">
+            Agrega una fecha para guardar el recordatorio. Si no indicas una hora, se usará
+            el final del día (23:59).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs">
+              Fecha límite
+              <input name="taskDueDate" type="date" required className={field} />
+            </label>
+            <label className="text-xs">
+              Hora límite (opcional)
+              <input name="taskDueTime" type="time" className={field} />
+            </label>
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <label htmlFor="offsetMinutes" className="block text-sm font-medium">
@@ -97,9 +121,20 @@ function Form({
         </div>
       ) : null}
 
-      {/* Says plainly where the reminder will show up. Nothing is sent anywhere. */}
+      <label htmlFor="reminder-message" className="block text-sm font-medium">
+        Mensaje personalizado (opcional)
+        <textarea
+          id="reminder-message"
+          name="message"
+          rows={2}
+          maxLength={500}
+          placeholder="Ej.: Terminar el ensayo y revisar el formato"
+          className={field}
+        />
+      </label>
       <p className="text-[color:var(--color-ink-muted)] text-xs">
-        El aviso aparece dentro de Pulse, en Inicio y en Recordatorios.
+        Por ahora el aviso y tu mensaje aparecen dentro de Pulse. El envío por correo
+        todavía no está activado.
       </p>
 
       {state.error ? (
@@ -117,10 +152,12 @@ export function AddReminder({
   kind,
   targetId,
   label = 'Recordarme',
+  dueDate,
 }: {
   kind: 'task' | 'session';
   targetId: string;
   label?: string;
+  dueDate?: string | null;
 }) {
   return (
     <Dialog
@@ -135,7 +172,7 @@ export function AddReminder({
         </button>
       )}
     >
-      {(close) => <Form kind={kind} targetId={targetId} close={close} />}
+      {(close) => <Form kind={kind} targetId={targetId} dueDate={dueDate} close={close} />}
     </Dialog>
   );
 }

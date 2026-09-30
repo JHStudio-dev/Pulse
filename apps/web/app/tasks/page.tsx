@@ -18,9 +18,10 @@ export default async function TasksPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const [subjects, allTasks] = await Promise.all([
+  const [subjects, allTasks, reminders] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.tasks.listByUser(userId),
+    db.reminders.listByUser(userId),
   ]);
 
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((s) => [s.id, s]));
@@ -29,6 +30,13 @@ export default async function TasksPage() {
   const tasks = allTasks.filter(
     (task) => task.subjectId === null || subjectsById.has(task.subjectId),
   );
+
+  const reminderCounts = new Map<string, number>();
+  for (const reminder of reminders) {
+    if (!reminder.enabled || !reminder.target.taskId) continue;
+    const taskId = reminder.target.taskId;
+    reminderCounts.set(taskId, (reminderCounts.get(taskId) ?? 0) + 1);
+  }
 
   const today = instantToZonedDate(new Date(), period.timeZone);
 
@@ -78,6 +86,7 @@ export default async function TasksPage() {
                 subjectsById={subjectsById}
                 subjects={options}
                 today={today}
+                reminderCounts={reminderCounts}
               />
             )}
           </section>
@@ -92,6 +101,7 @@ export default async function TasksPage() {
                 subjectsById={subjectsById}
                 subjects={options}
                 today={today}
+                reminderCounts={reminderCounts}
               />
             </section>
           ) : null}

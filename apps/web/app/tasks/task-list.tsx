@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { isOverdue, resolveTaskPriority, type PriorityLevel } from '@pulse/core';
 import type { Subject, SubjectId, Task } from '@pulse/types';
 import { formatSessionDate } from '@/lib/format';
@@ -47,11 +48,13 @@ export function TaskList({
   subjectsById,
   subjects,
   today,
+  reminderCounts,
 }: {
   tasks: readonly Task[];
   subjectsById: ReadonlyMap<SubjectId, Subject>;
   subjects: { id: string; name: string }[];
   today: string;
+  reminderCounts: ReadonlyMap<string, number>;
 }) {
   return (
     <ul className="mt-4 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
@@ -93,8 +96,23 @@ export function TaskList({
             </div>
 
             <div className="flex items-center gap-3">
-              {task.dueDate !== null && !done ? (
-                <AddReminder kind="task" targetId={task.id} />
+              {!done ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <AddReminder
+                    kind="task"
+                    targetId={task.id}
+                    dueDate={task.dueDate}
+                    label="Recordatorio"
+                  />
+                  {(reminderCounts.get(task.id) ?? 0) > 0 ? (
+                    <Link
+                      href="/reminders"
+                      className="text-[color:var(--color-ink-muted)] text-xs underline-offset-4 hover:underline"
+                    >
+                      {reminderCounts.get(task.id)} activo(s)
+                    </Link>
+                  ) : null}
+                </div>
               ) : null}
               <EditTask task={task} subjects={subjects} />
             </div>

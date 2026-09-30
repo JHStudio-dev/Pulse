@@ -123,7 +123,7 @@ export async function toggleTaskDone(formData: FormData): Promise<void> {
   const task = await db.tasks.findById(userId, id);
   if (!task) return;
 
-  const done = task.status === 'done';
+  const done = task.status === 'done' || task.status === 'submitted';
   await db.tasks.update(userId, id, {
     status: done ? 'pending' : 'done',
     progress: done ? 0 : 100,
