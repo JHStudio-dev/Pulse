@@ -13,12 +13,14 @@ export function MonthGrid({
   month,
   classesByDate,
   tasksByDate,
+  eventsByDate,
   today,
   selected,
 }: {
   month: MonthKey;
   classesByDate: ReadonlyMap<IsoDate, number>;
   tasksByDate: ReadonlyMap<IsoDate, number>;
+  eventsByDate: ReadonlyMap<IsoDate, number>;
   today: IsoDate;
   selected: IsoDate | null;
 }) {
@@ -38,6 +40,7 @@ export function MonthGrid({
         {weeks.flat().map((day) => {
           const classes = classesByDate.get(day.date) ?? 0;
           const tasks = tasksByDate.get(day.date) ?? 0;
+          const events = eventsByDate.get(day.date) ?? 0;
           const isToday = day.date === today;
           const isSelected = day.date === selected;
 
@@ -67,13 +70,18 @@ export function MonthGrid({
                 {tasks > 0 ? (
                   <span className="text-[color:var(--color-ink-muted)] block">{tasks}E</span>
                 ) : null}
+                {events > 0 ? (
+                  <span className="text-[color:var(--color-ink-muted)] block">{events}V</span>
+                ) : null}
               </span>
             </Link>
           );
         })}
       </div>
 
-      <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">C = clases · E = entregas</p>
+      <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
+        C = clases · E = entregas · V = eventos del campus
+      </p>
     </div>
   );
 }

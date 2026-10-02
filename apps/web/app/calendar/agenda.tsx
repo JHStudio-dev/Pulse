@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import type { ClassSession, IsoDate, Subject, SubjectId, Task } from '@pulse/types';
+import type { CampusEventEntry } from '@/lib/campus-activity';
+import { campusEventTime } from '@/lib/campus-activity';
 import { formatSessionDate, MODALITY_LABEL } from '@/lib/format';
 
 /**
@@ -12,9 +14,10 @@ import { formatSessionDate, MODALITY_LABEL } from '@/lib/format';
 
 export interface AgendaEntry {
   date: IsoDate;
-  kind: 'class' | 'task';
+  kind: 'class' | 'task' | 'campus_event';
   session?: ClassSession;
   task?: Task;
+  campusEvent?: CampusEventEntry;
 }
 
 export function Agenda({
@@ -69,6 +72,40 @@ export function Agenda({
                         {session.status === 'cancelled' ? ' · Cancelada' : ''}
                       </span>
                     </Link>
+                  </li>
+                );
+              }
+
+              if (entry.kind === 'campus_event' && entry.campusEvent) {
+                const event = entry.campusEvent;
+                const content = (
+                  <>
+                    <span className="font-mono text-xs tabular-nums">
+                      {campusEventTime(event) ?? '—'}
+                    </span>
+                    <span className="text-sm">{event.title}</span>
+                    <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
+                      Evento · {event.subjectName}{event.allDay ? ' · Todo el día' : ''}
+                    </span>
+                  </>
+                );
+
+                return (
+                  <li key={`e-${event.id}`}>
+                    {event.sourceUrl ? (
+                      <a
+                        href={event.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:bg-[color:var(--color-surface-raised)] flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-1 py-2"
+                      >
+                        {content}
+                      </a>
+                    ) : (
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-1 py-2">
+                        {content}
+                      </div>
+                    )}
                   </li>
                 );
               }

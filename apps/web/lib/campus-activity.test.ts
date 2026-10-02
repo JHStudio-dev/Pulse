@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { CampusSyncItem, Subject } from '@pulse/types';
-import { buildCampusAnnouncements, buildCampusEvents } from './campus-activity';
+import {
+  buildCampusAnnouncements,
+  buildCampusEvents,
+  campusEventDate,
+  campusEventTime,
+} from './campus-activity';
 
 const subject = {
   id: 'subject-1',
@@ -59,11 +64,30 @@ describe('campus activity', () => {
           title: 'Evaluación',
           startsAt: '2026-10-12T23:45:00',
           allDay: false,
+          sourceType: 'agenda',
         },
       }),
     ], subject);
 
     expect(entry?.startsAt).toBe('2026-10-12T23:45:00');
     expect(entry?.allDay).toBe(false);
+    expect(entry?.sourceType).toBe('agenda');
+  });
+
+  it('reads local campus date and time without shifting timezones', () => {
+    const [event] = buildCampusEvents([
+      item({
+        kind: 'event',
+        payload: {
+          title: 'Evaluación',
+          startsAt: '2026-10-12T23:45:00',
+          allDay: false,
+          sourceType: 'agenda',
+        },
+      }),
+    ], subject);
+
+    expect(event && campusEventDate(event)).toBe('2026-10-12');
+    expect(event && campusEventTime(event)).toBe('23:45');
   });
 });

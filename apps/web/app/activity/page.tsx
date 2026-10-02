@@ -1,19 +1,39 @@
 import { redirect } from 'next/navigation';
-import type { CampusSyncItem, Subject, SubjectId } from '@pulse/types';
+import type { Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
-import { buildCampusAnnouncements, buildCampusEvents } from '@/lib/campus-activity';
+import {
+  buildCampusAnnouncements,
+  buildCampusEvents,
+  campusEventDate,
+  campusEventTime,
+} from '@/lib/campus-activity';
 import { requireUser } from '@/lib/session';
 
-function formatMoment(value: string, timeZone: string, allDay = false): string {
+function formatMoment(value: string, timeZone: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat('es', {
     day: 'numeric',
     month: 'short',
-    ...(allDay ? {} : { hour: '2-digit', minute: '2-digit' }),
+    hour: '2-digit',
+    minute: '2-digit',
     timeZone,
   }).format(date);
+}
+
+function formatCampusEvent(event: ReturnType<typeof buildCampusEvents>[number]): string {
+  const date = campusEventDate(event);
+  if (!date) return event.startsAt;
+
+  const formatted = new Intl.DateTimeFormat('es', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${date}T12:00:00Z`));
+
+  const time = campusEventTime(event);
+  return time ? `${formatted} · ${time}` : `${formatted} · Todo el día`;
 }
 
 export default async function ActivityPage() {
@@ -110,7 +130,7 @@ export default async function ActivityPage() {
                   <p className="text-sm font-medium">{entry.title}</p>
                   <span className="text-[color:var(--color-ink-muted)] text-xs">{entry.subjectName}</span>
                   <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
-                    {formatMoment(entry.startsAt, period.timeZone, entry.allDay)}
+                    {formatCampusEvent(entry)}
                   </span>
                 </div>
                 {entry.description ? (
@@ -141,7 +161,7 @@ export default async function ActivityPage() {
                 <span className="text-sm">{entry.title}</span>
                 <span className="text-xs">{entry.subjectName}</span>
                 <span className="ml-auto text-xs">
-                  {formatMoment(entry.startsAt, period.timeZone, entry.allDay)}
+                  {formatCampusEvent(entry)}
                 </span>
               </li>
             ))}

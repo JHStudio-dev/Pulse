@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { instantToZonedDate } from '@pulse/core';
 import type { IsoDate, Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { buildCampusEvents, campusEventDate, campusEventTime } from '@/lib/campus-activity';
 import {
   clampMonth,
   endOfMonth,
@@ -42,13 +43,33 @@ export default async function CalendarPage({
   const from = startOfMonth(month);
   const to = endOfMonth(month);
 
-  const [subjects, sessions, allTasks] = await Promise.all([
+  const [subjects, sessions, allTasks, campusLinks] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.sessions.listInRange(userId, from, to),
     db.tasks.listByUser(userId),
+    db.campusSync.listSubjectLinks(userId),
   ]);
 
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((s) => [s.id, s]));
+
+  const activeCampusLinks = campusLinks.filter((link) => subjectsById.has(link.subjectId));
+  const campusItemGroups = await Promise.all(
+    activeCampusLinks.map((link) => db.campusSync.listItems(userId, link.id)),
+  );
+
+  // Assignment-derived campus events already exist as Pulse tasks. Keeping only
+  // agenda events prevents the same deadline from appearing twice.
+  const campusEvents = activeCampusLinks
+    .flatMap((link, index) => {
+      const subject = subjectsById.get(link.subjectId);
+      if (!subject) return [];
+      return buildCampusEvents(campusItemGroups[index] ?? [], subject);
+    })
+    .filter((event) => event.sourceType === 'agenda')
+    .filter((event) => {
+      const date = campusEventDate(event);
+      return date !== null && date >= from && date <= to;
+    });
 
   const tasks = allTasks.filter(
     (task) =>
@@ -60,11 +81,19 @@ export default async function CalendarPage({
 
   const classesByDate = countByDate(sessions.map((session) => session.date));
   const tasksByDate = countByDate(tasks.map((task) => task.dueDate as IsoDate));
+  const eventsByDate = countByDate(
+    campusEvents
+      .map(campusEventDate)
+      .filter((date): date is IsoDate => date !== null),
+  );
 
   const visibleSessions = selected
     ? sessions.filter((session) => session.date === selected)
     : sessions;
   const visibleTasks = selected ? tasks.filter((task) => task.dueDate === selected) : tasks;
+  const visibleCampusEvents = selected
+    ? campusEvents.filter((event) => campusEventDate(event) === selected)
+    : campusEvents;
 
   const unsorted: AgendaEntry[] = [
     ...visibleSessions.map((session) => ({
@@ -77,11 +106,23 @@ export default async function CalendarPage({
       kind: 'task' as const,
       task,
     })),
+    ...visibleCampusEvents.flatMap((campusEvent) => {
+      const date = campusEventDate(campusEvent);
+      if (!date) return [];
+      return [{
+        date: date as IsoDate,
+        kind: 'campus_event' as const,
+        campusEvent,
+      }];
+    }),
   ];
 
   // A deadline with no time sorts after the day's classes rather than above them.
   const timeKey = (entry: AgendaEntry): string =>
-    entry.session?.startTime ?? entry.task?.dueTime ?? '99:99';
+    entry.session?.startTime ??
+    entry.task?.dueTime ??
+    (entry.campusEvent ? campusEventTime(entry.campusEvent) : null) ??
+    (entry.campusEvent?.allDay ? '00:00' : '99:99');
 
   const entries = unsorted.sort(
     (a, b) => a.date.localeCompare(b.date) || timeKey(a).localeCompare(timeKey(b)),
@@ -127,6 +168,7 @@ export default async function CalendarPage({
         month={month}
         classesByDate={classesByDate}
         tasksByDate={tasksByDate}
+        eventsByDate={eventsByDate}
         today={today}
         selected={selected}
       />
@@ -149,7 +191,7 @@ export default async function CalendarPage({
         {entries.length === 0 ? (
           <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
             {selected
-              ? 'No hay clases ni entregas ese día.'
+              ? 'No hay clases, entregas ni eventos ese día.'
               : subjects.length === 0
                 ? 'Agrega materias y horarios para ver tus clases aquí.'
                 : 'No hay nada programado este mes.'}

@@ -20,6 +20,8 @@ export interface CampusEventEntry {
   startsAt: string;
   endsAt: string | null;
   allDay: boolean;
+  sourceType: 'agenda' | 'assignment';
+  sourceExternalId: string | null;
   sourceUrl: string | null;
 }
 
@@ -31,6 +33,23 @@ function text(value: unknown): string | null {
 
 function boolean(value: unknown): boolean {
   return value === true;
+}
+
+function eventSourceType(value: unknown): 'agenda' | 'assignment' {
+  return value === 'assignment' ? 'assignment' : 'agenda';
+}
+
+export function campusEventDate(event: Pick<CampusEventEntry, 'startsAt'>): string | null {
+  const match = event.startsAt.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? null;
+}
+
+export function campusEventTime(
+  event: Pick<CampusEventEntry, 'startsAt' | 'allDay'>,
+): string | null {
+  if (event.allDay) return null;
+  const match = event.startsAt.match(/^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2})/);
+  return match?.[1] ?? null;
 }
 
 function plainText(value: string | null): string | null {
@@ -86,6 +105,8 @@ export function buildCampusEvents(
         startsAt,
         endsAt: text(item.payload['endsAt']),
         allDay: boolean(item.payload['allDay']),
+        sourceType: eventSourceType(item.payload['sourceType']),
+        sourceExternalId: text(item.payload['sourceExternalId']),
         sourceUrl: item.sourceUrl,
       }];
     })
