@@ -66,6 +66,8 @@ export interface CampusSyncItem {
   payload: JsonObject;
   firstSeenAt: Instant;
   lastSeenAt: Instant;
+  lastChangeKind: Exclude<CampusSyncDiffState, 'unchanged'> | null;
+  lastChangedAt: Instant | null;
   appliedAt: Instant | null;
   appliedTaskId: TaskId | null;
   appliedDocumentId: DocumentId | null;

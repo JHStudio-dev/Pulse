@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CampusSyncItem, Subject } from '@pulse/types';
 import {
   buildCampusAnnouncements,
+  buildCampusChanges,
   buildCampusEvents,
   campusEventDate,
   campusEventTime,
@@ -25,6 +26,8 @@ function item(overrides: Partial<CampusSyncItem>): CampusSyncItem {
     payload: {},
     firstSeenAt: '2026-09-30T12:00:00.000Z',
     lastSeenAt: '2026-09-30T12:00:00.000Z',
+    lastChangeKind: null,
+    lastChangedAt: null,
     appliedAt: null,
     appliedTaskId: null,
     appliedDocumentId: null,
@@ -33,6 +36,25 @@ function item(overrides: Partial<CampusSyncItem>): CampusSyncItem {
 }
 
 describe('campus activity', () => {
+  it('builds a recent change entry when an item changed', () => {
+    const [entry] = buildCampusChanges([
+      item({
+        kind: 'assignment',
+        payload: { title: 'Ensayo final' },
+        lastChangeKind: 'changed',
+        lastChangedAt: '2026-10-01T18:00:00.000Z',
+      }),
+    ], subject);
+
+    expect(entry?.change).toBe('changed');
+    expect(entry?.title).toBe('Ensayo final');
+    expect(entry?.subjectName).toBe('Administración I');
+  });
+
+  it('does not invent a change for legacy items without change metadata', () => {
+    expect(buildCampusChanges([item({})], subject)).toEqual([]);
+  });
+
   it('builds safe announcement text from campus html', () => {
     const [entry] = buildCampusAnnouncements([
       item({

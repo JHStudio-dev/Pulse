@@ -4,6 +4,7 @@ import {
   fromClassSession,
   fromSubject,
   fromTimeOfDay,
+  toCampusSyncItem,
   toClassSession,
   toReminder,
   toSubject,
@@ -11,7 +12,14 @@ import {
   toTask,
   toTimeOfDay,
 } from './mappers';
-import type { ClassSessionRow, ReminderRow, SubjectRow, SubjectScheduleRow, TaskRow } from './rows';
+import type {
+  CampusSyncItemRow,
+  ClassSessionRow,
+  ReminderRow,
+  SubjectRow,
+  SubjectScheduleRow,
+  TaskRow,
+} from './rows';
 
 const NOW = '2026-03-01T00:00:00.000Z';
 
@@ -193,5 +201,33 @@ describe('toReminder', () => {
   it('preserves the optional reminder message', () => {
     expect(toReminder(row).message).toBe('Revisar el ensayo antes de entregar');
     expect(toReminder({ ...row, message: null }).message).toBeNull();
+  });
+});
+
+
+describe('toCampusSyncItem', () => {
+  const row: CampusSyncItemRow = {
+    id: 'item-1',
+    user_id: 'user-1',
+    campus_subject_link_id: 'link-1',
+    last_sync_run_id: 'run-1',
+    kind: 'assignment',
+    external_id: 'task-1',
+    source_url: 'https://campus.example/task-1',
+    content_hash: 'abcd1234',
+    payload: { title: 'Ensayo' },
+    first_seen_at: NOW,
+    last_seen_at: NOW,
+    last_change_kind: 'changed',
+    last_changed_at: '2026-10-01T18:00:00.000Z',
+    applied_at: null,
+    applied_task_id: null,
+    applied_document_id: null,
+  };
+
+  it('maps the latest campus change metadata', () => {
+    const item = toCampusSyncItem(row);
+    expect(item.lastChangeKind).toBe('changed');
+    expect(item.lastChangedAt).toBe('2026-10-01T18:00:00.000Z');
   });
 });

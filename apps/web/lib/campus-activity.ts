@@ -11,6 +11,17 @@ export interface CampusAnnouncementEntry {
   updatedAt: string;
 }
 
+export interface CampusChangeEntry {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  kind: CampusSyncItem['kind'];
+  change: 'new' | 'changed';
+  title: string;
+  changedAt: string;
+  sourceUrl: string | null;
+}
+
 export interface CampusEventEntry {
   id: string;
   subjectId: string;
@@ -65,6 +76,35 @@ function plainText(value: string | null): string | null {
     .trim();
 
   return clean.length > 0 ? clean : null;
+}
+
+function itemTitle(item: CampusSyncItem): string {
+  if (item.kind === 'document') return text(item.payload['name']) ?? 'Documento del campus';
+  if (item.kind === 'assignment') return text(item.payload['title']) ?? 'Tarea del campus';
+  if (item.kind === 'announcement') return text(item.payload['title']) ?? 'Anuncio del campus';
+  return text(item.payload['title']) ?? 'Evento del campus';
+}
+
+export function buildCampusChanges(
+  items: readonly CampusSyncItem[],
+  subject: Subject,
+): CampusChangeEntry[] {
+  return items
+    .flatMap((item) => {
+      if (!item.lastChangeKind || !item.lastChangedAt) return [];
+
+      return [{
+        id: item.id as string,
+        subjectId: subject.id as string,
+        subjectName: subject.name,
+        kind: item.kind,
+        change: item.lastChangeKind,
+        title: itemTitle(item),
+        changedAt: item.lastChangedAt,
+        sourceUrl: item.sourceUrl,
+      }];
+    })
+    .sort((a, b) => b.changedAt.localeCompare(a.changedAt));
 }
 
 export function buildCampusAnnouncements(

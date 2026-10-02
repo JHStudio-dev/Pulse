@@ -334,6 +334,8 @@ export function toCampusSyncItem(row: CampusSyncItemRow): CampusSyncItem {
     payload: row.payload as CampusSyncItem['payload'],
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,
+    lastChangeKind: row.last_change_kind,
+    lastChangedAt: row.last_changed_at,
     appliedAt: row.applied_at,
     appliedTaskId: row.applied_task_id as CampusSyncItem['appliedTaskId'],
     appliedDocumentId: row.applied_document_id as CampusSyncItem['appliedDocumentId'],

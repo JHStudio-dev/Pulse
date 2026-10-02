@@ -182,6 +182,8 @@ export interface CampusSyncItemRow {
   payload: Record<string, unknown>;
   first_seen_at: string;
   last_seen_at: string;
+  last_change_kind: 'new' | 'changed' | null;
+  last_changed_at: string | null;
   applied_at: string | null;
   applied_task_id: string | null;
   applied_document_id: string | null;

@@ -3,6 +3,7 @@ import type { Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import {
   buildCampusAnnouncements,
+  buildCampusChanges,
   buildCampusEvents,
   campusEventDate,
   campusEventTime,
@@ -52,6 +53,12 @@ export default async function ActivityPage() {
     activeLinks.map((link) => db.campusSync.listItems(userId, link.id)),
   );
 
+  const changes = activeLinks.flatMap((link, index) => {
+    const subject = subjectsById.get(link.subjectId);
+    if (!subject) return [];
+    return buildCampusChanges(itemGroups[index] ?? [], subject);
+  }).sort((a, b) => b.changedAt.localeCompare(a.changedAt));
+
   const announcements = activeLinks.flatMap((link, index) => {
     const subject = subjectsById.get(link.subjectId);
     if (!subject) return [];
@@ -75,7 +82,52 @@ export default async function ActivityPage() {
         Anuncios y eventos encontrados durante tus sincronizaciones.
       </p>
 
-      <section className="mt-8" aria-labelledby="announcements-heading">
+      <section className="mt-8" aria-labelledby="changes-heading">
+        <h2 id="changes-heading" className="text-sm font-medium">Novedades recientes</h2>
+        {changes.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">
+            Las próximas sincronizaciones registrarán aquí lo nuevo y lo que cambie.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {changes.slice(0, 30).map((entry) => {
+              const kindLabel =
+                entry.kind === 'assignment'
+                  ? 'Tarea'
+                  : entry.kind === 'document'
+                    ? 'Documento'
+                    : entry.kind === 'announcement'
+                      ? 'Anuncio'
+                      : 'Evento';
+
+              return (
+                <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
+                  <span className="text-sm">{entry.title}</span>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">
+                    {entry.change === 'new' ? `Nuevo ${kindLabel.toLowerCase()}` : `${kindLabel} actualizado`}
+                    {' · '}{entry.subjectName}
+                  </span>
+                  <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
+                    {formatMoment(entry.changedAt, period.timeZone)}
+                  </span>
+                  {entry.sourceUrl ? (
+                    <a
+                      href={entry.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs underline underline-offset-4"
+                    >
+                      Abrir
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="announcements-heading">
         <h2 id="announcements-heading" className="text-sm font-medium">Anuncios</h2>
         {announcements.length === 0 ? (
           <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">

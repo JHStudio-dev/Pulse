@@ -9,6 +9,7 @@ import type {
   CampusSubjectLinkId,
   CampusSyncItem,
   CampusSyncItemId,
+  CampusSyncDiffState,
   CampusSyncItemInput,
   CampusSyncRun,
   CampusSyncRunId,
@@ -102,6 +103,7 @@ export interface CampusSyncRepository {
     subjectLinkId: CampusSubjectLinkId,
     runId: CampusSyncRunId,
     item: CampusSyncItemInput,
+    state: CampusSyncDiffState,
   ): Promise<CampusSyncItem>;
   markTaskApplied(
     userId: UserId,

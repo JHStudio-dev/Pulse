@@ -287,7 +287,7 @@ export async function POST(request: Request) {
       else if (state === 'changed') summary.changedCount += 1;
       else summary.unchangedCount += 1;
 
-      const persisted = await campusSync.upsertItem(userId, subjectLink.id, run.id, item);
+      const persisted = await campusSync.upsertItem(userId, subjectLink.id, run.id, item, state);
 
       if (
         state !== 'unchanged' ||

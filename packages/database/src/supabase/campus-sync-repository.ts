@@ -1,5 +1,6 @@
 import type {
   CampusConnectionId,
+  CampusSyncDiffState,
   CampusSyncItemId,
   DocumentId,
   TaskId,
@@ -152,7 +153,17 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       subjectLinkId: CampusSubjectLinkId,
       runId: CampusSyncRunId,
       item: CampusSyncItemInput,
+      state: CampusSyncDiffState,
     ): Promise<CampusSyncItem> {
+      const now = new Date().toISOString();
+      const change =
+        state === 'unchanged'
+          ? {}
+          : {
+              last_change_kind: state,
+              last_changed_at: now,
+            };
+
       const { data, error } = await client
         .from(ITEMS)
         .upsert(
@@ -165,7 +176,8 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
             source_url: item.sourceUrl,
             content_hash: item.contentHash,
             payload: item.payload,
-            last_seen_at: new Date().toISOString(),
+            last_seen_at: now,
+            ...change,
           },
           { onConflict: 'user_id,campus_subject_link_id,kind,external_id' },
         )
