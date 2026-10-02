@@ -1,6 +1,7 @@
 import {
   getChamiloCourseId,
   getChamiloSessionId,
+  mergeChamiloAssignmentDeadlines,
   parseChamiloAnnouncementDetail,
   parseChamiloAnnouncements,
   parseChamiloAssignmentDetail,
@@ -591,13 +592,17 @@ async function syncCourse() {
     syncEvents(course),
   ]);
 
-  const events = mergeAssignmentEvents(course, agendaEvents, assignments);
+  const assignmentsWithDeadlines = mergeChamiloAssignmentDeadlines(
+    assignments,
+    agendaEvents,
+  );
+  const events = mergeAssignmentEvents(course, agendaEvents, assignmentsWithDeadlines);
   const enrichedCourse = inferCourseMetadataFromAnnouncements(course, announcements);
 
   return {
     course: enrichedCourse,
     documents,
-    assignments,
+    assignments: assignmentsWithDeadlines,
     announcements,
     events,
   };

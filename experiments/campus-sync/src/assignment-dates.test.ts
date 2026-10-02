@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { JSDOM } from 'jsdom';
 import {
+  inferChamiloAssignmentDueAt,
+  mergeChamiloAssignmentDeadlines,
   normalizeChamiloDateTime,
   parseChamiloAssignments,
   parseChamiloAssignmentDetail,
@@ -21,6 +23,77 @@ describe('Chamilo deadlines', () => {
     expect(normalizeChamiloDateTime(input)).toBe(expected);
   });
 
+  it('infers a deadline written in the task title when Chamilo exposes no date column', () => {
+    expect(
+      inferChamiloAssignmentDueAt(
+        'TAREA 3 - FECHA LIMITE 5 DE OCTUBRE',
+        new Date('2026-10-01T12:00:00Z'),
+      ),
+    ).toBe('2026-10-05');
+  });
+
+  it('does not treat an ordinary date in the title as a deadline', () => {
+    expect(
+      inferChamiloAssignmentDueAt(
+        'Lectura del capítulo 5 de octubre',
+        new Date('2026-10-01T12:00:00Z'),
+      ),
+    ).toBeUndefined();
+  });
+
+  it('uses an assignment event from the agenda when the task page has no deadline', () => {
+    const [assignment] = mergeChamiloAssignmentDeadlines(
+      [
+        {
+          externalId: '2074726',
+          courseExternalId: COURSE.externalId,
+          title: 'Entrega de ensayo',
+          sourceUrl: DETAIL_URL,
+        },
+      ],
+      [
+        {
+          courseExternalId: COURSE.externalId,
+          title: 'Entrega de tarea Entrega de ensayo',
+          startsAt: '2026-10-12T23:45:00',
+          allDay: false,
+          sourceType: 'assignment',
+          sourceExternalId: '2074726',
+          sourceUrl: DETAIL_URL,
+        },
+      ],
+    );
+
+    expect(assignment?.dueAt).toBe('2026-10-12T23:45:00');
+  });
+
+  it('keeps the structured assignment deadline over the agenda fallback', () => {
+    const [assignment] = mergeChamiloAssignmentDeadlines(
+      [
+        {
+          externalId: '2074726',
+          courseExternalId: COURSE.externalId,
+          title: 'Entrega de ensayo',
+          dueAt: '2026-10-13T10:00:00',
+          sourceUrl: DETAIL_URL,
+        },
+      ],
+      [
+        {
+          courseExternalId: COURSE.externalId,
+          title: 'Entrega de tarea Entrega de ensayo',
+          startsAt: '2026-10-12T23:45:00',
+          allDay: false,
+          sourceType: 'assignment',
+          sourceExternalId: '2074726',
+          sourceUrl: DETAIL_URL,
+        },
+      ],
+    );
+
+    expect(assignment?.dueAt).toBe('2026-10-13T10:00:00');
+  });
+
   it('ignores impossible dates', () => {
     expect(normalizeChamiloDateTime('2026-02-30')).toBeUndefined();
   });
@@ -36,6 +109,18 @@ describe('Chamilo deadlines', () => {
 
     expect(parseChamiloAssignments(dom.window.document, COURSE, LIST_URL)[0]?.dueAt)
       .toBe('2026-10-12T23:45:00');
+  });
+
+  it('reads a deadline from the assignment title when the deadline cell is absent', () => {
+    const dom = new JSDOM(`
+      <table><tbody><tr>
+        <td><a href="${DETAIL_URL}">TAREA 3 - FECHA LIMITE 5 DE OCTUBRE DE 2026</a></td>
+        <td aria-describedby="workList_feedback"></td>
+      </tr></tbody></table>
+    `);
+
+    expect(parseChamiloAssignments(dom.window.document, COURSE, LIST_URL)[0]?.dueAt)
+      .toBe('2026-10-05');
   });
 
   it('does not treat the last-upload date as a deadline', () => {
