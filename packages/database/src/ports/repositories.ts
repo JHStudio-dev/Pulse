@@ -79,6 +79,7 @@ export interface CampusConnectionRepository {
 
 
 export interface CampusSyncRepository {
+  listSubjectLinks(userId: UserId): Promise<CampusSubjectLink[]>;
   findSubjectLink(
     userId: UserId,
     campusConnectionId: CampusConnectionId,

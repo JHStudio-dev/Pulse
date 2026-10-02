@@ -16,6 +16,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   { href: '/subjects', label: 'Materias' },
   { href: '/tasks', label: 'Tareas' },
   { href: '/calendar', label: 'Calendario' },
+  { href: '/activity', label: 'Campus' },
   { href: '/inbox', label: 'Inbox' },
   { href: '/reminders', label: 'Avisos' },
   { href: '/period', label: 'Período' },

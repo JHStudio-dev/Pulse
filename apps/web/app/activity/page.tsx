@@ -1,0 +1,153 @@
+import { redirect } from 'next/navigation';
+import type { CampusSyncItem, Subject, SubjectId } from '@pulse/types';
+import { AppShell } from '@/components/app-shell';
+import { buildCampusAnnouncements, buildCampusEvents } from '@/lib/campus-activity';
+import { requireUser } from '@/lib/session';
+
+function formatMoment(value: string, timeZone: string, allDay = false): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat('es', {
+    day: 'numeric',
+    month: 'short',
+    ...(allDay ? {} : { hour: '2-digit', minute: '2-digit' }),
+    timeZone,
+  }).format(date);
+}
+
+export default async function ActivityPage() {
+  const { userId, email, db } = await requireUser();
+  const period = await db.periods.findActive(userId);
+  if (!period) redirect('/onboarding');
+
+  const [subjects, links] = await Promise.all([
+    db.subjects.listByPeriod(userId, period.id),
+    db.campusSync.listSubjectLinks(userId),
+  ]);
+
+  const subjectsById = new Map<SubjectId, Subject>(subjects.map((subject) => [subject.id, subject]));
+  const activeLinks = links.filter((link) => subjectsById.has(link.subjectId));
+  const itemGroups = await Promise.all(
+    activeLinks.map((link) => db.campusSync.listItems(userId, link.id)),
+  );
+
+  const announcements = activeLinks.flatMap((link, index) => {
+    const subject = subjectsById.get(link.subjectId);
+    if (!subject) return [];
+    return buildCampusAnnouncements(itemGroups[index] ?? [], subject);
+  }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  const events = activeLinks.flatMap((link, index) => {
+    const subject = subjectsById.get(link.subjectId);
+    if (!subject) return [];
+    return buildCampusEvents(itemGroups[index] ?? [], subject);
+  });
+
+  const now = new Date().toISOString();
+  const upcomingEvents = events.filter((event) => event.endsAt ? event.endsAt >= now : event.startsAt >= now);
+  const pastEvents = events.filter((event) => !upcomingEvents.includes(event)).slice(-10).reverse();
+
+  return (
+    <AppShell email={email} subjects={subjects.map((subject) => ({ id: subject.id as string, name: subject.name }))}>
+      <h1 className="text-2xl font-semibold tracking-tight">Actividad del campus</h1>
+      <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
+        Anuncios y eventos encontrados durante tus sincronizaciones.
+      </p>
+
+      <section className="mt-8" aria-labelledby="announcements-heading">
+        <h2 id="announcements-heading" className="text-sm font-medium">Anuncios</h2>
+        {announcements.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">
+            Todavía no hay anuncios sincronizados.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {announcements.slice(0, 30).map((entry) => (
+              <li key={entry.id} className="py-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-sm font-medium">{entry.title}</p>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">
+                    {entry.subjectName}
+                    {entry.author ? ` · ${entry.author}` : ''}
+                  </span>
+                  <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
+                    {formatMoment(entry.updatedAt, period.timeZone)}
+                  </span>
+                </div>
+                {entry.content ? (
+                  <p className="text-[color:var(--color-ink-muted)] mt-1 line-clamp-3 text-sm">
+                    {entry.content}
+                  </p>
+                ) : null}
+                {entry.sourceUrl ? (
+                  <a
+                    href={entry.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs underline underline-offset-4"
+                  >
+                    Abrir en el campus
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="events-heading">
+        <h2 id="events-heading" className="text-sm font-medium">Próximos eventos</h2>
+        {upcomingEvents.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">
+            No hay eventos próximos sincronizados.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {upcomingEvents.slice(0, 30).map((entry) => (
+              <li key={entry.id} className="py-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-sm font-medium">{entry.title}</p>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">{entry.subjectName}</span>
+                  <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
+                    {formatMoment(entry.startsAt, period.timeZone, entry.allDay)}
+                  </span>
+                </div>
+                {entry.description ? (
+                  <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">{entry.description}</p>
+                ) : null}
+                {entry.sourceUrl ? (
+                  <a
+                    href={entry.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-xs underline underline-offset-4"
+                  >
+                    Abrir en el campus
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {pastEvents.length > 0 ? (
+        <section className="mt-10" aria-labelledby="past-events-heading">
+          <h2 id="past-events-heading" className="text-sm font-medium">Eventos recientes</h2>
+          <ul className="text-[color:var(--color-ink-muted)] mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
+            {pastEvents.map((entry) => (
+              <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
+                <span className="text-sm">{entry.title}</span>
+                <span className="text-xs">{entry.subjectName}</span>
+                <span className="ml-auto text-xs">
+                  {formatMoment(entry.startsAt, period.timeZone, entry.allDay)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </AppShell>
+  );
+}

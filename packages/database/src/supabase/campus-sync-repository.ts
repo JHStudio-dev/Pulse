@@ -44,6 +44,17 @@ const EMPTY_SUMMARY: CampusSyncSummary = {
 
 export function createCampusSyncRepository(client: PulseSupabaseClient): CampusSyncRepository {
   return {
+    async listSubjectLinks(userId: UserId): Promise<CampusSubjectLink[]> {
+      const { data, error } = await client
+        .from(SUBJECT_LINKS)
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw translateError(error);
+      return (data as CampusSubjectLinkRow[]).map(toCampusSubjectLink);
+    },
+
     async findSubjectLink(
       userId: UserId,
       campusConnectionId: CampusConnectionId,
