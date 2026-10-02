@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { instantToZonedDate, instantToZonedTime } from '@pulse/core';
 import type { Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import {
@@ -10,7 +11,19 @@ import {
 } from '@/lib/campus-activity';
 import { requireUser } from '@/lib/session';
 
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('es', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
 function formatMoment(value: string, timeZone: string): string {
+  // Chamilo's parsed dates are local wall-clock values without an offset.
+  const local = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?$/);
+  if (local) return `${formatDate(local[1]!)} · ${local[2]}`;
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
@@ -27,14 +40,32 @@ function formatCampusEvent(event: ReturnType<typeof buildCampusEvents>[number]):
   const date = campusEventDate(event);
   if (!date) return event.startsAt;
 
-  const formatted = new Intl.DateTimeFormat('es', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`));
+  const time = campusEventTime(event);
+  if (time) return `${formatDate(date)} · ${time}`;
+
+  const endDate = event.endsAt?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+  if (endDate && endDate !== date) {
+    return `${formatDate(date)} – ${formatDate(endDate)} · Todo el día`;
+  }
+
+  return `${formatDate(date)} · Todo el día`;
+}
+
+function isUpcomingCampusEvent(
+  event: ReturnType<typeof buildCampusEvents>[number],
+  today: string,
+  nowTime: string,
+): boolean {
+  const date = campusEventDate(event);
+  if (!date) return false;
+
+  const endDate = event.endsAt?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null;
+  if (endDate && endDate >= today) return true;
+  if (date > today) return true;
+  if (date < today) return false;
 
   const time = campusEventTime(event);
-  return time ? `${formatted} · ${time}` : `${formatted} · Todo el día`;
+  return time === null || time >= nowTime;
 }
 
 export default async function ActivityPage() {
@@ -71,9 +102,15 @@ export default async function ActivityPage() {
     return buildCampusEvents(itemGroups[index] ?? [], subject);
   });
 
-  const now = new Date().toISOString();
-  const upcomingEvents = events.filter((event) => event.endsAt ? event.endsAt >= now : event.startsAt >= now);
-  const pastEvents = events.filter((event) => !upcomingEvents.includes(event)).slice(-10).reverse();
+  const now = new Date();
+  const today = instantToZonedDate(now, period.timeZone);
+  const nowTime = instantToZonedTime(now, period.timeZone);
+  const upcomingEvents = events.filter((event) => isUpcomingCampusEvent(event, today, nowTime));
+  const upcomingIds = new Set(upcomingEvents.map((event) => event.id));
+  const pastEvents = events
+    .filter((event) => !upcomingIds.has(event.id))
+    .slice(-10)
+    .reverse();
 
   return (
     <AppShell email={email} subjects={subjects.map((subject) => ({ id: subject.id as string, name: subject.name }))}>
