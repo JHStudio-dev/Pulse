@@ -9,6 +9,13 @@ const STORAGE_KEY = 'pulseCampusSyncSnapshot';
 const BATCH_STORAGE_KEY = 'pulseCampusSyncBatch';
 const PULSE_IMPORT_URL = 'http://localhost:3000/campus-sync/import';
 
+type SnapshotCounts = {
+  documents: unknown[];
+  assignments: unknown[];
+  announcements: unknown[];
+  events: unknown[];
+};
+
 function setBusy(busy: boolean): void {
   if (inspect) inspect.disabled = busy;
   if (sync) sync.disabled = busy;
@@ -145,11 +152,16 @@ syncAll?.addEventListener('click', async () => {
     }
 
     const batch = response.data;
-    await chrome.storage.local.set({ [BATCH_STORAGE_KEY]: batch.snapshots });
+    await chrome.storage.local.set({
+      [BATCH_STORAGE_KEY]: {
+        snapshots: batch.snapshots,
+        errors: batch.errors,
+      },
+    });
     await chrome.storage.local.remove(STORAGE_KEY);
 
-    const totals = batch.snapshots.reduce(
-      (acc: { documents: number; assignments: number; announcements: number; events: number }, item: any) => ({
+    const totals = (batch.snapshots as SnapshotCounts[]).reduce(
+      (acc, item) => ({
         documents: acc.documents + item.documents.length,
         assignments: acc.assignments + item.assignments.length,
         announcements: acc.announcements + item.announcements.length,

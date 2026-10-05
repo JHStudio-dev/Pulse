@@ -7,6 +7,7 @@ import {
   getChamiloDirectoryPath,
   getChamiloDocumentId,
   getChamiloSessionId,
+  parseChamiloCourses,
   parseChamiloDocuments,
   sanitizeCampusUrl,
   parseChamiloAssignments,
@@ -49,6 +50,32 @@ describe('Chamilo URLs', () => {
     expect(result).toContain('cidReq=ADM2011C1');
     expect(result).not.toContain('sec_token');
     expect(result).not.toContain('hash');
+  });
+});
+
+describe('Chamilo course discovery', () => {
+  it('discovers enrolled courses from course links', () => {
+    const dom = new JSDOM(`
+      <main>
+        <a href="/courses/ADM2011C1/index.php?id_session=0">ADMINISTRACION I - SECCION C</a>
+        <a href="/courses/CAF1302A1/index.php?id_session=0">CONTABILIDAD I - SECCION A</a>
+      </main>
+    `, { url: 'https://campus.ujcv.edu.hn/' });
+
+    expect(parseChamiloCourses(dom.window.document, dom.window.location.href)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          externalId: 'ADM2011C1',
+          sessionId: '0',
+          title: 'ADMINISTRACION I - SECCION C',
+        }),
+        expect.objectContaining({
+          externalId: 'CAF1302A1',
+          sessionId: '0',
+          title: 'CONTABILIDAD I - SECCION A',
+        }),
+      ]),
+    );
   });
 });
 

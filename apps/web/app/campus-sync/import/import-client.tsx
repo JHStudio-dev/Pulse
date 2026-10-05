@@ -59,12 +59,19 @@ function isSnapshotMessage(value: unknown): value is {
   return message.type === 'pulse:campus-sync:snapshot' && message.snapshot !== undefined;
 }
 
+type BatchSourceError = {
+  courseExternalId: string;
+  title: string;
+  error: string;
+};
+
 function isBatchMessage(value: unknown): value is {
   type: 'pulse:campus-sync:batch';
   snapshots: CampusSyncSnapshot[];
+  errors: BatchSourceError[];
 } {
   if (!value || typeof value !== 'object') return false;
-  const message = value as { type?: unknown; snapshots?: unknown };
+  const message = value as { type?: unknown; snapshots?: unknown; errors?: unknown };
   return (
     message.type === 'pulse:campus-sync:batch' &&
     Array.isArray(message.snapshots) &&
@@ -79,6 +86,7 @@ function normalized(value: string | undefined | null): string {
 export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [snapshot, setSnapshot] = useState<CampusSyncSnapshot | null>(null);
   const [batchSnapshots, setBatchSnapshots] = useState<CampusSyncSnapshot[]>([]);
+  const [batchSourceErrors, setBatchSourceErrors] = useState<BatchSourceError[]>([]);
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
   const [status, setStatus] = useState('Buscando datos del Campus Companion…');
   const [busy, setBusy] = useState(false);
@@ -94,6 +102,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
       if (isBatchMessage(event.data)) {
         const received = event.data.snapshots;
         setBatchSnapshots(received);
+        setBatchSourceErrors(Array.isArray(event.data.errors) ? event.data.errors : []);
         setSnapshot(received[0] ?? null);
         setScheduleDraft(null);
         setConfirmSchedule(false);
@@ -105,6 +114,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
       const received = event.data.snapshot;
       setBatchSnapshots([]);
+      setBatchSourceErrors([]);
       setSnapshot(received);
 
       const suggested = inferCampusScheduleSuggestions(received)[0];
@@ -242,7 +252,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
           : `${aggregate.succeeded} materias sincronizadas · ${aggregate.failed} con error.`,
       );
 
-      if (aggregate.succeeded > 0) {
+      if (aggregate.failed === 0) {
         window.postMessage({ type: 'pulse:campus-sync:consumed' }, window.location.origin);
       }
     } catch {
@@ -326,6 +336,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
             <div>
               <h2 id="bulk-sync-heading" className="text-base font-medium">
                 {batchSnapshots.length} materias detectadas
+                {batchSourceErrors.length > 0 ? ` · ${batchSourceErrors.length} con error de lectura` : ''}
               </h2>
               <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
                 {batchCounts.assignments} tareas · {batchCounts.documents} documentos ·{' '}
@@ -358,6 +369,19 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
               </li>
             ))}
           </ul>
+
+          {batchSourceErrors.length > 0 ? (
+            <div className="mt-4 border-t border-[color:var(--color-border)] pt-3">
+              <p className="text-xs font-medium">No se pudieron leer</p>
+              <ul className="text-[color:var(--color-ink-muted)] mt-2 space-y-1 text-xs">
+                {batchSourceErrors.map((entry) => (
+                  <li key={entry.courseExternalId}>
+                    {entry.title || entry.courseExternalId}: {entry.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

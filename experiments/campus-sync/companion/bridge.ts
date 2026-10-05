@@ -8,12 +8,31 @@ window.addEventListener('message', (event) => {
 
   if (message?.type === 'pulse:campus-sync:request') {
     void chrome.storage.local.get([STORAGE_KEY, BATCH_STORAGE_KEY]).then((stored) => {
-      const batch = stored[BATCH_STORAGE_KEY];
-      if (Array.isArray(batch) && batch.length > 0) {
+      const storedBatch = stored[BATCH_STORAGE_KEY];
+
+      if (Array.isArray(storedBatch) && storedBatch.length > 0) {
         window.postMessage(
           {
             type: 'pulse:campus-sync:batch',
-            snapshots: batch,
+            snapshots: storedBatch,
+            errors: [],
+          },
+          window.location.origin,
+        );
+        return;
+      }
+
+      if (
+        storedBatch &&
+        typeof storedBatch === 'object' &&
+        Array.isArray(storedBatch.snapshots) &&
+        storedBatch.snapshots.length > 0
+      ) {
+        window.postMessage(
+          {
+            type: 'pulse:campus-sync:batch',
+            snapshots: storedBatch.snapshots,
+            errors: Array.isArray(storedBatch.errors) ? storedBatch.errors : [],
           },
           window.location.origin,
         );
