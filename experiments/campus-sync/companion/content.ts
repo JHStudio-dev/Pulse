@@ -7,6 +7,7 @@ import {
   parseChamiloAnnouncements,
   parseChamiloAssignmentDetail,
   parseChamiloAssignments,
+  parseChamiloCourses,
   parseChamiloDocuments,
   parseChamiloEvents,
   parseChamiloCoursePage,
@@ -31,7 +32,8 @@ type PageKind =
 
 type PulseRequest =
   | { type: 'pulse:inspect' }
-  | { type: 'pulse:sync-course' };
+  | { type: 'pulse:sync-course' }
+  | { type: 'pulse:sync-all-courses' };
 
 const CAMPUS_BASE = 'https://campus.ujcv.edu.hn';
 const AGENDA_MONTHS_TO_SYNC = 6;
@@ -584,12 +586,7 @@ function mergeAssignmentEvents(
   return [...results.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
-async function syncCourse() {
-  const courseRef = currentCourseRef();
-  if (!courseRef) {
-    throw new Error('Open a UJCV course before syncing');
-  }
-
+async function syncCourse(courseRef: CampusCourseRef) {
   const courseUrl = courseHomeUrl(courseRef);
   const coursePage = await fetchDocument(courseUrl);
   const course = parseChamiloCoursePage(coursePage, courseRef, courseUrl);
@@ -617,6 +614,48 @@ async function syncCourse() {
   };
 }
 
+async function discoverCampusCourses(): Promise<SyncedCourse[]> {
+  const homePage = await fetchDocument(CAMPUS_BASE);
+  const discovered = parseChamiloCourses(homePage, CAMPUS_BASE);
+
+  if (discovered.length > 0) return discovered;
+
+  return parseChamiloCourses(document, location.href);
+}
+
+async function syncAllCourses() {
+  const discovered = await discoverCampusCourses();
+  if (discovered.length === 0) {
+    throw new Error('No enrolled courses were found on the campus home page');
+  }
+
+  const snapshots: Awaited<ReturnType<typeof syncCourse>>[] = [];
+  const errors: Array<{ courseExternalId: string; title: string; error: string }> = [];
+
+  for (const course of discovered) {
+    try {
+      snapshots.push(
+        await syncCourse({
+          externalId: course.externalId,
+          ...(course.sessionId !== undefined ? { sessionId: course.sessionId } : {}),
+        }),
+      );
+    } catch (error) {
+      errors.push({
+        courseExternalId: course.externalId,
+        title: course.title,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (snapshots.length === 0) {
+    throw new Error(errors[0]?.error ?? 'No courses could be synchronized');
+  }
+
+  return { snapshots, errors };
+}
+
 chrome.runtime.onMessage.addListener(
   (message: PulseRequest, _sender, sendResponse) => {
     if (message.type === 'pulse:inspect') {
@@ -625,7 +664,34 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'pulse:sync-course') {
-      void syncCourse()
+      const courseRef = currentCourseRef();
+      if (!courseRef) {
+        sendResponse({
+          ok: false,
+          error: 'Open a UJCV course before syncing',
+        });
+        return false;
+      }
+
+      void syncCourse(courseRef)
+        .then((data) => {
+          sendResponse({
+            ok: true,
+            data,
+          });
+        })
+        .catch((error) => {
+          sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+
+      return true;
+    }
+
+    if (message.type === 'pulse:sync-all-courses') {
+      void syncAllCourses()
         .then((data) => {
           sendResponse({
             ok: true,
