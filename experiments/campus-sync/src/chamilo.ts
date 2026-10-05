@@ -653,7 +653,7 @@ function assignmentDeadlineCandidates(document: Document): string[] {
     if (!targetId) continue;
 
     const target = document.getElementById(targetId);
-    if (!(target instanceof HTMLElement)) continue;
+    if (!target) continue;
 
     add(target.getAttribute('value'));
     add(target.getAttribute('title'));
