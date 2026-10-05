@@ -1,13 +1,24 @@
 const status = document.querySelector<HTMLParagraphElement>('#status');
+const statusCard = document.querySelector<HTMLElement>('#status-card');
 const output = document.querySelector<HTMLElement>('#output');
 const inspect = document.querySelector<HTMLButtonElement>('#inspect');
 const sync = document.querySelector<HTMLButtonElement>('#sync');
 const syncAll = document.querySelector<HTMLButtonElement>('#sync-all');
 const openPulse = document.querySelector<HTMLButtonElement>('#open-pulse');
+const summary = document.querySelector<HTMLElement>('#summary');
+const summaryTitle = document.querySelector<HTMLParagraphElement>('#summary-title');
+const summarySubtitle = document.querySelector<HTMLParagraphElement>('#summary-subtitle');
+const metricCourses = document.querySelector<HTMLElement>('#metric-courses');
+const metricTasks = document.querySelector<HTMLElement>('#metric-tasks');
+const metricDocs = document.querySelector<HTMLElement>('#metric-docs');
+const metricNews = document.querySelector<HTMLElement>('#metric-news');
+const metricEvents = document.querySelector<HTMLElement>('#metric-events');
 
 const STORAGE_KEY = 'pulseCampusSyncSnapshot';
 const BATCH_STORAGE_KEY = 'pulseCampusSyncBatch';
 const PULSE_IMPORT_URL = 'http://localhost:3000/campus-sync/import';
+
+type StatusState = 'idle' | 'busy' | 'success' | 'error';
 
 type SnapshotCounts = {
   documents: unknown[];
@@ -15,6 +26,38 @@ type SnapshotCounts = {
   announcements: unknown[];
   events: unknown[];
 };
+
+type SummaryData = {
+  title: string;
+  subtitle?: string;
+  courses: number;
+  tasks: number;
+  documents: number;
+  announcements: number;
+  events: number;
+};
+
+function setStatus(message: string, state: StatusState = 'idle'): void {
+  if (status) status.textContent = message;
+  if (statusCard) statusCard.dataset.state = state;
+}
+
+function showSummary(data: SummaryData): void {
+  if (!summary) return;
+
+  summary.hidden = false;
+  if (summaryTitle) summaryTitle.textContent = data.title;
+  if (summarySubtitle) summarySubtitle.textContent = data.subtitle ?? '';
+  if (metricCourses) metricCourses.textContent = String(data.courses);
+  if (metricTasks) metricTasks.textContent = String(data.tasks);
+  if (metricDocs) metricDocs.textContent = String(data.documents);
+  if (metricNews) metricNews.textContent = String(data.announcements);
+  if (metricEvents) metricEvents.textContent = String(data.events);
+}
+
+function hideSummary(): void {
+  if (summary) summary.hidden = true;
+}
 
 function setBusy(busy: boolean): void {
   if (inspect) inspect.disabled = busy;
@@ -25,8 +68,10 @@ function setBusy(busy: boolean): void {
 
 async function refreshPendingState(): Promise<void> {
   if (!openPulse) return;
+
   const stored = await chrome.storage.local.get([STORAGE_KEY, BATCH_STORAGE_KEY]);
-  openPulse.disabled = !stored[STORAGE_KEY] && !stored[BATCH_STORAGE_KEY];
+  const hasPending = Boolean(stored[STORAGE_KEY] || stored[BATCH_STORAGE_KEY]);
+  openPulse.disabled = !hasPending;
 }
 
 async function getActiveCampusTab(): Promise<chrome.tabs.Tab | null> {
@@ -43,15 +88,17 @@ async function getActiveCampusTab(): Promise<chrome.tabs.Tab | null> {
 }
 
 inspect?.addEventListener('click', async () => {
-  if (!status || !output) return;
+  if (!output) return;
 
   setBusy(true);
+  hideSummary();
+  setStatus('Inspeccionando la página actual…', 'busy');
 
   try {
     const tab = await getActiveCampusTab();
 
     if (!tab?.id) {
-      status.textContent = 'Open UJCV campus first.';
+      setStatus('Abre primero el campus de UJCV.', 'error');
       return;
     }
 
@@ -59,13 +106,14 @@ inspect?.addEventListener('click', async () => {
       type: 'pulse:inspect',
     });
 
-    status.textContent = response.ok
-      ? `Detected: ${response.pageKind}`
-      : 'Unsupported page';
+    setStatus(
+      response.ok ? `Página detectada: ${response.pageKind}` : 'Esta página no es compatible.',
+      response.ok ? 'success' : 'error',
+    );
 
     output.textContent = JSON.stringify(response, null, 2);
   } catch (error) {
-    status.textContent = 'Could not inspect page';
+    setStatus('No se pudo inspeccionar la página.', 'error');
     output.textContent = error instanceof Error ? error.message : String(error);
   } finally {
     setBusy(false);
@@ -74,17 +122,18 @@ inspect?.addEventListener('click', async () => {
 });
 
 sync?.addEventListener('click', async () => {
-  if (!status || !output) return;
+  if (!output) return;
 
   setBusy(true);
-  status.textContent = 'Syncing course…';
+  hideSummary();
+  setStatus('Sincronizando la materia actual…', 'busy');
   output.textContent = '';
 
   try {
     const tab = await getActiveCampusTab();
 
     if (!tab?.id) {
-      status.textContent = 'Open a UJCV course first.';
+      setStatus('Abre una materia de UJCV antes de sincronizar.', 'error');
       return;
     }
 
@@ -93,8 +142,8 @@ sync?.addEventListener('click', async () => {
     });
 
     if (!response.ok) {
-      status.textContent = 'Sync failed';
-      output.textContent = response.error ?? 'Unknown error';
+      setStatus('No se pudo sincronizar la materia.', 'error');
+      output.textContent = response.error ?? 'Error desconocido';
       return;
     }
 
@@ -102,8 +151,19 @@ sync?.addEventListener('click', async () => {
     await chrome.storage.local.set({ [STORAGE_KEY]: data });
     await chrome.storage.local.remove(BATCH_STORAGE_KEY);
 
-    status.textContent = 'Course synced. Ready for Pulse.';
+    setStatus('Materia lista para importar en Pulse.', 'success');
     if (openPulse) openPulse.disabled = false;
+
+    showSummary({
+      title: data.course.title ?? data.course.externalId,
+      subtitle: data.course.externalId,
+      courses: 1,
+      tasks: data.assignments.length,
+      documents: data.documents.length,
+      announcements: data.announcements.length,
+      events: data.events.length,
+    });
+
     output.textContent = JSON.stringify(
       {
         course: data.course.externalId,
@@ -117,7 +177,7 @@ sync?.addEventListener('click', async () => {
       2,
     );
   } catch (error) {
-    status.textContent = 'Sync failed';
+    setStatus('No se pudo sincronizar la materia.', 'error');
     output.textContent = error instanceof Error ? error.message : String(error);
   } finally {
     setBusy(false);
@@ -125,19 +185,19 @@ sync?.addEventListener('click', async () => {
   }
 });
 
-
 syncAll?.addEventListener('click', async () => {
-  if (!status || !output) return;
+  if (!output) return;
 
   setBusy(true);
-  status.textContent = 'Syncing all courses…';
+  hideSummary();
+  setStatus('Buscando y sincronizando todas tus materias…', 'busy');
   output.textContent = '';
 
   try {
     const tab = await getActiveCampusTab();
 
     if (!tab?.id) {
-      status.textContent = 'Open UJCV campus first.';
+      setStatus('Abre primero el campus de UJCV.', 'error');
       return;
     }
 
@@ -146,8 +206,8 @@ syncAll?.addEventListener('click', async () => {
     });
 
     if (!response.ok) {
-      status.textContent = 'Bulk sync failed';
-      output.textContent = response.error ?? 'Unknown error';
+      setStatus('No se pudo completar la sincronización masiva.', 'error');
+      output.textContent = response.error ?? 'Error desconocido';
       return;
     }
 
@@ -170,12 +230,30 @@ syncAll?.addEventListener('click', async () => {
       { documents: 0, assignments: 0, announcements: 0, events: 0 },
     );
 
-    status.textContent = `${batch.snapshots.length} courses synced. Ready for Pulse.`;
+    const failed = batch.errors.length;
+    setStatus(
+      failed === 0
+        ? `${batch.snapshots.length} materias listas para Pulse.`
+        : `${batch.snapshots.length} listas · ${failed} con error de lectura.`,
+      failed === 0 ? 'success' : 'error',
+    );
+
     if (openPulse) openPulse.disabled = false;
+
+    showSummary({
+      title: 'Sincronización completa',
+      subtitle: failed > 0 ? `${failed} con error` : 'Todo listo',
+      courses: batch.snapshots.length,
+      tasks: totals.assignments,
+      documents: totals.documents,
+      announcements: totals.announcements,
+      events: totals.events,
+    });
+
     output.textContent = JSON.stringify(
       {
         courses: batch.snapshots.length,
-        failed: batch.errors.length,
+        failed,
         ...totals,
         errors: batch.errors,
       },
@@ -183,7 +261,7 @@ syncAll?.addEventListener('click', async () => {
       2,
     );
   } catch (error) {
-    status.textContent = 'Bulk sync failed';
+    setStatus('No se pudo completar la sincronización masiva.', 'error');
     output.textContent = error instanceof Error ? error.message : String(error);
   } finally {
     setBusy(false);
@@ -193,8 +271,9 @@ syncAll?.addEventListener('click', async () => {
 
 openPulse?.addEventListener('click', async () => {
   const stored = await chrome.storage.local.get([STORAGE_KEY, BATCH_STORAGE_KEY]);
+
   if (!stored[STORAGE_KEY] && !stored[BATCH_STORAGE_KEY]) {
-    if (status) status.textContent = 'Sync a course first.';
+    setStatus('Primero sincroniza una materia o todas.', 'error');
     return;
   }
 

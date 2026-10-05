@@ -1,82 +1,375 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pulse Campus Companion</title>
     <style>
       :root {
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: #111827;
-        background: #ffffff;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: #f8fafc;
+        background: #080d18;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
-        width: 440px;
+        width: 420px;
         margin: 0;
-        padding: 16px;
+        background:
+          radial-gradient(circle at top right, rgba(74, 144, 226, 0.18), transparent 34%),
+          linear-gradient(180deg, #0b1220 0%, #080d18 100%);
       }
 
-      h1 {
-        margin: 0 0 6px;
-        font-size: 22px;
+      .shell {
+        padding: 18px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 11px;
+        background: linear-gradient(145deg, rgba(96, 165, 250, 0.22), rgba(30, 41, 59, 0.85));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .brand-copy h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+      }
+
+      .brand-copy p {
+        margin: 3px 0 0;
+        color: #94a3b8;
+        font-size: 11px;
+      }
+
+      .campus-chip {
+        border: 1px solid rgba(96, 165, 250, 0.25);
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.09);
+        padding: 5px 8px;
+        color: #bfdbfe;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .status-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.72);
+        padding: 12px 13px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        margin-top: 5px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #64748b;
+        box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.12);
+      }
+
+      .status-card[data-state="busy"] .status-dot {
+        background: #60a5fa;
+        box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+        animation: pulse 1.3s ease-in-out infinite;
+      }
+
+      .status-card[data-state="success"] .status-dot {
+        background: #34d399;
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12);
+      }
+
+      .status-card[data-state="error"] .status-dot {
+        background: #fb7185;
+        box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
+      }
+
+      @keyframes pulse {
+        50% {
+          opacity: 0.45;
+          transform: scale(0.88);
+        }
       }
 
       #status {
-        margin: 0 0 14px;
-        color: #4b5563;
+        margin: 0;
+        color: #e2e8f0;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .section-label {
+        margin: 18px 0 8px;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
       }
 
       .actions {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 8px;
-        margin-bottom: 14px;
       }
 
       button {
-        border: 1px solid #d1d5db;
-        border-radius: 8px;
-        background: #ffffff;
-        padding: 8px 12px;
+        min-height: 40px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 11px;
+        background: rgba(15, 23, 42, 0.78);
+        padding: 9px 11px;
+        color: #e2e8f0;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 650;
         cursor: pointer;
+        transition:
+          transform 120ms ease,
+          border-color 120ms ease,
+          background 120ms ease,
+          opacity 120ms ease;
       }
 
-      button:hover {
-        background: #f9fafb;
+      button:hover:not(:disabled) {
+        border-color: rgba(96, 165, 250, 0.36);
+        background: rgba(30, 41, 59, 0.9);
+        transform: translateY(-1px);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0);
       }
 
       button:disabled {
-        cursor: wait;
-        opacity: 0.6;
+        cursor: default;
+        opacity: 0.42;
+      }
+
+      .primary {
+        border-color: rgba(96, 165, 250, 0.42);
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        color: white;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
+      }
+
+      .primary:hover:not(:disabled) {
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      .quiet {
+        min-height: 34px;
+        border-color: transparent;
+        background: transparent;
+        color: #94a3b8;
+      }
+
+      .quiet:hover:not(:disabled) {
+        border-color: rgba(148, 163, 184, 0.12);
+        background: rgba(15, 23, 42, 0.42);
+        color: #cbd5e1;
+      }
+
+      #summary {
+        margin-top: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.6);
+        padding: 13px;
+      }
+
+      #summary[hidden] {
+        display: none;
+      }
+
+      .summary-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      #summary-title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      #summary-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 10px;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+      }
+
+      .metric {
+        min-width: 0;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 10px;
+        background: rgba(2, 6, 23, 0.28);
+        padding: 8px 6px;
+        text-align: center;
+      }
+
+      .metric strong {
+        display: block;
+        color: #f8fafc;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 5px;
+        overflow: hidden;
+        color: #64748b;
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      details {
+        margin-top: 12px;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+        padding-top: 10px;
+      }
+
+      summary {
+        color: #64748b;
+        font-size: 10px;
+        cursor: pointer;
+        user-select: none;
       }
 
       pre {
-        max-height: 460px;
+        max-height: 250px;
         overflow: auto;
-        margin: 0;
-        padding: 12px;
-        border-radius: 8px;
-        background: #f3f4f6;
+        margin: 9px 0 0;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        border-radius: 10px;
+        background: #050914;
+        padding: 10px;
+        color: #94a3b8;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-        font-size: 12px;
-        line-height: 1.45;
+        font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 14px;
+        color: #475569;
+        font-size: 9px;
+      }
+
+      .footer strong {
+        color: #64748b;
+        font-weight: 700;
       }
     </style>
   </head>
 
   <body>
-    <h1>Pulse</h1>
-    <p id="status">Ready.</p>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">P</div>
+          <div class="brand-copy">
+            <h1>PULSE</h1>
+            <p>Campus Companion</p>
+          </div>
+        </div>
+        <span class="campus-chip">UJCV</span>
+      </header>
 
-    <div class="actions">
-      <button id="inspect" type="button">Inspect page</button>
-      <button id="sync" type="button">Sync course</button>
-      <button id="sync-all" type="button">Sync all</button>
-      <button id="open-pulse" type="button" disabled>Open in Pulse</button>
-    </div>
+      <section id="status-card" class="status-card" data-state="idle" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <p id="status">Listo para sincronizar.</p>
+      </section>
 
-    <pre id="output">Open a UJCV course and inspect or sync it.</pre>
+      <p class="section-label">Sincronización</p>
+      <div class="actions">
+        <button id="sync" type="button">Materia actual</button>
+        <button id="sync-all" type="button" class="primary">Todas las materias</button>
+        <button id="open-pulse" type="button" class="wide" disabled>Abrir en Pulse</button>
+        <button id="inspect" type="button" class="quiet wide">Inspeccionar página</button>
+      </div>
+
+      <section id="summary" hidden>
+        <div class="summary-head">
+          <p id="summary-title">Resumen</p>
+          <p id="summary-subtitle"></p>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong id="metric-courses">0</strong><span>Materias</span></div>
+          <div class="metric"><strong id="metric-tasks">0</strong><span>Tareas</span></div>
+          <div class="metric"><strong id="metric-docs">0</strong><span>Docs</span></div>
+          <div class="metric"><strong id="metric-news">0</strong><span>Anuncios</span></div>
+          <div class="metric"><strong id="metric-events">0</strong><span>Eventos</span></div>
+        </div>
+      </section>
+
+      <details>
+        <summary>Detalles técnicos</summary>
+        <pre id="output">Todavía no hay datos para mostrar.</pre>
+      </details>
+
+      <footer class="footer">
+        <span>Usa tu sesión actual del campus.</span>
+        <strong>Scale Studio</strong>
+      </footer>
+    </main>
 
     <script src="popup.js"></script>
   </body>
