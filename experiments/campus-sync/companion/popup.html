@@ -9,8 +9,8 @@
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
           sans-serif;
-        color: #f8fafc;
-        background: #080d18;
+        color: #f5f7fa;
+        background: #0a0d12;
         color-scheme: dark;
       }
 
@@ -21,200 +21,288 @@
       body {
         width: 420px;
         margin: 0;
-        background:
-          radial-gradient(circle at top right, rgba(74, 144, 226, 0.18), transparent 34%),
-          linear-gradient(180deg, #0b1220 0%, #080d18 100%);
+        background: #0a0d12;
+      }
+
+      button,
+      summary {
+        font: inherit;
       }
 
       .shell {
+        min-height: 100%;
         padding: 18px;
       }
 
       .topbar {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: 14px;
       }
 
       .brand {
         display: flex;
         align-items: center;
         gap: 10px;
+        min-width: 0;
       }
 
-      .mark {
+      .brand-mark {
         display: grid;
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
         place-items: center;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 11px;
-        background: linear-gradient(145deg, rgba(96, 165, 250, 0.22), rgba(30, 41, 59, 0.85));
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        font-size: 15px;
-        font-weight: 800;
-        letter-spacing: -0.04em;
+        border: 1px solid #273244;
+        border-radius: 9px;
+        background: #111722;
+        color: #6da8ff;
+      }
+
+      .brand-mark svg {
+        width: 21px;
+        height: 21px;
+      }
+
+      .brand-copy {
+        min-width: 0;
       }
 
       .brand-copy h1 {
         margin: 0;
-        font-size: 15px;
-        font-weight: 800;
+        font-size: 14px;
+        font-weight: 750;
         letter-spacing: 0.16em;
       }
 
       .brand-copy p {
         margin: 3px 0 0;
-        color: #94a3b8;
-        font-size: 11px;
+        color: #7d8798;
+        font-size: 10px;
       }
 
       .campus-chip {
-        border: 1px solid rgba(96, 165, 250, 0.25);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #293345;
         border-radius: 999px;
-        background: rgba(59, 130, 246, 0.09);
+        background: #111722;
         padding: 5px 8px;
-        color: #bfdbfe;
-        font-size: 10px;
+        color: #aeb8c8;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.08em;
       }
 
+      .campus-chip::before {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: #67a5ff;
+        content: "";
+      }
+
       .status-card {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 10px;
         margin-top: 18px;
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        border-radius: 14px;
-        background: rgba(15, 23, 42, 0.72);
-        padding: 12px 13px;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+        border: 1px solid #202936;
+        border-radius: 11px;
+        background: rgba(17, 23, 34, 0.78);
+        padding: 11px 12px;
       }
 
       .status-dot {
-        width: 8px;
-        height: 8px;
-        margin-top: 5px;
+        width: 7px;
+        height: 7px;
         flex: 0 0 auto;
         border-radius: 999px;
-        background: #64748b;
-        box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.12);
+        background: #697386;
       }
 
       .status-card[data-state="busy"] .status-dot {
-        background: #60a5fa;
-        box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
-        animation: pulse 1.3s ease-in-out infinite;
+        background: #67a5ff;
+        animation: pulse 1.2s ease-in-out infinite;
       }
 
       .status-card[data-state="success"] .status-dot {
-        background: #34d399;
-        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12);
+        background: #52c88a;
       }
 
       .status-card[data-state="error"] .status-dot {
-        background: #fb7185;
-        box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
+        background: #e67878;
       }
 
       @keyframes pulse {
         50% {
-          opacity: 0.45;
-          transform: scale(0.88);
+          opacity: 0.42;
         }
       }
 
       #status {
         margin: 0;
-        color: #e2e8f0;
-        font-size: 12px;
-        line-height: 1.5;
+        color: #c7cfdb;
+        font-size: 11px;
+        line-height: 1.45;
       }
 
-      .section-label {
-        margin: 18px 0 8px;
-        color: #64748b;
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.11em;
+      .section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 19px;
+        margin-bottom: 9px;
+      }
+
+      .section-heading p {
+        margin: 0;
+        color: #778194;
+        font-size: 9px;
+        font-weight: 750;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
       }
 
-      .actions {
+      .recommended {
+        color: #6f9fe6;
+        font-size: 9px;
+      }
+
+      .sync-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
       }
 
-      button {
-        min-height: 40px;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        border-radius: 11px;
-        background: rgba(15, 23, 42, 0.78);
-        padding: 9px 11px;
-        color: #e2e8f0;
-        font: inherit;
-        font-size: 12px;
-        font-weight: 650;
+      .sync-action {
+        display: flex;
+        min-width: 0;
+        min-height: 72px;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #252e3d;
+        border-radius: 12px;
+        background: #10151e;
+        padding: 12px;
+        color: #e5e9f0;
+        text-align: left;
         cursor: pointer;
         transition:
-          transform 120ms ease,
           border-color 120ms ease,
           background 120ms ease,
-          opacity 120ms ease;
+          transform 120ms ease;
       }
 
-      button:hover:not(:disabled) {
-        border-color: rgba(96, 165, 250, 0.36);
-        background: rgba(30, 41, 59, 0.9);
+      .sync-action:hover:not(:disabled) {
+        border-color: #39475d;
+        background: #131a25;
         transform: translateY(-1px);
       }
 
-      button:active:not(:disabled) {
+      .sync-action:active:not(:disabled) {
         transform: translateY(0);
+      }
+
+      .sync-action.primary {
+        border-color: #315f9e;
+        background: #111a28;
+      }
+
+      .sync-action.primary:hover:not(:disabled) {
+        border-color: #4e80c4;
+        background: #142137;
+      }
+
+      .action-icon {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid #2a3546;
+        border-radius: 9px;
+        background: #0c1119;
+        color: #9ba7b8;
+      }
+
+      .primary .action-icon {
+        border-color: #284f83;
+        color: #75aaff;
+      }
+
+      .action-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .action-copy {
+        min-width: 0;
+      }
+
+      .action-title {
+        display: block;
+        overflow: hidden;
+        font-size: 11px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .action-caption {
+        display: block;
+        margin-top: 3px;
+        color: #727d8f;
+        font-size: 9px;
+        line-height: 1.35;
+      }
+
+      .open-pulse {
+        display: flex;
+        width: 100%;
+        min-height: 39px;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 8px;
+        border: 1px solid #293446;
+        border-radius: 10px;
+        background: #121821;
+        color: #cfd6e1;
+        font-size: 11px;
+        font-weight: 650;
+        cursor: pointer;
+        transition:
+          background 120ms ease,
+          border-color 120ms ease,
+          color 120ms ease;
+      }
+
+      .open-pulse:hover:not(:disabled) {
+        border-color: #3c4a61;
+        background: #161e29;
+        color: #ffffff;
+      }
+
+      .open-pulse svg {
+        width: 14px;
+        height: 14px;
       }
 
       button:disabled {
         cursor: default;
-        opacity: 0.42;
-      }
-
-      .primary {
-        border-color: rgba(96, 165, 250, 0.42);
-        background: linear-gradient(135deg, #2563eb, #3b82f6);
-        color: white;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
-      }
-
-      .primary:hover:not(:disabled) {
-        background: linear-gradient(135deg, #1d4ed8, #2563eb);
-      }
-
-      .wide {
-        grid-column: 1 / -1;
-      }
-
-      .quiet {
-        min-height: 34px;
-        border-color: transparent;
-        background: transparent;
-        color: #94a3b8;
-      }
-
-      .quiet:hover:not(:disabled) {
-        border-color: rgba(148, 163, 184, 0.12);
-        background: rgba(15, 23, 42, 0.42);
-        color: #cbd5e1;
+        opacity: 0.4;
       }
 
       #summary {
         margin-top: 14px;
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        border-radius: 14px;
-        background: rgba(15, 23, 42, 0.6);
-        padding: 13px;
+        border: 1px solid #202936;
+        border-radius: 12px;
+        background: #0f141c;
+        padding: 12px;
       }
 
       #summary[hidden] {
@@ -225,41 +313,49 @@
         display: flex;
         align-items: baseline;
         justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 10px;
+        gap: 12px;
       }
 
       #summary-title {
         margin: 0;
-        font-size: 12px;
+        overflow: hidden;
+        color: #dde3eb;
+        font-size: 11px;
         font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       #summary-subtitle {
         margin: 0;
-        color: #64748b;
-        font-size: 10px;
+        flex: 0 0 auto;
+        color: #647086;
+        font-size: 9px;
       }
 
       .metrics {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 6px;
+        gap: 1px;
+        margin-top: 10px;
+        overflow: hidden;
+        border: 1px solid #202936;
+        border-radius: 9px;
+        background: #202936;
       }
 
       .metric {
         min-width: 0;
-        border: 1px solid rgba(148, 163, 184, 0.1);
-        border-radius: 10px;
-        background: rgba(2, 6, 23, 0.28);
-        padding: 8px 6px;
+        background: #0c1118;
+        padding: 9px 4px 8px;
         text-align: center;
       }
 
       .metric strong {
         display: block;
-        color: #f8fafc;
-        font-size: 14px;
+        color: #f1f4f8;
+        font-size: 13px;
+        font-weight: 700;
         line-height: 1;
       }
 
@@ -267,55 +363,94 @@
         display: block;
         margin-top: 5px;
         overflow: hidden;
-        color: #64748b;
-        font-size: 8px;
+        color: #606b7e;
+        font-size: 7px;
         font-weight: 700;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         text-overflow: ellipsis;
         text-transform: uppercase;
         white-space: nowrap;
       }
 
-      details {
+      .utilities {
         margin-top: 12px;
-        border-top: 1px solid rgba(148, 163, 184, 0.1);
-        padding-top: 10px;
+        border-top: 1px solid #1e2632;
+        padding-top: 11px;
+      }
+
+      .inspect {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 4px 0;
+        color: #697488;
+        text-align: left;
+        font-size: 10px;
+        cursor: pointer;
+      }
+
+      .inspect:hover:not(:disabled) {
+        color: #9da8b8;
+      }
+
+      details {
+        margin-top: 8px;
+        border: 1px solid #1f2733;
+        border-radius: 10px;
+        background: #0d1219;
       }
 
       summary {
-        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 11px;
+        color: #7f8a9c;
         font-size: 10px;
         cursor: pointer;
+        list-style: none;
         user-select: none;
       }
 
+      summary::-webkit-details-marker {
+        display: none;
+      }
+
+      summary::after {
+        color: #566173;
+        content: "+";
+        font-size: 13px;
+      }
+
+      details[open] summary::after {
+        content: "−";
+      }
+
       pre {
-        max-height: 250px;
+        max-height: 230px;
         overflow: auto;
-        margin: 9px 0 0;
-        border: 1px solid rgba(148, 163, 184, 0.1);
-        border-radius: 10px;
-        background: #050914;
-        padding: 10px;
-        color: #94a3b8;
+        margin: 0 9px 9px;
+        border-top: 1px solid #1c2430;
+        padding: 9px 2px 2px;
+        color: #7f8a9b;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-        font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font: 9px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       }
 
       .footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin-top: 14px;
-        color: #475569;
+        gap: 12px;
+        margin-top: 13px;
+        color: #4e596a;
         font-size: 9px;
       }
 
       .footer strong {
-        color: #64748b;
-        font-weight: 700;
+        color: #677286;
+        font-weight: 650;
       }
     </style>
   </head>
@@ -324,7 +459,17 @@
     <main class="shell">
       <header class="topbar">
         <div class="brand">
-          <div class="mark" aria-hidden="true">P</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M3 12h4l2-6 4 12 2-6h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
           <div class="brand-copy">
             <h1>PULSE</h1>
             <p>Campus Companion</p>
@@ -338,19 +483,74 @@
         <p id="status">Listo para sincronizar.</p>
       </section>
 
-      <p class="section-label">Sincronización</p>
-      <div class="actions">
-        <button id="sync" type="button">Materia actual</button>
-        <button id="sync-all" type="button" class="primary">Todas las materias</button>
-        <button id="open-pulse" type="button" class="wide" disabled>Abrir en Pulse</button>
-        <button id="inspect" type="button" class="quiet wide">Inspeccionar página</button>
+      <div class="section-heading">
+        <p>Sincronización</p>
+        <span class="recommended">Todas recomendado</span>
       </div>
+
+      <div class="sync-grid">
+        <button id="sync" class="sync-action" type="button">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v16H7.5A2.5 2.5 0 0 0 5 21.5v-16Z"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"
+              />
+              <path d="M5 5.5v16" stroke="currentColor" stroke-width="1.6" />
+            </svg>
+          </span>
+          <span class="action-copy">
+            <span class="action-title">Materia actual</span>
+            <span class="action-caption">Solo el curso abierto</span>
+          </span>
+        </button>
+
+        <button id="sync-all" class="sync-action primary" type="button">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"
+              />
+              <path
+                d="m5 11.5 7 3.5 7-3.5M5 15.5l7 3.5 7-3.5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+          <span class="action-copy">
+            <span class="action-title">Todas las materias</span>
+            <span class="action-caption">Sincroniza el periodo</span>
+          </span>
+        </button>
+      </div>
+
+      <button id="open-pulse" class="open-pulse" type="button" disabled>
+        Abrir en Pulse
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M5 12h14m-5-5 5 5-5 5"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
 
       <section id="summary" hidden>
         <div class="summary-head">
           <p id="summary-title">Resumen</p>
           <p id="summary-subtitle"></p>
         </div>
+
         <div class="metrics">
           <div class="metric"><strong id="metric-courses">0</strong><span>Materias</span></div>
           <div class="metric"><strong id="metric-tasks">0</strong><span>Tareas</span></div>
@@ -360,13 +560,17 @@
         </div>
       </section>
 
-      <details>
-        <summary>Detalles técnicos</summary>
-        <pre id="output">Todavía no hay datos para mostrar.</pre>
-      </details>
+      <div class="utilities">
+        <button id="inspect" class="inspect" type="button">Inspeccionar página actual</button>
+
+        <details>
+          <summary>Detalles técnicos</summary>
+          <pre id="output">Todavía no hay datos para mostrar.</pre>
+        </details>
+      </div>
 
       <footer class="footer">
-        <span>Usa tu sesión actual del campus.</span>
+        <span>Sesión del campus · sin contraseñas</span>
         <strong>Scale Studio</strong>
       </footer>
     </main>
