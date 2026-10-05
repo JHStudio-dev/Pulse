@@ -40,6 +40,16 @@ type SyncResult = {
   };
 };
 
+type BatchSyncResult = {
+  succeeded: number;
+  failed: number;
+  createdSubjects: number;
+  newCount: number;
+  changedCount: number;
+  unchangedCount: number;
+  errors: Array<{ course: string; error: string }>;
+};
+
 function isSnapshotMessage(value: unknown): value is {
   type: 'pulse:campus-sync:snapshot';
   snapshot: CampusSyncSnapshot;
@@ -49,21 +59,52 @@ function isSnapshotMessage(value: unknown): value is {
   return message.type === 'pulse:campus-sync:snapshot' && message.snapshot !== undefined;
 }
 
+function isBatchMessage(value: unknown): value is {
+  type: 'pulse:campus-sync:batch';
+  snapshots: CampusSyncSnapshot[];
+} {
+  if (!value || typeof value !== 'object') return false;
+  const message = value as { type?: unknown; snapshots?: unknown };
+  return (
+    message.type === 'pulse:campus-sync:batch' &&
+    Array.isArray(message.snapshots) &&
+    message.snapshots.length > 0
+  );
+}
+
+function normalized(value: string | undefined | null): string {
+  return (value ?? '').trim().toLocaleLowerCase('es');
+}
+
 export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [snapshot, setSnapshot] = useState<CampusSyncSnapshot | null>(null);
+  const [batchSnapshots, setBatchSnapshots] = useState<CampusSyncSnapshot[]>([]);
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
   const [status, setStatus] = useState('Buscando datos del Campus Companion…');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchSyncResult | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [confirmSchedule, setConfirmSchedule] = useState(false);
 
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window) return;
+
+      if (isBatchMessage(event.data)) {
+        const received = event.data.snapshots;
+        setBatchSnapshots(received);
+        setSnapshot(received[0] ?? null);
+        setScheduleDraft(null);
+        setConfirmSchedule(false);
+        setStatus(`${received.length} materias listas para importar.`);
+        return;
+      }
+
       if (!isSnapshotMessage(event.data)) return;
 
       const received = event.data.snapshot;
+      setBatchSnapshots([]);
       setSnapshot(received);
 
       const suggested = inferCampusScheduleSuggestions(received)[0];
@@ -88,7 +129,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     const timeout = window.setTimeout(() => {
       setStatus((current) =>
         current.startsWith('Buscando')
-          ? 'No hay una sincronización pendiente. Sincroniza un curso desde la extensión.'
+          ? 'No hay una sincronización pendiente. Sincroniza un curso o todas tus materias desde la extensión.'
           : current,
       );
     }, 1500);
@@ -115,6 +156,102 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     };
   }, [snapshot]);
 
+  const batchCounts = useMemo(() => {
+    if (batchSnapshots.length === 0) return null;
+
+    return batchSnapshots.reduce(
+      (total, item) => ({
+        documents: total.documents + item.documents.length,
+        assignments: total.assignments + item.assignments.length,
+        announcements: total.announcements + item.announcements.length,
+        events: total.events + item.events.length,
+      }),
+      { documents: 0, assignments: 0, announcements: 0, events: 0 },
+    );
+  }, [batchSnapshots]);
+
+  async function ingestAll() {
+    if (batchSnapshots.length === 0 || busy) return;
+
+    setBusy(true);
+    setResult(null);
+    setBatchResult(null);
+
+    const aggregate: BatchSyncResult = {
+      succeeded: 0,
+      failed: 0,
+      createdSubjects: 0,
+      newCount: 0,
+      changedCount: 0,
+      unchangedCount: 0,
+      errors: [],
+    };
+
+    const usedSubjects = new Set<string>();
+
+    try {
+      for (let index = 0; index < batchSnapshots.length; index += 1) {
+        const item = batchSnapshots[index]!;
+        const label = item.course.title ?? item.course.externalId;
+        setStatus(`Importando ${index + 1} de ${batchSnapshots.length}: ${label}`);
+
+        const match = subjects.find((subject) => {
+          if (usedSubjects.has(subject.id)) return false;
+
+          const courseCode = normalized(item.course.code ?? item.course.externalId);
+          const subjectCode = normalized(subject.code);
+          if (courseCode && subjectCode && courseCode === subjectCode) return true;
+
+          return normalized(subject.name) === normalized(item.course.title);
+        });
+
+        const response = await fetch('/api/campus-sync/ingest', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(
+            match
+              ? { mode: 'link', subjectId: match.id, snapshot: item }
+              : { mode: 'create', snapshot: item },
+          ),
+        });
+
+        const data = (await response.json()) as SyncResult | { error?: string };
+
+        if (!response.ok || !('summary' in data)) {
+          aggregate.failed += 1;
+          aggregate.errors.push({
+            course: label,
+            error: 'error' in data && data.error ? data.error : 'sync_failed',
+          });
+          continue;
+        }
+
+        if (match) usedSubjects.add(match.id);
+
+        aggregate.succeeded += 1;
+        if (data.createdSubject) aggregate.createdSubjects += 1;
+        aggregate.newCount += data.summary.newCount;
+        aggregate.changedCount += data.summary.changedCount;
+        aggregate.unchangedCount += data.summary.unchangedCount;
+      }
+
+      setBatchResult(aggregate);
+      setStatus(
+        aggregate.failed === 0
+          ? `${aggregate.succeeded} materias sincronizadas correctamente.`
+          : `${aggregate.succeeded} materias sincronizadas · ${aggregate.failed} con error.`,
+      );
+
+      if (aggregate.succeeded > 0) {
+        window.postMessage({ type: 'pulse:campus-sync:consumed' }, window.location.origin);
+      }
+    } catch {
+      setStatus('Se interrumpió la sincronización masiva.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function ingest(mode: 'create' | 'link') {
     if (!snapshot || busy) return;
     if (mode === 'link' && !subjectId) return;
@@ -133,6 +270,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
     setBusy(true);
     setResult(null);
+    setBatchResult(null);
     setStatus(mode === 'create' ? 'Creando materia y guardando…' : 'Vinculando y guardando…');
 
     try {
@@ -182,7 +320,48 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     <div className="mt-6">
       <p className="text-[color:var(--color-ink-muted)] text-sm">{status}</p>
 
-      {snapshot && counts ? (
+      {batchSnapshots.length > 1 && batchCounts ? (
+        <section className="mt-6 border-y border-[color:var(--color-border)] py-5" aria-labelledby="bulk-sync-heading">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 id="bulk-sync-heading" className="text-base font-medium">
+                {batchSnapshots.length} materias detectadas
+              </h2>
+              <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                {batchCounts.assignments} tareas · {batchCounts.documents} documentos ·{' '}
+                {batchCounts.announcements} anuncios · {batchCounts.events} eventos
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void ingestAll()}
+              disabled={busy}
+              className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
+            >
+              {busy ? 'Sincronizando…' : 'Importar todas automáticamente'}
+            </button>
+          </div>
+
+          <p className="text-[color:var(--color-ink-muted)] mt-3 max-w-2xl text-xs">
+            Pulse reutiliza una materia existente cuando coincide el código. Las demás se crean
+            automáticamente. Los horarios detectados no se guardan sin revisión.
+          </p>
+
+          <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+            {batchSnapshots.map((item) => (
+              <li key={item.course.externalId} className="rounded-md border border-[color:var(--color-border)] px-3 py-2">
+                <span className="font-medium">{item.course.title ?? item.course.externalId}</span>
+                <span className="text-[color:var(--color-ink-muted)] ml-2 text-xs">
+                  {item.assignments.length} tareas
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {batchSnapshots.length <= 1 && snapshot && counts ? (
         <>
           <div className="mt-5 border-y border-[color:var(--color-border)] py-4">
             <p className="text-base font-medium">
@@ -396,6 +575,28 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {batchResult ? (
+        <section className="mt-6 border-t border-[color:var(--color-border)] pt-4" aria-labelledby="bulk-result-heading">
+          <h2 id="bulk-result-heading" className="text-sm font-medium">Resultado</h2>
+          <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
+            {batchResult.succeeded} materias listas
+            {batchResult.failed > 0 ? ` · ${batchResult.failed} con error` : ''}
+            {' · '}{batchResult.newCount} nuevos · {batchResult.changedCount} cambiados ·{' '}
+            {batchResult.unchangedCount} sin cambios
+          </p>
+          {batchResult.errors.length > 0 ? (
+            <ul className="text-[color:var(--color-ink-muted)] mt-3 space-y-1 text-xs">
+              {batchResult.errors.map((entry) => (
+                <li key={entry.course}>{entry.course}: {entry.error}</li>
+              ))}
+            </ul>
+          ) : null}
+          <a href="/tasks" className="mt-3 inline-block text-sm underline underline-offset-4">
+            Ver tareas por materia
+          </a>
+        </section>
       ) : null}
 
       {result ? (
