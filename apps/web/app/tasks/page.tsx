@@ -80,13 +80,14 @@ export default async function TasksPage({
   const openGroups = groupTasksBySubject(ranked, subjects);
   const doneGroups = groupTasksBySubject(done, subjects);
 
-  const renderTaskList = (items: readonly Task[]) => (
+  const renderTaskList = (items: readonly Task[], showSubject = true) => (
     <TaskList
       tasks={items}
       subjectsById={subjectsById}
       subjects={options}
       today={today}
       reminderCounts={reminderCounts}
+      showSubject={showSubject}
     />
   );
 
@@ -162,7 +163,7 @@ export default async function TasksPage({
                         {group.tasks.length} {group.tasks.length === 1 ? 'tarea' : 'tareas'}
                       </span>
                     </div>
-                    {renderTaskList(group.tasks)}
+                    {renderTaskList(group.tasks, false)}
                   </section>
                 ))}
               </div>
@@ -187,7 +188,7 @@ export default async function TasksPage({
                           {group.tasks.length}
                         </span>
                       </div>
-                      {renderTaskList(group.tasks)}
+                      {renderTaskList(group.tasks, false)}
                     </section>
                   ))}
                 </div>

@@ -49,12 +49,14 @@ export function TaskList({
   subjects,
   today,
   reminderCounts,
+  showSubject = true,
 }: {
   tasks: readonly Task[];
   subjectsById: ReadonlyMap<SubjectId, Subject>;
   subjects: { id: string; name: string }[];
   today: string;
   reminderCounts: ReadonlyMap<string, number>;
+  showSubject?: boolean;
 }) {
   return (
     <ul className="mt-4 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
@@ -87,7 +89,7 @@ export function TaskList({
               </p>
 
               <p className="text-[color:var(--color-ink-muted)] mt-0.5 text-xs">
-                {subject ? `${subject.name} · ` : ''}
+                {showSubject && subject ? `${subject.name} · ` : ''}
                 {dueLabel(task, today)}
                 {done ? ` · ${STATUS_LABEL[task.status]}` : ''}
                 {!done && task.status === 'in_progress' ? ' · En progreso' : ''}
