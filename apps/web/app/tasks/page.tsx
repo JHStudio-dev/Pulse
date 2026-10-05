@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { instantToZonedDate, isOverdue, sortTasksByPriority } from '@pulse/core';
 import type { Subject, SubjectId, Task } from '@pulse/types';
@@ -6,17 +7,48 @@ import { requireUser } from '@/lib/session';
 import { QuickAdd } from './quick-add';
 import { TaskList } from './task-list';
 
-/**
- * Tasks for the active period.
- *
- * A task belongs to a period through its subject. Tasks with no subject are
- * kept as well: dropping them would silently hide work the student recorded.
- */
-export default async function TasksPage() {
+type TaskGroup = {
+  key: string;
+  label: string;
+  tasks: readonly Task[];
+};
+
+function groupTasksBySubject(
+  tasks: readonly Task[],
+  subjects: readonly Subject[],
+): TaskGroup[] {
+  const groups: TaskGroup[] = subjects
+    .map((subject) => ({
+      key: subject.id as string,
+      label: subject.name,
+      tasks: tasks.filter((task) => task.subjectId === subject.id),
+    }))
+    .filter((group) => group.tasks.length > 0);
+
+  const unassigned = tasks.filter((task) => task.subjectId === null);
+  if (unassigned.length > 0) {
+    groups.push({
+      key: 'unassigned',
+      label: 'Sin materia',
+      tasks: unassigned,
+    });
+  }
+
+  return groups;
+}
+
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
   const { userId, email, db } = await requireUser();
 
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
+
+  const params = await searchParams;
+  const groupedView = params.view !== 'all';
 
   const [subjects, allTasks, reminders] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
@@ -24,8 +56,8 @@ export default async function TasksPage() {
     db.reminders.listByUser(userId),
   ]);
 
-  const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((s) => [s.id, s]));
-  const options = subjects.map((s) => ({ id: s.id as string, name: s.name }));
+  const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((subject) => [subject.id, subject]));
+  const options = subjects.map((subject) => ({ id: subject.id as string, name: subject.name }));
 
   const tasks = allTasks.filter(
     (task) => task.subjectId === null || subjectsById.has(task.subjectId),
@@ -43,20 +75,59 @@ export default async function TasksPage() {
   const open = tasks.filter((task) => task.status !== 'done' && task.status !== 'submitted');
   const done = tasks.filter((task) => task.status === 'done' || task.status === 'submitted');
   const overdue = open.filter((task) => isOverdue(task, today));
-
   const ranked = sortTasksByPriority(open, { today }).map((entry) => entry.task);
+
+  const openGroups = groupTasksBySubject(ranked, subjects);
+  const doneGroups = groupTasksBySubject(done, subjects);
+
+  const renderTaskList = (items: readonly Task[]) => (
+    <TaskList
+      tasks={items}
+      subjectsById={subjectsById}
+      subjects={options}
+      today={today}
+      reminderCounts={reminderCounts}
+    />
+  );
 
   return (
     <AppShell email={email} subjects={options}>
-      <h1 className="text-2xl font-semibold tracking-tight">Tareas</h1>
-      <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
-        {open.length === 0
-          ? 'Nada pendiente'
-          : `${open.length} ${open.length === 1 ? 'pendiente' : 'pendientes'}`}
-        {overdue.length > 0
-          ? ` · ${overdue.length} atrasada${overdue.length === 1 ? '' : 's'}`
-          : ''}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Tareas</h1>
+          <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
+            {open.length === 0
+              ? 'Nada pendiente'
+              : `${open.length} ${open.length === 1 ? 'pendiente' : 'pendientes'}`}
+            {overdue.length > 0
+              ? ` · ${overdue.length} atrasada${overdue.length === 1 ? '' : 's'}`
+              : ''}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-md border border-[color:var(--color-border)] p-1 text-xs">
+          <Link
+            href="/tasks"
+            aria-current={groupedView ? 'page' : undefined}
+            className={[
+              'rounded px-2 py-1',
+              groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
+            ].join(' ')}
+          >
+            Por materia
+          </Link>
+          <Link
+            href="/tasks?view=all"
+            aria-current={!groupedView ? 'page' : undefined}
+            className={[
+              'rounded px-2 py-1',
+              !groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
+            ].join(' ')}
+          >
+            Todas
+          </Link>
+        </div>
+      </div>
 
       <div className="mt-6 border-b border-[color:var(--color-border)] pb-6">
         <QuickAdd subjects={options} />
@@ -73,36 +144,56 @@ export default async function TasksPage() {
       ) : (
         <>
           <section className="mt-6" aria-labelledby="open-heading">
-            <h2 id="open-heading" className="text-sm font-medium">
-              Pendientes
-            </h2>
+            <h2 id="open-heading" className="text-sm font-medium">Pendientes</h2>
+
             {ranked.length === 0 ? (
               <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm">
                 No te queda nada pendiente.
               </p>
+            ) : groupedView ? (
+              <div className="mt-4 space-y-8">
+                {openGroups.map((group) => (
+                  <section key={group.key} aria-labelledby={`tasks-${group.key}`}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h3 id={`tasks-${group.key}`} className="text-sm font-medium">
+                        {group.label}
+                      </h3>
+                      <span className="text-[color:var(--color-ink-muted)] text-xs">
+                        {group.tasks.length} {group.tasks.length === 1 ? 'tarea' : 'tareas'}
+                      </span>
+                    </div>
+                    {renderTaskList(group.tasks)}
+                  </section>
+                ))}
+              </div>
             ) : (
-              <TaskList
-                tasks={ranked}
-                subjectsById={subjectsById}
-                subjects={options}
-                today={today}
-                reminderCounts={reminderCounts}
-              />
+              renderTaskList(ranked)
             )}
           </section>
 
           {done.length > 0 ? (
             <section className="mt-10" aria-labelledby="done-heading">
-              <h2 id="done-heading" className="text-sm font-medium">
-                Completadas
-              </h2>
-              <TaskList
-                tasks={done as readonly Task[]}
-                subjectsById={subjectsById}
-                subjects={options}
-                today={today}
-                reminderCounts={reminderCounts}
-              />
+              <h2 id="done-heading" className="text-sm font-medium">Completadas</h2>
+
+              {groupedView ? (
+                <div className="mt-4 space-y-8">
+                  {doneGroups.map((group) => (
+                    <section key={group.key} aria-labelledby={`done-${group.key}`}>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 id={`done-${group.key}`} className="text-sm font-medium">
+                          {group.label}
+                        </h3>
+                        <span className="text-[color:var(--color-ink-muted)] text-xs">
+                          {group.tasks.length}
+                        </span>
+                      </div>
+                      {renderTaskList(group.tasks)}
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                renderTaskList(done)
+              )}
             </section>
           ) : null}
         </>
