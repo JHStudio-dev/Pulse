@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { JSDOM } from 'jsdom';
 import {
   inferChamiloAssignmentDueAt,
+  inspectChamiloAssignmentDeadline,
   mergeChamiloAssignmentDeadlines,
   normalizeChamiloDateTime,
   parseChamiloAssignments,
@@ -153,6 +154,44 @@ describe('Chamilo deadlines', () => {
     `);
     expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
       .toBeUndefined();
+  });
+
+  it('reads a hidden expires_on field from assignment details', () => {
+    const dom = new JSDOM(`
+      <html><body><h3>Entrega de ensayo</h3>
+        <input type="hidden" name="expires_on" value="2026-10-18 22:30:00">
+      </body></html>
+    `);
+
+    expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
+      .toBe('2026-10-18T22:30:00');
+  });
+
+  it('reads a deadline embedded in Chamilo script data', () => {
+    const dom = new JSDOM(`
+      <html><body><h3>Entrega de ensayo</h3>
+        <script>
+          window.assignment = {"id":"2074726","expires_on":"2026-10-20 21:15:00"};
+        </script>
+      </body></html>
+    `);
+
+    expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
+      .toBe('2026-10-20T21:15:00');
+  });
+
+  it('reports only deadline-related diagnostic candidates', () => {
+    const dom = new JSDOM(`
+      <html><body>
+        <input name="expires_on" value="2026-10-18 22:30:00">
+        <input name="unrelated_date" value="2026-01-01 08:00:00">
+      </body></html>
+    `);
+
+    expect(inspectChamiloAssignmentDeadline(dom.window.document)).toEqual({
+      candidates: ['2026-10-18 22:30:00'],
+      normalized: ['2026-10-18T22:30:00'],
+    });
   });
 
   it('reads a labeled deadline from assignment details', () => {

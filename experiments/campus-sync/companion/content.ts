@@ -1,6 +1,7 @@
 import {
   getChamiloCourseId,
   getChamiloSessionId,
+  inspectChamiloAssignmentDeadline,
   mergeChamiloAssignmentDeadlines,
   parseChamiloAnnouncementDetail,
   parseChamiloAnnouncements,
@@ -23,6 +24,7 @@ type PageKind =
   | 'course'
   | 'documents'
   | 'assignments'
+  | 'assignment_detail'
   | 'announcements'
   | 'agenda'
   | 'unknown';
@@ -36,6 +38,7 @@ const AGENDA_MONTHS_TO_SYNC = 6;
 
 function detectPageKind(url: URL): PageKind {
   if (url.pathname.includes('/main/document/document.php')) return 'documents';
+  if (url.pathname.includes('/main/work/work_list.php')) return 'assignment_detail';
   if (url.pathname.includes('/main/work/work.php')) return 'assignments';
   if (url.pathname.includes('/main/announcements/announcements.php')) {
     return 'announcements';
@@ -78,6 +81,12 @@ function inspectCurrentPage() {
       break;
     case 'assignments':
       data = parseChamiloAssignments(document, course, location.href);
+      break;
+    case 'assignment_detail':
+      data = {
+        assignment: parseChamiloAssignmentDetail(document, course, location.href),
+        deadline: inspectChamiloAssignmentDeadline(document),
+      };
       break;
     case 'announcements':
       data = parseChamiloAnnouncements(document, course, location.href);

@@ -589,6 +589,110 @@ export function normalizeChamiloDateTime(value: string): string | undefined {
   );
 }
 
+function assignmentDeadlineCandidates(document: Document): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+
+  const add = (value: string | null | undefined) => {
+    const clean = cleanText(value);
+    if (!clean || seen.has(clean)) return;
+    seen.add(clean);
+    candidates.push(clean);
+  };
+
+  const signalSelector = [
+    '[id*="expire" i]',
+    '[name*="expire" i]',
+    '[data-field*="expire" i]',
+    '[aria-describedby*="expire" i]',
+    '[id*="deadline" i]',
+    '[name*="deadline" i]',
+    '[data-field*="deadline" i]',
+    '[aria-describedby*="deadline" i]',
+    '[id*="due_date" i]',
+    '[name*="due_date" i]',
+    '[data-field*="due_date" i]',
+    '[aria-describedby*="due_date" i]',
+    '[id*="end_date" i]',
+    '[name*="end_date" i]',
+    '[data-field*="end_date" i]',
+    '[aria-describedby*="end_date" i]',
+  ].join(', ');
+
+  for (const element of document.querySelectorAll<HTMLElement>(signalSelector)) {
+    add(element.getAttribute('value'));
+    add(element.getAttribute('title'));
+    add(element.getAttribute('data-date'));
+    add(element.textContent);
+  }
+
+  const labelPattern =
+    /^(?:fecha\s*(?:l[ií]mite|de\s+entrega|final|fin)|vencimiento|vence|expira(?:ci[oó]n)?|deadline|due\s+date)\s*:?.*$/i;
+
+  for (const row of document.querySelectorAll<HTMLTableRowElement>('tr')) {
+    const cells = [...row.children].filter(
+      (element) => element.tagName === 'TH' || element.tagName === 'TD',
+    );
+
+    const labelIndex = cells.findIndex((cell) => labelPattern.test(cleanText(cell.textContent)));
+    if (labelIndex === -1) continue;
+
+    for (const cell of cells.slice(labelIndex)) {
+      add(cell.getAttribute('title'));
+      add(cell.getAttribute('data-date'));
+      add(cell.textContent);
+    }
+  }
+
+  for (const label of document.querySelectorAll<HTMLLabelElement>('label')) {
+    if (!labelPattern.test(cleanText(label.textContent))) continue;
+
+    add(label.textContent);
+
+    const targetId = label.htmlFor;
+    if (!targetId) continue;
+
+    const target = document.getElementById(targetId);
+    if (!(target instanceof HTMLElement)) continue;
+
+    add(target.getAttribute('value'));
+    add(target.getAttribute('title'));
+    add(target.getAttribute('data-date'));
+    add(target.textContent);
+  }
+
+  const scriptSignal =
+    /(?:expires?_on|due_date|deadline|end_date|endDate)\s*["']?\s*[:=]\s*["']([^"']+)["']/gi;
+
+  for (const script of document.querySelectorAll<HTMLScriptElement>('script')) {
+    const source = script.textContent ?? '';
+    for (const match of source.matchAll(scriptSignal)) add(match[1]);
+  }
+
+  return candidates;
+}
+
+export function inspectChamiloAssignmentDeadline(document: Document): {
+  candidates: string[];
+  normalized: string[];
+} {
+  const candidates = assignmentDeadlineCandidates(document);
+  const normalized = candidates
+    .map(normalizeChamiloDateTime)
+    .filter((value): value is string => value !== undefined);
+
+  return {
+    candidates: candidates.slice(0, 20),
+    normalized: [...new Set(normalized)].slice(0, 10),
+  };
+}
+
+function structuredChamiloAssignmentDueAt(document: Document): string | undefined {
+  return assignmentDeadlineCandidates(document)
+    .map(normalizeChamiloDateTime)
+    .find((value): value is string => value !== undefined);
+}
+
 export function parseChamiloAssignments(
   document: Document,
   course: CampusCourseRef,
@@ -623,29 +727,11 @@ export function parseChamiloAssignments(
 
     if (!title) continue;
 
-    const deadlineCell = row.querySelector<HTMLTableCellElement>(
-      [
-        'td[aria-describedby$="_expires_on"]',
-        'td[aria-describedby$="_due_date"]',
-        'td[aria-describedby$="_deadline"]',
-        'td[aria-describedby$="_end_date"]',
-        'td[data-field="dueAt"]',
-        'td[data-field="deadline"]',
-      ].join(', '),
-    );
-
-    const textValues = (cell: HTMLTableCellElement): string[] => [
-      cell.getAttribute('title') ?? '',
-      cell.getAttribute('data-date') ?? '',
-      cell.innerText || cell.textContent || '',
-    ];
-
-    const deadlineValues = deadlineCell ? textValues(deadlineCell) : [];
+    const rowDocument = row.ownerDocument.implementation.createHTMLDocument();
+    rowDocument.body.append(row.cloneNode(true));
 
     const dueAt =
-      deadlineValues
-        .map(normalizeChamiloDateTime)
-        .find((value): value is string => value !== undefined) ??
+      structuredChamiloAssignmentDueAt(rowDocument) ??
       inferChamiloAssignmentDueAt(title);
 
     assignments.push({
@@ -753,31 +839,8 @@ export function parseChamiloAssignmentDetail(
     ? sanitizeCampusUrl(submissionLink.href, pageUrl)
     : undefined;
 
-  const deadlineCandidates = [...document.querySelectorAll<HTMLTableRowElement>('tr')]
-    .flatMap((row) => {
-      const cells = [...row.children].filter(
-        (element) => element.tagName === 'TH' || element.tagName === 'TD',
-      );
-      const labelIndex = cells.findIndex((cell) =>
-        /^(?:fecha\s*(?:l[ií]mite|de\s+entrega)|vencimiento|vence\s*:)/i.test(
-          cleanText(cell.textContent),
-        ),
-      );
-
-      if (labelIndex === -1) return [];
-
-      const labelCell = cells[labelIndex]!;
-      return [
-        labelCell.textContent ?? '',
-        ...cells
-          .slice(labelIndex + 1)
-          .flatMap((cell) => [cell.getAttribute('title') ?? '', cell.textContent ?? '']),
-      ];
-    });
   const dueAt =
-    deadlineCandidates
-      .map(normalizeChamiloDateTime)
-      .find((value): value is string => value !== undefined) ??
+    structuredChamiloAssignmentDueAt(document) ??
     inferChamiloAssignmentDueAt(heading);
 
   return {
