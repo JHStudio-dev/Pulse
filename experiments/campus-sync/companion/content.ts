@@ -615,10 +615,20 @@ async function syncCourse(courseRef: CampusCourseRef) {
 }
 
 async function discoverCampusCourses(): Promise<SyncedCourse[]> {
-  const homePage = await fetchDocument(CAMPUS_BASE);
-  const discovered = parseChamiloCourses(homePage, CAMPUS_BASE);
+  const urls = [
+    CAMPUS_BASE,
+    `${CAMPUS_BASE}/user_portal.php`,
+  ];
 
-  if (discovered.length > 0) return discovered;
+  for (const url of urls) {
+    try {
+      const page = await fetchDocument(url);
+      const discovered = parseChamiloCourses(page, url);
+      if (discovered.length > 0) return discovered;
+    } catch {
+      // Try the next authenticated campus entry point.
+    }
+  }
 
   return parseChamiloCourses(document, location.href);
 }
