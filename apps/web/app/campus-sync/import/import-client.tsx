@@ -87,6 +87,8 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
   const [snapshot, setSnapshot] = useState<CampusSyncSnapshot | null>(null);
   const [batchSnapshots, setBatchSnapshots] = useState<CampusSyncSnapshot[]>([]);
   const [batchSourceErrors, setBatchSourceErrors] = useState<BatchSourceError[]>([]);
+  const [batchScheduleDrafts, setBatchScheduleDrafts] = useState<Record<string, ScheduleDraft>>({});
+  const [batchScheduleConfirmed, setBatchScheduleConfirmed] = useState<Record<string, boolean>>({});
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
   const [status, setStatus] = useState('Buscando datos del Campus Companion…');
   const [busy, setBusy] = useState(false);
@@ -101,8 +103,25 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
       if (isBatchMessage(event.data)) {
         const received = event.data.snapshots;
+        const drafts: Record<string, ScheduleDraft> = {};
+
+        for (const item of received) {
+          const suggestion = inferCampusScheduleSuggestions(item)[0];
+          if (!suggestion) continue;
+
+          drafts[item.course.externalId] = {
+            weekdays: [...suggestion.weekdays],
+            startTime: suggestion.startTime,
+            endTime: suggestion.endTime,
+            modality: suggestion.modality,
+            meetingUrl: suggestion.meetingUrl ?? '',
+          };
+        }
+
         setBatchSnapshots(received);
         setBatchSourceErrors(Array.isArray(event.data.errors) ? event.data.errors : []);
+        setBatchScheduleDrafts(drafts);
+        setBatchScheduleConfirmed({});
         setSnapshot(received[0] ?? null);
         setScheduleDraft(null);
         setConfirmSchedule(false);
@@ -115,6 +134,8 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
       const received = event.data.snapshot;
       setBatchSnapshots([]);
       setBatchSourceErrors([]);
+      setBatchScheduleDrafts({});
+      setBatchScheduleConfirmed({});
       setSnapshot(received);
 
       const suggested = inferCampusScheduleSuggestions(received)[0];
@@ -180,8 +201,55 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     );
   }, [batchSnapshots]);
 
+  function updateBatchSchedule(courseExternalId: string, changes: Partial<ScheduleDraft>) {
+    setBatchScheduleDrafts((current) => {
+      const draft = current[courseExternalId];
+      if (!draft) return current;
+
+      return {
+        ...current,
+        [courseExternalId]: {
+          ...draft,
+          ...changes,
+        },
+      };
+    });
+  }
+
+  function toggleBatchScheduleDay(courseExternalId: string, day: Weekday) {
+    const draft = batchScheduleDrafts[courseExternalId];
+    if (!draft) return;
+
+    const checked = draft.weekdays.includes(day);
+    updateBatchSchedule(courseExternalId, {
+      weekdays: checked
+        ? draft.weekdays.filter((value) => value !== day)
+        : [...draft.weekdays, day].sort(),
+    });
+  }
+
   async function ingestAll() {
     if (batchSnapshots.length === 0 || busy) return;
+
+    const invalidSchedule = batchSnapshots.find((item) => {
+      if (!batchScheduleConfirmed[item.course.externalId]) return false;
+      const draft = batchScheduleDrafts[item.course.externalId];
+
+      return (
+        !draft ||
+        draft.weekdays.length === 0 ||
+        !draft.startTime ||
+        !draft.endTime ||
+        draft.startTime >= draft.endTime
+      );
+    });
+
+    if (invalidSchedule) {
+      setStatus(
+        `Revisa el horario de ${invalidSchedule.course.title ?? invalidSchedule.course.externalId} antes de importar.`,
+      );
+      return;
+    }
 
     setBusy(true);
     setResult(null);
@@ -215,14 +283,33 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
           return normalized(subject.name) === normalized(item.course.title);
         });
 
+        const draft = batchScheduleDrafts[item.course.externalId];
+        const includeSchedule = Boolean(
+          batchScheduleConfirmed[item.course.externalId] && draft,
+        );
+
+        const request = match
+          ? { mode: 'link' as const, subjectId: match.id, snapshot: item }
+          : { mode: 'create' as const, snapshot: item };
+
         const response = await fetch('/api/campus-sync/ingest', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(
-            match
-              ? { mode: 'link', subjectId: match.id, snapshot: item }
-              : { mode: 'create', snapshot: item },
-          ),
+          body: JSON.stringify({
+            ...request,
+            ...(includeSchedule && draft
+              ? {
+                  schedule: {
+                    weekdays: draft.weekdays,
+                    startTime: draft.startTime,
+                    endTime: draft.endTime,
+                    modality: draft.modality,
+                    meetingUrl: draft.meetingUrl.trim() || null,
+                    location: { campus: null, building: null, room: null },
+                  },
+                }
+              : {}),
+          }),
         });
 
         const data = (await response.json()) as SyncResult | { error?: string };
@@ -330,7 +417,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     <div className="mt-6">
       <p className="text-[color:var(--color-ink-muted)] text-sm">{status}</p>
 
-      {batchSnapshots.length > 1 && batchCounts ? (
+      {batchSnapshots.length > 0 && batchCounts ? (
         <section className="mt-6 border-y border-[color:var(--color-border)] py-5" aria-labelledby="bulk-sync-heading">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -356,18 +443,152 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
           <p className="text-[color:var(--color-ink-muted)] mt-3 max-w-2xl text-xs">
             Pulse reutiliza una materia existente cuando coincide el código. Las demás se crean
-            automáticamente. Los horarios detectados no se guardan sin revisión.
+            automáticamente. Revisa los horarios detectados y confirma únicamente los que quieras
+            guardar.
           </p>
 
-          <ul className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            {batchSnapshots.map((item) => (
-              <li key={item.course.externalId} className="rounded-md border border-[color:var(--color-border)] px-3 py-2">
-                <span className="font-medium">{item.course.title ?? item.course.externalId}</span>
-                <span className="text-[color:var(--color-ink-muted)] ml-2 text-xs">
-                  {item.assignments.length} tareas
-                </span>
-              </li>
-            ))}
+          <ul className="mt-4 space-y-3 text-sm">
+            {batchSnapshots.map((item) => {
+              const courseId = item.course.externalId;
+              const suggestion = inferCampusScheduleSuggestions(item)[0];
+              const draft = batchScheduleDrafts[courseId];
+              const confirmed = Boolean(batchScheduleConfirmed[courseId]);
+
+              return (
+                <li
+                  key={courseId}
+                  className="border-y border-[color:var(--color-border)] px-1 py-3"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium">
+                      {item.course.title ?? item.course.externalId}
+                    </span>
+                    <span className="text-[color:var(--color-ink-muted)] text-xs">
+                      {item.assignments.length} tareas
+                    </span>
+                  </div>
+
+                  {suggestion && draft ? (
+                    <div className="mt-3">
+                      <label className="flex items-center gap-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={confirmed}
+                          onChange={(event) =>
+                            setBatchScheduleConfirmed((current) => ({
+                              ...current,
+                              [courseId]: event.target.checked,
+                            }))
+                          }
+                        />
+                        Guardar horario detectado
+                      </label>
+
+                      <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                        {draft.weekdays
+                          .map((weekday) => DAY_LABELS.find((day) => day.value === weekday)?.label)
+                          .filter(Boolean)
+                          .join(', ')}
+                        {' · '}
+                        {draft.startTime}–{draft.endTime}
+                        {' · '}
+                        confianza {suggestion.confidence === 'high' ? 'alta' : 'media'}
+                      </p>
+
+                      {confirmed ? (
+                        <div className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
+                          <fieldset>
+                            <legend className="text-xs font-medium">Días</legend>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {DAY_LABELS.map((day) => (
+                                <label key={day.value} className="flex items-center gap-1.5 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.weekdays.includes(day.value)}
+                                    onChange={() => toggleBatchScheduleDay(courseId, day.value)}
+                                  />
+                                  {day.label}
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="text-xs">
+                              Inicio
+                              <input
+                                type="time"
+                                value={draft.startTime}
+                                onChange={(event) =>
+                                  updateBatchSchedule(courseId, {
+                                    startTime: event.target.value,
+                                  })
+                                }
+                                className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                              />
+                            </label>
+                            <label className="text-xs">
+                              Fin
+                              <input
+                                type="time"
+                                value={draft.endTime}
+                                onChange={(event) =>
+                                  updateBatchSchedule(courseId, {
+                                    endTime: event.target.value,
+                                  })
+                                }
+                                className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                              />
+                            </label>
+                          </div>
+
+                          <label className="text-xs">
+                            Modalidad
+                            <select
+                              value={draft.modality}
+                              onChange={(event) =>
+                                updateBatchSchedule(courseId, {
+                                  modality: event.target.value as Modality,
+                                })
+                              }
+                              className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                            >
+                              <option value="unconfirmed">Sin confirmar</option>
+                              <option value="virtual">Virtual</option>
+                              <option value="in_person">Presencial</option>
+                              <option value="hybrid">Híbrida</option>
+                            </select>
+                          </label>
+
+                          <label className="text-xs">
+                            Enlace de clase
+                            <input
+                              type="url"
+                              value={draft.meetingUrl}
+                              onChange={(event) =>
+                                updateBatchSchedule(courseId, {
+                                  meetingUrl: event.target.value,
+                                })
+                              }
+                              placeholder="Opcional"
+                              className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
+                            />
+                          </label>
+
+                          <p className="text-[color:var(--color-ink-muted)] text-xs">
+                            Evidencia: {suggestion.evidence}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
+                      Sin horario suficientemente claro en el campus.
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
 
           {batchSourceErrors.length > 0 ? (
@@ -385,7 +606,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
         </section>
       ) : null}
 
-      {batchSnapshots.length <= 1 && snapshot && counts ? (
+      {batchSnapshots.length === 0 && snapshot && counts ? (
         <>
           <div className="mt-5 border-y border-[color:var(--color-border)] py-4">
             <p className="text-base font-medium">
