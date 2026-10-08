@@ -45,6 +45,10 @@ type PulseRequest =
 const CAMPUS_BASE = 'https://campus.ujcv.edu.hn';
 const AGENDA_MONTHS_TO_SYNC = 6;
 
+function cleanCampusText(value: string | null | undefined): string {
+  return value?.trim().replace(/\s+/g, ' ') ?? '';
+}
+
 function detectPageKind(url: URL): PageKind {
   if (url.pathname.includes('/main/document/document.php')) return 'documents';
   if (url.pathname.includes('/main/work/work_list.php')) return 'assignment_detail';
@@ -537,8 +541,8 @@ function inferCourseMetadataFromAnnouncements(
       /bienvenida(?:\s+a\s+la)?\s+(?:clase|curso)\s+(.+?)(?:\s*[-–—]\s*secci[oó]n\s+([a-z0-9-]+))?$/i,
     );
 
-    inferredTitle = match?.[1] ? cleanText(match[1]) : undefined;
-    inferredSection = match?.[2] ? cleanText(match[2]) : undefined;
+    inferredTitle = match?.[1] ? cleanCampusText(match[1]) : undefined;
+    inferredSection = match?.[2] ? cleanCampusText(match[2]) : undefined;
   }
 
   const scheduleHints = [
