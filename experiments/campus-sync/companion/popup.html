@@ -320,6 +320,76 @@
         white-space: nowrap;
       }
 
+      .failures {
+        margin-top: 13px;
+        border-top: 1px solid #39262b;
+        border-bottom: 1px solid #39262b;
+        padding: 10px 0 9px;
+      }
+
+      .failures[hidden] {
+        display: none;
+      }
+
+      .failures-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .failures-head h3 {
+        margin: 0;
+        color: #d99a9a;
+        font-size: 9px;
+        font-weight: 700;
+      }
+
+      .retry-failed {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #7ba8e8;
+        font-size: 8px;
+        cursor: pointer;
+      }
+
+      .retry-failed:hover:not(:disabled) {
+        color: #a8c8f4;
+      }
+
+      .failed-list {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .failed-list li {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 6px 0;
+        border-top: 1px solid #20191c;
+      }
+
+      .failed-list li:first-child {
+        border-top: 0;
+      }
+
+      .failed-course {
+        min-width: 0;
+        overflow: hidden;
+        color: #c8ced8;
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .failed-reason {
+        color: #735c63;
+        font-size: 8px;
+      }
+
       .utilities {
         margin-top: 15px;
       }
@@ -490,6 +560,14 @@
           <div class="metric"><strong id="metric-news">0</strong><span>Anuncios</span></div>
           <div class="metric"><strong id="metric-events">0</strong><span>Eventos</span></div>
         </div>
+      </section>
+
+      <section id="failed-section" class="failures" hidden>
+        <div class="failures-head">
+          <h3>Materias con error de lectura</h3>
+          <button id="retry-failed" class="retry-failed" type="button">Reintentar</button>
+        </div>
+        <ul id="failed-list" class="failed-list"></ul>
       </section>
 
       <div class="utilities">
