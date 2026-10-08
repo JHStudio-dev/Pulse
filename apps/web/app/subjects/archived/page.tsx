@@ -27,7 +27,7 @@ export default async function ArchivedSubjectsPage() {
       </p>
       <p className="text-[color:var(--color-ink-muted)] mt-2 max-w-xl text-xs">
         Restaurar vuelve a mostrar la materia. Eliminar permanentemente borra la materia, sus
-        horarios y su vínculo de Campus Sync; no se puede deshacer.
+        tareas, horarios y su vínculo de Campus Sync; no se puede deshacer.
       </p>
 
       {archived.length === 0 ? (
