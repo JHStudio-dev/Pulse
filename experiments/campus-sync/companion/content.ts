@@ -30,10 +30,17 @@ type PageKind =
   | 'agenda'
   | 'unknown';
 
+type RetryCourseRef = {
+  externalId: string;
+  sessionId?: string;
+  title?: string;
+};
+
 type PulseRequest =
   | { type: 'pulse:inspect' }
   | { type: 'pulse:sync-course' }
-  | { type: 'pulse:sync-all-courses' };
+  | { type: 'pulse:sync-all-courses' }
+  | { type: 'pulse:sync-courses'; courses: RetryCourseRef[] };
 
 const CAMPUS_BASE = 'https://campus.ujcv.edu.hn';
 const AGENDA_MONTHS_TO_SYNC = 6;
@@ -633,16 +640,16 @@ async function discoverCampusCourses(): Promise<SyncedCourse[]> {
   return parseChamiloCourses(document, location.href);
 }
 
-async function syncAllCourses() {
-  const discovered = await discoverCampusCourses();
-  if (discovered.length === 0) {
-    throw new Error('No enrolled courses were found on the campus home page');
-  }
-
+async function syncCourses(courses: RetryCourseRef[]) {
   const snapshots: Awaited<ReturnType<typeof syncCourse>>[] = [];
-  const errors: Array<{ courseExternalId: string; title: string; error: string }> = [];
+  const errors: Array<{
+    courseExternalId: string;
+    sessionId?: string;
+    title: string;
+    error: string;
+  }> = [];
 
-  for (const course of discovered) {
+  for (const course of courses) {
     try {
       snapshots.push(
         await syncCourse({
@@ -653,17 +660,29 @@ async function syncAllCourses() {
     } catch (error) {
       errors.push({
         courseExternalId: course.externalId,
-        title: course.title,
+        ...(course.sessionId !== undefined ? { sessionId: course.sessionId } : {}),
+        title: course.title ?? course.externalId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
-  if (snapshots.length === 0) {
-    throw new Error(errors[0]?.error ?? 'No courses could be synchronized');
+  return { snapshots, errors };
+}
+
+async function syncAllCourses() {
+  const discovered = await discoverCampusCourses();
+  if (discovered.length === 0) {
+    throw new Error('No enrolled courses were found on the campus home page');
   }
 
-  return { snapshots, errors };
+  const result = await syncCourses(discovered);
+
+  if (result.snapshots.length === 0) {
+    throw new Error(result.errors[0]?.error ?? 'No courses could be synchronized');
+  }
+
+  return result;
 }
 
 chrome.runtime.onMessage.addListener(
@@ -702,6 +721,29 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'pulse:sync-all-courses') {
       void syncAllCourses()
+        .then((data) => {
+          sendResponse({
+            ok: true,
+            data,
+          });
+        })
+        .catch((error) => {
+          sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+
+      return true;
+    }
+
+    if (message.type === 'pulse:sync-courses') {
+      if (message.courses.length === 0) {
+        sendResponse({ ok: true, data: { snapshots: [], errors: [] } });
+        return false;
+      }
+
+      void syncCourses(message.courses)
         .then((data) => {
           sendResponse({
             ok: true,
