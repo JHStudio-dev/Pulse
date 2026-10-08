@@ -5,6 +5,7 @@ import type { ClassSession, SubjectSchedule } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { formatSessionDate, MODALITY_LABEL, summarizeSchedules } from '@/lib/format';
 import { requireUser } from '@/lib/session';
+import { DeleteAllSubjectsButton } from './delete-all-subjects-button';
 import { NewSubject } from './new-subject';
 
 /** Groups rows by subject so the list costs one query per kind, not per subject. */
@@ -24,7 +25,10 @@ export default async function SubjectsPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const subjects = await db.subjects.listByPeriod(userId, period.id);
+  const [subjects, archivedSubjects] = await Promise.all([
+    db.subjects.listByPeriod(userId, period.id),
+    db.subjects.listArchivedByPeriod(userId, period.id),
+  ]);
 
   const today = instantToZonedDate(new Date(), period.timeZone);
   const [schedules, sessions] = await Promise.all([
@@ -53,6 +57,11 @@ export default async function SubjectsPage() {
           >
             Archivadas
           </Link>
+          {subjects.length + archivedSubjects.length > 0 ? (
+            <DeleteAllSubjectsButton
+              subjectCount={subjects.length + archivedSubjects.length}
+            />
+          ) : null}
           {subjects.length > 0 ? <NewSubject /> : null}
         </div>
       </div>

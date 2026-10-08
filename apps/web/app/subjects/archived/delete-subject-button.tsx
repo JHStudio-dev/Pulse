@@ -14,7 +14,7 @@ export function DeleteSubjectButton({
       action={deleteSubjectPermanently}
       onSubmit={(event) => {
         const confirmed = window.confirm(
-          `¿Eliminar "${subjectName}" permanentemente? Esta acción no se puede deshacer.`,
+          `¿Eliminar "${subjectName}" permanentemente? También se borrarán sus tareas. Esta acción no se puede deshacer.`,
         );
 
         if (!confirmed) event.preventDefault();

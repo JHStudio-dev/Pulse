@@ -1,6 +1,6 @@
 'use server';
 
-import type { SubjectId } from '@pulse/types';
+import type { SubjectId, UserId } from '@pulse/types';
 import { createSubjectSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
 import { requireUser } from '@/lib/session';
@@ -84,6 +84,23 @@ export async function restoreSubject(formData: FormData): Promise<void> {
 }
 
 
+async function removeSubjectWithTasks(
+  userId: UserId,
+  db: Awaited<ReturnType<typeof requireUser>>['db'],
+  subjectId: SubjectId,
+): Promise<void> {
+  const tasks = await db.tasks.listBySubject(userId, subjectId);
+  await Promise.all(tasks.map((task) => db.tasks.remove(userId, task.id)));
+  await db.subjects.remove(userId, subjectId);
+}
+
+function refreshSubjectViews(): void {
+  revalidatePath('/subjects');
+  revalidatePath('/subjects/archived');
+  revalidatePath('/tasks');
+  revalidatePath('/');
+}
+
 export async function deleteSubjectPermanently(formData: FormData): Promise<void> {
   const subject = uuidSchema.safeParse(String(formData.get('subjectId') ?? ''));
   if (!subject.success) return;
@@ -94,9 +111,25 @@ export async function deleteSubjectPermanently(formData: FormData): Promise<void
 
   if (!owned || owned.archivedAt === null) return;
 
-  await db.subjects.remove(userId, subjectId);
+  await removeSubjectWithTasks(userId, db, subjectId);
+  refreshSubjectViews();
+}
 
-  revalidatePath('/subjects');
-  revalidatePath('/subjects/archived');
-  revalidatePath('/');
+export async function deleteAllSubjectsInActivePeriod(): Promise<void> {
+  const { userId, db } = await requireUser();
+  const period = await db.periods.findActive(userId);
+  if (!period) return;
+
+  const [active, archived] = await Promise.all([
+    db.subjects.listByPeriod(userId, period.id),
+    db.subjects.listArchivedByPeriod(userId, period.id),
+  ]);
+
+  const subjects = new Map([...active, ...archived].map((subject) => [subject.id, subject]));
+
+  for (const subject of subjects.values()) {
+    await removeSubjectWithTasks(userId, db, subject.id);
+  }
+
+  refreshSubjectViews();
 }

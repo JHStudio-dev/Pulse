@@ -141,3 +141,27 @@ export async function deleteTask(formData: FormData): Promise<void> {
 
   refreshTaskViews();
 }
+
+
+export async function deleteAllTasksInActivePeriod(): Promise<void> {
+  const { userId, db } = await requireUser();
+  const period = await db.periods.findActive(userId);
+  if (!period) return;
+
+  const [activeSubjects, archivedSubjects, allTasks] = await Promise.all([
+    db.subjects.listByPeriod(userId, period.id),
+    db.subjects.listArchivedByPeriod(userId, period.id),
+    db.tasks.listByUser(userId),
+  ]);
+
+  const subjectIds = new Set(
+    [...activeSubjects, ...archivedSubjects].map((subject) => subject.id as string),
+  );
+
+  const tasks = allTasks.filter(
+    (task) => task.subjectId === null || subjectIds.has(task.subjectId as string),
+  );
+
+  await Promise.all(tasks.map((task) => db.tasks.remove(userId, task.id)));
+  refreshTaskViews();
+}

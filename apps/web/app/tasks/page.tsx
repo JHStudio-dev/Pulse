@@ -4,6 +4,7 @@ import { instantToZonedDate, isOverdue, sortTasksByPriority } from '@pulse/core'
 import type { Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
+import { DeleteAllTasksButton } from './delete-all-tasks-button';
 import { QuickAdd } from './quick-add';
 import { TaskList } from './task-list';
 
@@ -106,27 +107,31 @@ export default async function TasksPage({
           </p>
         </div>
 
-        <div className="flex items-center gap-1 rounded-md border border-[color:var(--color-border)] p-1 text-xs">
-          <Link
-            href="/tasks"
-            aria-current={groupedView ? 'page' : undefined}
-            className={[
-              'rounded px-2 py-1',
-              groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
-            ].join(' ')}
-          >
-            Por materia
-          </Link>
-          <Link
-            href="/tasks?view=all"
-            aria-current={!groupedView ? 'page' : undefined}
-            className={[
-              'rounded px-2 py-1',
-              !groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
-            ].join(' ')}
-          >
-            Todas
-          </Link>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {tasks.length > 0 ? <DeleteAllTasksButton taskCount={tasks.length} /> : null}
+
+          <div className="flex items-center gap-1 rounded-md border border-[color:var(--color-border)] p-1 text-xs">
+            <Link
+              href="/tasks"
+              aria-current={groupedView ? 'page' : undefined}
+              className={[
+                'rounded px-2 py-1',
+                groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
+              ].join(' ')}
+            >
+              Por materia
+            </Link>
+            <Link
+              href="/tasks?view=all"
+              aria-current={!groupedView ? 'page' : undefined}
+              className={[
+                'rounded px-2 py-1',
+                !groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
+              ].join(' ')}
+            >
+              Todas
+            </Link>
+          </div>
         </div>
       </div>
 
