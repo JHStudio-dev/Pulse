@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { instantToZonedDate, instantToZonedTime } from '@pulse/core';
-import type { Subject, SubjectId } from '@pulse/types';
+import type { CampusSyncItemKind, Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import {
   buildCampusAnnouncements,
@@ -11,6 +11,22 @@ import {
   campusEventTime,
 } from '@/lib/campus-activity';
 import { requireUser } from '@/lib/session';
+
+const CHANGE_LABELS: Record<CampusSyncItemKind, { new: string; changed: string }> = {
+  assignment: { new: 'Nueva tarea', changed: 'Tarea actualizada' },
+  document: { new: 'Nuevo documento', changed: 'Documento actualizado' },
+  announcement: { new: 'Nuevo anuncio', changed: 'Anuncio actualizado' },
+  event: { new: 'Nuevo evento', changed: 'Evento actualizado' },
+};
+
+function describeLastSync(lastSyncedAt: string | null, now: Date): string {
+  if (!lastSyncedAt) return 'Todavía no hay sincronizaciones.';
+
+  const days = Math.floor((now.getTime() - new Date(lastSyncedAt).getTime()) / 86_400_000);
+  if (days <= 0) return 'Última sincronización: hoy.';
+  if (days === 1) return 'Última sincronización: ayer.';
+  return `Última sincronización: hace ${days} días.`;
+}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('es', {
@@ -74,9 +90,10 @@ export default async function ActivityPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const [subjects, links] = await Promise.all([
+  const [subjects, links, connection] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.campusSync.listSubjectLinks(userId),
+    db.campusConnections.findByUser(userId),
   ]);
 
   const subjectsById = new Map<SubjectId, Subject>(subjects.map((subject) => [subject.id, subject]));
@@ -118,7 +135,8 @@ export default async function ActivityPage() {
     <AppShell email={email} subjects={subjects.map((subject) => ({ id: subject.id as string, name: subject.name }))}>
       <h1 className="text-2xl font-semibold tracking-tight">Actividad del campus</h1>
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
-        Anuncios y eventos encontrados durante tus sincronizaciones.
+        Anuncios y eventos encontrados durante tus sincronizaciones.{' '}
+        {describeLastSync(connection?.lastSyncedAt ?? null, now)}
       </p>
 
       <section className="mt-8" aria-labelledby="changes-heading">
@@ -130,20 +148,11 @@ export default async function ActivityPage() {
         ) : (
           <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
             {changes.slice(0, 30).map((entry) => {
-              const kindLabel =
-                entry.kind === 'assignment'
-                  ? 'Tarea'
-                  : entry.kind === 'document'
-                    ? 'Documento'
-                    : entry.kind === 'announcement'
-                      ? 'Anuncio'
-                      : 'Evento';
-
               return (
                 <li key={entry.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
                   <span className="text-sm">{entry.title}</span>
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
-                    {entry.change === 'new' ? `Nuevo ${kindLabel.toLowerCase()}` : `${kindLabel} actualizado`}
+                    {CHANGE_LABELS[entry.kind][entry.change]}
                     {' · '}{entry.subjectName}
                   </span>
                   <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
