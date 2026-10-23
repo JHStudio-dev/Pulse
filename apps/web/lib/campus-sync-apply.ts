@@ -13,6 +13,12 @@ import type {
   TaskRepository,
 } from '@pulse/database';
 
+export interface CampusSyncApplyRepositories {
+  tasks: Pick<TaskRepository, 'findById' | 'create' | 'update'>;
+  documents: Pick<DocumentRepository, 'findById' | 'create' | 'update'>;
+  campusSync: Pick<CampusSyncRepository, 'markTaskApplied' | 'markDocumentApplied'>;
+}
+
 function payloadString(item: CampusSyncItem, key: string): string | null {
   const value = item.payload[key];
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -96,8 +102,8 @@ async function applyAssignment(
   userId: UserId,
   subjectId: SubjectId,
   item: CampusSyncItem,
-  tasks: TaskRepository,
-  campusSync: CampusSyncRepository,
+  tasks: CampusSyncApplyRepositories['tasks'],
+  campusSync: CampusSyncApplyRepositories['campusSync'],
 ): Promise<void> {
   const title = payloadString(item, 'title');
   if (!title) return;
@@ -142,8 +148,8 @@ async function applyDocument(
   userId: UserId,
   subjectId: SubjectId,
   item: CampusSyncItem,
-  documents: DocumentRepository,
-  campusSync: CampusSyncRepository,
+  documents: CampusSyncApplyRepositories['documents'],
+  campusSync: CampusSyncApplyRepositories['campusSync'],
 ): Promise<void> {
   if (payloadString(item, 'kind') !== 'file') return;
 
@@ -183,11 +189,7 @@ export async function applyCampusSyncItem(
   userId: UserId,
   subjectId: SubjectId,
   item: CampusSyncItem,
-  repositories: {
-    tasks: TaskRepository;
-    documents: DocumentRepository;
-    campusSync: CampusSyncRepository;
-  },
+  repositories: CampusSyncApplyRepositories,
 ): Promise<void> {
   if (item.kind === 'assignment') {
     await applyAssignment(userId, subjectId, item, repositories.tasks, repositories.campusSync);
