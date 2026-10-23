@@ -85,16 +85,17 @@ export type CampusSyncItemDraft = Omit<CampusSyncItemInput, 'contentHash'>;
 
 export type CampusSyncEventSource = 'agenda' | 'assignment';
 
+// Snapshots arrive through validation, so optional fields may be explicitly undefined.
 export interface CampusSyncCourseSnapshot {
   externalId: string;
-  sessionId?: string;
-  title?: string;
-  code?: string;
-  section?: string;
-  teacher?: string;
-  sourceUrl?: string;
-  scheduleHints?: string[];
-  meetingUrls?: string[];
+  sessionId?: string | undefined;
+  title?: string | undefined;
+  code?: string | undefined;
+  section?: string | undefined;
+  teacher?: string | undefined;
+  sourceUrl?: string | undefined;
+  scheduleHints?: string[] | undefined;
+  meetingUrls?: string[] | undefined;
 }
 
 export interface CampusSyncDocumentSnapshot {
@@ -102,9 +103,9 @@ export interface CampusSyncDocumentSnapshot {
   courseExternalId: string;
   name: string;
   kind: 'file' | 'folder';
-  path?: string;
-  size?: string;
-  updatedAt?: string;
+  path?: string | undefined;
+  size?: string | undefined;
+  updatedAt?: string | undefined;
   sourceUrl: string;
 }
 
@@ -112,34 +113,34 @@ export interface CampusSyncAssignmentSnapshot {
   externalId: string;
   courseExternalId: string;
   title: string;
-  description?: string;
-  dueAt?: string;
+  description?: string | undefined;
+  dueAt?: string | undefined;
   sourceUrl: string;
-  submissionUrl?: string;
-  hasSubmission?: boolean;
+  submissionUrl?: string | undefined;
+  hasSubmission?: boolean | undefined;
 }
 
 export interface CampusSyncAnnouncementSnapshot {
   externalId: string;
   courseExternalId: string;
   title: string;
-  author?: string;
-  content?: string;
-  updatedAt?: string;
+  author?: string | undefined;
+  content?: string | undefined;
+  updatedAt?: string | undefined;
   sourceUrl: string;
 }
 
 export interface CampusSyncEventSnapshot {
-  externalId?: string;
+  externalId?: string | undefined;
   courseExternalId: string;
   title: string;
-  description?: string;
+  description?: string | undefined;
   startsAt: string;
-  endsAt?: string;
+  endsAt?: string | undefined;
   allDay: boolean;
   sourceType: CampusSyncEventSource;
-  sourceExternalId?: string;
-  sourceUrl?: string;
+  sourceExternalId?: string | undefined;
+  sourceUrl?: string | undefined;
 }
 
 export interface CampusSyncSnapshot {

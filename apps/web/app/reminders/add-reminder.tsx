@@ -172,7 +172,7 @@ export function AddReminder({
         </button>
       )}
     >
-      {(close) => <Form kind={kind} targetId={targetId} dueDate={dueDate} close={close} />}
+      {(close) => <Form kind={kind} targetId={targetId} dueDate={dueDate ?? null} close={close} />}
     </Dialog>
   );
 }
