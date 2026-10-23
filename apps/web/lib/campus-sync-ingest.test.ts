@@ -291,6 +291,30 @@ describe('subjects outside the active period', () => {
     expect(memory.state.links).toEqual([]);
   });
 
+  it('keeps an archived subject archived during a bulk import, but updates it', async () => {
+    const memory = createMemoryCampusSync();
+    memory.addStudent(STUDENT);
+    await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
+    memory.state.subjects[0]!.archivedAt = '2026-10-02T00:00:00.000Z';
+
+    const changed = snapshot();
+    changed.assignments.push({
+      externalId: 'work-3',
+      courseExternalId: 'ADM2011C1',
+      title: 'Examen parcial',
+      sourceUrl: 'https://campus.ujcv.edu.hn/main/work/work_list.php?id=3',
+    });
+    const outcome = await ingestCampusSnapshot(
+      STUDENT,
+      { ...create(changed), restoreArchived: false },
+      memory.repositories,
+    );
+
+    expect(outcome).toMatchObject({ ok: true, result: { archived: true } });
+    expect(memory.state.subjects[0]?.archivedAt).toBe('2026-10-02T00:00:00.000Z');
+    expect(memory.state.tasks.map((task) => task.title)).toContain('Examen parcial');
+  });
+
   it('restores an archived subject of the active period when its course syncs', async () => {
     const memory = createMemoryCampusSync();
     memory.addStudent(STUDENT);

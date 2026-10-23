@@ -129,6 +129,23 @@ describe('ingest requests', () => {
     });
   });
 
+  it('asks the server to keep archived subjects archived during a bulk import', () => {
+    const request = buildIngestRequest(
+      snapshot('MAT102B1', 'Geometría'),
+      { mode: 'create' },
+      null,
+      {
+        keepArchived: true,
+      },
+    );
+
+    expect(campusSyncIngestRequestSchema.parse(request)).toMatchObject({ restoreArchived: false });
+    expect(
+      'restoreArchived' in
+        buildIngestRequest(snapshot('MAT102B1', 'Geometría'), { mode: 'create' }, null),
+    ).toBe(false);
+  });
+
   it('sends no schedule unless one was confirmed', () => {
     const request = buildIngestRequest(snapshot('MAT102B1', 'Geometría'), { mode: 'create' }, null);
     expect('schedule' in request).toBe(false);

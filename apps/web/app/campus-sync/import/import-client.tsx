@@ -22,6 +22,7 @@ type SyncResult = {
   subjectId: string;
   subjectName: string;
   createdSubject: boolean;
+  archived?: boolean;
   summary: {
     discoveredCount: number;
     newCount: number;
@@ -277,7 +278,9 @@ export function CampusSyncImport({
         links,
         usedSubjectIds: usedSubjects.current,
       });
-      const response = await postIngest(buildIngestRequest(item, plan, confirmedDraft(key)));
+      const response = await postIngest(
+        buildIngestRequest(item, plan, confirmedDraft(key), { keepArchived: true }),
+      );
 
       if ('error' in response) {
         failed += 1;
@@ -449,7 +452,12 @@ export function CampusSyncImport({
 
                       {entry?.status === 'done' ? (
                         <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                          {entry.result.createdSubject ? 'Materia creada' : 'Vinculada'} ·{' '}
+                          {entry.result.createdSubject
+                            ? 'Materia creada'
+                            : entry.result.archived
+                              ? 'Archivada, actualizada sin restaurar'
+                              : 'Vinculada'}{' '}
+                          ·{' '}
                           <a
                             href={`/subjects/${entry.result.subjectId}`}
                             className="underline underline-offset-4"

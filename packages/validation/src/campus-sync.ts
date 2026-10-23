@@ -96,11 +96,15 @@ export const campusSyncIngestRequestSchema = z.discriminatedUnion('mode', [
     subjectId: z.uuid(),
     snapshot: campusSyncSnapshotSchema,
     schedule: campusSyncConfirmedScheduleSchema.optional(),
+    // False keeps an archived subject archived while its campus data updates.
+    restoreArchived: z.boolean().optional(),
   }),
   z.object({
     mode: z.literal('create'),
     snapshot: campusSyncSnapshotSchema,
     schedule: campusSyncConfirmedScheduleSchema.optional(),
+    // False keeps an archived subject archived while its campus data updates.
+    restoreArchived: z.boolean().optional(),
   }),
 ]);
 

@@ -108,12 +108,14 @@ export function buildIngestRequest(
   snapshot: CampusSyncSnapshot,
   plan: CourseImportPlan,
   confirmedSchedule: ScheduleDraft | null,
+  options: { keepArchived?: boolean } = {},
 ) {
   return {
     ...(plan.mode === 'link'
       ? { mode: 'link' as const, subjectId: plan.subjectId }
       : { mode: 'create' as const }),
     snapshot,
+    ...(options.keepArchived ? { restoreArchived: false } : {}),
     ...(confirmedSchedule
       ? {
           schedule: {

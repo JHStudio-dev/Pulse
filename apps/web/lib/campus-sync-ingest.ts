@@ -39,6 +39,8 @@ export interface CampusSyncIngestResult {
   subjectId: SubjectId;
   subjectName: string;
   createdSubject: boolean;
+  /** The subject stayed archived; its campus data was still updated. */
+  archived: boolean;
   summary: CampusSyncSummary;
 }
 
@@ -216,7 +218,8 @@ export async function ingestCampusSnapshot(
     createdSubject = true;
   }
 
-  if (subject.archivedAt !== null) {
+  // A bulk import keeps the student's archiving; an explicit import restores.
+  if (subject.archivedAt !== null && request.restoreArchived !== false) {
     subject = await subjects.restore(userId, subject.id);
   }
 
@@ -287,6 +290,7 @@ export async function ingestCampusSnapshot(
         subjectId: subject.id,
         subjectName: subject.name,
         createdSubject,
+        archived: subject.archivedAt !== null,
         summary,
       },
     };
