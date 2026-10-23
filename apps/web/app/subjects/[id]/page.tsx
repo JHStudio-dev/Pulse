@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { AddReminder } from '@/app/reminders/add-reminder';
 import { TaskList } from '@/app/tasks/task-list';
 import { campusOrigins } from '@/lib/campus-origin';
+import { noteHeadline } from '@/lib/unassigned-content';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
@@ -26,7 +27,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   if (!subject) notFound();
 
   const today = instantToZonedDate(new Date(), period.timeZone);
-  const [schedules, sessions, documents, tasks, reminders, periodSubjects, campusTargets] =
+  const [schedules, sessions, documents, tasks, reminders, periodSubjects, campusTargets, notes] =
     await Promise.all([
       db.schedules.listBySubject(userId, subject.id),
       db.sessions.listBySubject(userId, subject.id),
@@ -35,6 +36,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
       db.reminders.listByUser(userId),
       db.subjects.listByPeriod(userId, period.id),
       db.campusSync.listAppliedTargets(userId),
+      db.notes.listBySubject(userId, subject.id),
     ]);
 
   const upcoming = sessions
@@ -254,6 +256,44 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
                     Quitar
                   </button>
                 </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="notes-heading">
+        <h2 id="notes-heading" className="text-sm font-medium">
+          Notas
+        </h2>
+
+        {notes.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Sin notas. Las que escribas en clase o captures para esta materia aparecen aquí.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+            {notes.map((note) => (
+              <li key={note.id} className="py-2.5">
+                <details>
+                  <summary className="cursor-pointer text-sm">
+                    {noteHeadline(note)}
+                    <span className="text-[color:var(--color-ink-muted)] ml-2 text-xs">
+                      {formatSessionDate(note.createdAt.slice(0, 10))}
+                    </span>
+                  </summary>
+                  <p className="text-[color:var(--color-ink-muted)] mt-2 text-sm whitespace-pre-wrap">
+                    {note.body}
+                  </p>
+                  {note.classSessionId ? (
+                    <Link
+                      href={`/sessions/${note.classSessionId}`}
+                      className="mt-2 inline-block text-xs underline underline-offset-4"
+                    >
+                      Abrir la clase
+                    </Link>
+                  ) : null}
+                </details>
               </li>
             ))}
           </ul>
