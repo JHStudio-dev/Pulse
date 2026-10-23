@@ -4,7 +4,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/coverage/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/dist/**',
+      '**/coverage/**',
+      // Built extension bundles
+      'experiments/campus-sync/companion/*.js',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

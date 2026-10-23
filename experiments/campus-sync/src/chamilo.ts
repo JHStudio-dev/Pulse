@@ -549,7 +549,7 @@ export function normalizeChamiloDateTime(value: string): string | undefined {
   }
 
   const numeric = text.match(
-    /\b(\d{1,2})[\/-](\d{1,2})[\/-](20\d{2})(?:[T\s]+(\d{1,2}):(\d{2})(?::\d{2})?)?\b/,
+    /\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})(?:[T\s]+(\d{1,2}):(\d{2})(?::\d{2})?)?\b/,
   );
 
   if (numeric) {
