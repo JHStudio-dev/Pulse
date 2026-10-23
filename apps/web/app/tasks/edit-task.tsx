@@ -171,9 +171,11 @@ function EditForm({
 export function EditTask({
   task,
   subjects,
+  fromCampus = false,
 }: {
   task: Task;
   subjects: { id: string; name: string }[];
+  fromCampus?: boolean;
 }) {
   return (
     <Dialog
@@ -203,6 +205,12 @@ export function EditTask({
             >
               Eliminar tarea
             </button>
+            {fromCampus ? (
+              <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
+                Viene del campus. Si la eliminas no volverá a importarse; puedes restaurarla desde
+                Tareas.
+              </p>
+            ) : null}
           </form>
         </>
       )}

@@ -1,9 +1,10 @@
 'use server';
 
-import type { SubjectId, TaskId } from '@pulse/types';
+import type { CampusSyncItemId, SubjectId, TaskId } from '@pulse/types';
 import { createTaskSchema, updateTaskSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
-import { removeActivePeriodTasks, removeUnassignedTasks } from '@/lib/academic-cleanup';
+import { removeActivePeriodTasks, removeTasks, removeUnassignedTasks } from '@/lib/academic-cleanup';
+import { restoreDismissedCampusTask } from '@/lib/campus-sync-apply';
 import { requireUser } from '@/lib/session';
 
 export interface TaskResult {
@@ -21,6 +22,7 @@ function optionalId(value: string): SubjectId | null {
 
 function refreshTaskViews(): void {
   revalidatePath('/tasks');
+  revalidatePath('/subjects/[id]', 'page');
   revalidatePath('/');
 }
 
@@ -138,7 +140,18 @@ export async function deleteTask(formData: FormData): Promise<void> {
   if (!parsedId.success) return;
 
   const { userId, db } = await requireUser();
-  await db.tasks.remove(userId, parsedId.data as TaskId);
+  await removeTasks(userId, [parsedId.data as TaskId], db);
+
+  refreshTaskViews();
+}
+
+/** Recreates a campus task the student had deleted. */
+export async function restoreCampusTask(formData: FormData): Promise<void> {
+  const parsedId = uuidSchema.safeParse(String(formData.get('itemId') ?? ''));
+  if (!parsedId.success) return;
+
+  const { userId, db } = await requireUser();
+  await restoreDismissedCampusTask(userId, parsedId.data as CampusSyncItemId, db);
 
   refreshTaskViews();
 }

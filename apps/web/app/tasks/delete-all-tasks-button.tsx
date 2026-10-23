@@ -17,6 +17,7 @@ export function DeleteAllTasksButton({
           [
             `¿Eliminar ${taskCount === 1 ? 'la tarea' : `las ${taskCount} tareas`} de las materias de ${periodName}, incluidas las archivadas?`,
             'Las tareas sin materia y las de otros períodos se conservan.',
+            'Las que vinieron del campus no volverán a importarse; puedes restaurarlas desde Tareas.',
             'Esta acción no se puede deshacer.',
           ].join('\n\n'),
         );

@@ -135,7 +135,7 @@ export function TaskList({
                   ) : null}
                 </div>
               ) : null}
-              <EditTask task={task} subjects={subjects} />
+              <EditTask task={task} subjects={subjects} fromCampus={campusSources.has(task.id)} />
             </div>
           </li>
         );

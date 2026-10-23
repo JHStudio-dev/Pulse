@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
 import { tasksOfSubjects } from '@/lib/academic-cleanup';
 import { DeleteAllTasksButton, DeleteUnassignedTasksButton } from './delete-all-tasks-button';
+import { DismissedCampusTasks } from './dismissed-campus-tasks';
 import { QuickAdd } from './quick-add';
 import { TaskList } from './task-list';
 
@@ -54,16 +55,29 @@ export default async function TasksPage({
   const params = await searchParams;
   const groupedView = params.view !== 'all';
 
-  const [subjects, archivedSubjects, allTasks, reminders, campusTasks] = await Promise.all([
-    db.subjects.listByPeriod(userId, period.id),
-    db.subjects.listArchivedByPeriod(userId, period.id),
-    db.tasks.listByUser(userId),
-    db.reminders.listByUser(userId),
-    db.campusSync.listAppliedTasks(userId),
-  ]);
+  const [subjects, archivedSubjects, allTasks, reminders, campusTasks, dismissedItems, campusLinks] =
+    await Promise.all([
+      db.subjects.listByPeriod(userId, period.id),
+      db.subjects.listArchivedByPeriod(userId, period.id),
+      db.tasks.listByUser(userId),
+      db.reminders.listByUser(userId),
+      db.campusSync.listAppliedTasks(userId),
+      db.campusSync.listDismissedItems(userId),
+      db.campusSync.listSubjectLinks(userId),
+    ]);
   const campusSources = new Map<string, string | null>(
     campusTasks.map((entry) => [entry.taskId, entry.sourceUrl]),
   );
+
+  const subjectOfLink = new Map(campusLinks.map((link) => [link.id as string, link.subjectId]));
+  const dismissedCampusTasks = dismissedItems.flatMap((item) => {
+    const subjectId = subjectOfLink.get(item.subjectLinkId);
+    const subject = subjectId ? subjectsById.get(subjectId) : undefined;
+    const title = item.payload['title'];
+    if (!subject || typeof title !== 'string') return [];
+
+    return [{ itemId: item.id as string, title, subjectName: subject.name, sourceUrl: item.sourceUrl }];
+  });
 
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((subject) => [subject.id, subject]));
   const options = subjects.map((subject) => ({ id: subject.id as string, name: subject.name }));
@@ -221,6 +235,8 @@ export default async function TasksPage({
           ) : null}
         </>
       )}
+
+      <DismissedCampusTasks tasks={dismissedCampusTasks} />
     </AppShell>
   );
 }
