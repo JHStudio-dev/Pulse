@@ -197,6 +197,24 @@ describe('campus snapshot ingestion', () => {
     expect(memory.state.subjects).toHaveLength(1);
   });
 
+  it('moves the course tasks along when it is linked to another subject', async () => {
+    const memory = createMemoryCampusSync();
+    const { period } = memory.addStudent(STUDENT);
+    await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
+    const target = makeSubject(STUDENT, period.id, { name: 'Administración (mía)' });
+    memory.state.subjects.push(target);
+
+    await ingestCampusSnapshot(
+      STUDENT,
+      { mode: 'link', subjectId: target.id, snapshot: snapshot() },
+      memory.repositories,
+    );
+
+    expect(memory.state.tasks).toHaveLength(2);
+    expect(memory.state.tasks.every((task) => task.subjectId === target.id)).toBe(true);
+    expect(memory.state.documents.every((document) => document.subjectId === target.id)).toBe(true);
+  });
+
   it('keeps two sessions of the same course apart', async () => {
     const memory = createMemoryCampusSync();
     memory.addStudent(STUDENT);

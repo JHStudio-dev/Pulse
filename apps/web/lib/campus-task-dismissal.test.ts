@@ -3,7 +3,7 @@ import type { CampusSyncSnapshot, TaskId, UserId } from '@pulse/types';
 import { removeTasks } from './academic-cleanup';
 import { restoreDismissedCampusTask } from './campus-sync-apply';
 import { ingestCampusSnapshot } from './campus-sync-ingest';
-import { createMemoryCampusSync } from './testing/memory-campus-sync';
+import { createMemoryCampusSync, makeSubject } from './testing/memory-campus-sync';
 
 const STUDENT = 'student-a' as UserId;
 const OTHER_STUDENT = 'student-b' as UserId;
@@ -76,6 +76,23 @@ describe('campus tasks the student deleted', () => {
       lastChangeKind: 'changed',
       payload: expect.objectContaining({ dueAt: '2026-10-14T23:45:00' }),
     });
+  });
+
+  it('stay deleted when the course moves to another subject', async () => {
+    const memory = await setUp();
+    await deleteEssay(memory);
+    const target = makeSubject(STUDENT, memory.state.periods[0]!.id, { name: 'Otra' });
+    memory.state.subjects.push(target);
+
+    await ingestCampusSnapshot(
+      STUDENT,
+      { mode: 'link', subjectId: target.id, snapshot: snapshot([ESSAY, READING]) },
+      memory.repositories,
+    );
+
+    expect(memory.state.tasks.map((task) => [task.title, task.subjectId])).toEqual([
+      ['Lectura', target.id],
+    ]);
   });
 
   it('do not stop new campus assignments from arriving', async () => {

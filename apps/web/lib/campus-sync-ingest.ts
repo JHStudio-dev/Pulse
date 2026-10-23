@@ -236,6 +236,9 @@ export async function ingestCampusSnapshot(
     subject = await applyConfirmedSchedule(userId, subject, request.schedule, repositories);
   }
 
+  // Moving a course to another subject carries its tasks and documents along.
+  const relinked = existingLink !== null && existingLink.subjectId !== subject.id;
+
   const subjectLink = existingLink
     ? await campusSync.updateSubjectLink(userId, existingLink.id, {
         subjectId: subject.id,
@@ -275,7 +278,7 @@ export async function ingestCampusSnapshot(
 
       const persisted = await campusSync.upsertItem(userId, subjectLink.id, run.id, item, state);
 
-      if (campusItemNeedsApply(persisted, state)) {
+      if (campusItemNeedsApply(persisted, relinked ? 'changed' : state)) {
         await applyCampusSyncItem(userId, subject.id, persisted, repositories);
       }
     }
