@@ -41,6 +41,28 @@ export function summarizeSchedules(schedules: readonly SubjectSchedule[]): strin
     .join(' · ');
 }
 
+/** Whole days from one calendar date to another. */
+export function daysBetweenDates(from: string, to: string): number {
+  const ms = new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
+/** "Atrasada desde mar 10 sep", "Hoy · 23:45", "Mañana", "En 3 días". */
+export function relativeDueLabel(
+  task: { dueDate: string; dueTime: string | null },
+  today: string,
+  overdue: boolean,
+): string {
+  if (overdue) return `Atrasada desde ${formatSessionDate(task.dueDate)}`;
+
+  const days = daysBetweenDates(today, task.dueDate);
+  const time = task.dueTime ? ` · ${task.dueTime}` : '';
+
+  if (days === 0) return `Hoy${time}`;
+  if (days === 1) return `Mañana${time}`;
+  return `En ${days} días`;
+}
+
 /**
  * "mar 10 sep" from a plain calendar date.
  *

@@ -11,10 +11,14 @@ import {
 } from '@pulse/core';
 import type { ClassSession, Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { daysBetweenDates, relativeDueLabel } from '@/lib/format';
 import { loadReminders } from '@/lib/reminders';
 import { requireUser } from '@/lib/session';
 import { NextClass } from './next-class';
 import { TodaySchedule } from './today-schedule';
+
+/** Campus data older than this is worth a nudge. */
+const CAMPUS_STALE_DAYS = 7;
 
 /**
  * Signals worth surfacing, built only from data Pulse actually holds.
@@ -23,20 +27,21 @@ import { TodaySchedule } from './today-schedule';
  * assessments, attendance, recovery — belongs to a later phase, so it would
  * report "no risk" for everyone and state something Pulse cannot know.
  */
-/** Whole days from one calendar date to another. */
-function daysBetweenDates(from: string, to: string): number {
-  const ms = new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime();
-  return Math.round(ms / 86_400_000);
-}
-
 function buildAttention(
   subjects: readonly Subject[],
   schedules: ReadonlyMap<string, unknown[]>,
   sessionsBySubject: ReadonlyMap<string, ClassSession[]>,
   unconfirmed: number,
   periodHasEnd: boolean,
+  campusDaysSinceSync: number | null,
 ): string[] {
   const items: string[] = [];
+
+  if (campusDaysSinceSync !== null && campusDaysSinceSync >= CAMPUS_STALE_DAYS) {
+    items.push(
+      `El campus no se sincroniza desde hace ${campusDaysSinceSync} días. Abre Campus Companion para revisar novedades.`,
+    );
+  }
 
   if (!periodHasEnd) {
     items.push('Tu período no tiene fecha de fin, así que no se pueden generar clases.');
@@ -89,11 +94,20 @@ export default async function HomePage() {
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((s) => [s.id, s]));
 
   const horizonEnd = period.range.end ?? today;
-  const [schedules, sessions, allTasks] = await Promise.all([
+  const [schedules, sessions, allTasks, connection, campusLinks] = await Promise.all([
     db.schedules.listByPeriod(userId, period.id),
     db.sessions.listInRange(userId, today, horizonEnd),
     db.tasks.listByUser(userId),
+    db.campusConnections.findByUser(userId),
+    db.campusSync.listSubjectLinks(userId),
   ]);
+
+  // Only students who sync from the campus get a freshness signal.
+  const usesCampusSync = campusLinks.some((link) => subjectsById.has(link.subjectId));
+  const campusDaysSinceSync =
+    usesCampusSync && connection?.lastSyncedAt
+      ? Math.floor((now.getTime() - new Date(connection.lastSyncedAt).getTime()) / 86_400_000)
+      : null;
 
   const dueReminders = (await loadReminders(db, userId, period, now)).filter(
     (entry) => entry.state === 'due',
@@ -140,6 +154,7 @@ export default async function HomePage() {
     sessionsBySubject,
     unconfirmed,
     period.range.end !== null,
+    campusDaysSinceSync,
   );
 
   if (subjects.length === 0) {
@@ -163,8 +178,10 @@ export default async function HomePage() {
     );
   }
 
+  const deadlines = sortTasksByPriority([...overdueTasks, ...soonTasks], { today });
+
   return (
-    <AppShell email={email}>
+    <AppShell email={email} subjects={subjects.map((s) => ({ id: s.id as string, name: s.name }))}>
       <h1 className="text-2xl font-semibold tracking-tight">{period.name}</h1>
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
         {subjects.length} {subjects.length === 1 ? 'materia' : 'materias'} en curso
@@ -236,6 +253,18 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 id="tasks-heading" className="text-sm font-medium">
               Entregas
+              <span className="text-[color:var(--color-ink-muted)] ml-2 text-xs font-normal">
+                {[
+                  overdueTasks.length > 0
+                    ? `${overdueTasks.length} atrasada${overdueTasks.length === 1 ? '' : 's'}`
+                    : null,
+                  soonTasks.length > 0
+                    ? `${soonTasks.length} próxima${soonTasks.length === 1 ? '' : 's'}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
             </h2>
             <Link
               href="/tasks"
@@ -246,7 +275,7 @@ export default async function HomePage() {
           </div>
 
           <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
-            {sortTasksByPriority([...overdueTasks, ...soonTasks], { today })
+            {deadlines
               .slice(0, 5)
               .map(({ task }: { task: Task }) => {
                 const late = isOverdue(task, today);
@@ -260,11 +289,7 @@ export default async function HomePage() {
                     <span className="text-sm">{task.title}</span>
                     <span className="text-[color:var(--color-ink-muted)] text-xs">
                       {subject ? `${subject.name} · ` : ''}
-                      {late
-                        ? 'Atrasada'
-                        : task.dueDate === today
-                          ? 'Hoy'
-                          : `En ${daysBetweenDates(today, task.dueDate!)} días`}
+                      {relativeDueLabel({ dueDate: task.dueDate!, dueTime: task.dueTime }, today, late)}
                     </span>
                   </li>
                 );
