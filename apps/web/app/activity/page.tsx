@@ -168,6 +168,7 @@ export default async function ActivityPage() {
                   <span className="text-sm">{entry.title}</span>
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
                     {CHANGE_LABELS[entry.kind][entry.change]}
+                    {entry.dismissed ? ' · eliminada en Pulse' : ''}
                     {' · '}{entry.subjectName}
                   </span>
                   <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">

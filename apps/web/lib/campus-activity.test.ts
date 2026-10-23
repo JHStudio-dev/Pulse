@@ -135,6 +135,23 @@ describe('campus removals in activity', () => {
     expect(entry).toMatchObject({ change: 'removed', changedAt: '2026-10-05T09:00:00.000Z' });
   });
 
+  it('notes when the student deleted the task a change refers to', () => {
+    const [entry] = buildCampusChanges(
+      [
+        item({
+          kind: 'assignment',
+          payload: { title: 'Ensayo final' },
+          lastChangeKind: 'changed',
+          lastChangedAt: '2026-10-01T18:00:00.000Z',
+          dismissedAt: '2026-09-30T18:00:00.000Z',
+        }),
+      ],
+      subject,
+    );
+
+    expect(entry).toMatchObject({ change: 'changed', dismissed: true });
+  });
+
   it('keeps a removed announcement visible and says so', () => {
     const [entry] = buildCampusAnnouncements(
       [item({ payload: { title: 'Cambio de aula' }, removedAt: '2026-10-05T09:00:00.000Z' })],

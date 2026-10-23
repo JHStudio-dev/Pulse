@@ -1,3 +1,4 @@
+import { isCampusItemDismissed } from '@pulse/core';
 import type { CampusSyncItem, Subject } from '@pulse/types';
 
 export interface CampusAnnouncementEntry {
@@ -19,6 +20,8 @@ export interface CampusChangeEntry {
   subjectName: string;
   kind: CampusSyncItem['kind'];
   change: 'new' | 'changed' | 'removed';
+  /** The student deleted the task this item created. */
+  dismissed: boolean;
   title: string;
   changedAt: string;
   sourceUrl: string | null;
@@ -110,6 +113,7 @@ export function buildCampusChanges(
           subjectName: subject.name,
           kind: item.kind,
           ...change,
+          dismissed: item.kind === 'assignment' && isCampusItemDismissed(item),
           title: itemTitle(item),
           sourceUrl: item.sourceUrl,
         },
