@@ -124,6 +124,24 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       return toCampusSubjectLink(data as CampusSubjectLinkRow);
     },
 
+    async updateSubjectLink(
+      userId: UserId,
+      id: CampusSubjectLinkId,
+      changes: { subjectId: SubjectId; externalSessionId: string | null },
+    ): Promise<CampusSubjectLink> {
+      const { data, error } = await client
+        .from(SUBJECT_LINKS)
+        .update({ subject_id: changes.subjectId, external_session_id: changes.externalSessionId })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Campus subject link ${id} not found`);
+      return toCampusSubjectLink(data as CampusSubjectLinkRow);
+    },
+
     async startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun> {
       const { data, error } = await client
         .from(RUNS)

@@ -96,6 +96,11 @@ export interface CampusSyncRepository {
       externalSessionId: string | null;
     },
   ): Promise<CampusSubjectLink>;
+  updateSubjectLink(
+    userId: UserId,
+    id: CampusSubjectLinkId,
+    changes: { subjectId: SubjectId; externalSessionId: string | null },
+  ): Promise<CampusSubjectLink>;
   startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun>;
   listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]>;
   upsertItem(
