@@ -27,7 +27,10 @@ import type { DocumentRecord, SubjectId, Task, UserId } from '@pulse/types';
 
 export interface AcademicCleanupRepositories {
   periods: Pick<AcademicPeriodRepository, 'findActive'>;
-  subjects: Pick<SubjectRepository, 'findById' | 'listByPeriod' | 'listArchivedByPeriod' | 'remove'>;
+  subjects: Pick<
+    SubjectRepository,
+    'findById' | 'listByPeriod' | 'listArchivedByPeriod' | 'remove'
+  >;
   tasks: Pick<TaskRepository, 'listByUser' | 'listBySubject' | 'removeMany'>;
   documents: Pick<DocumentRepository, 'listBySubject' | 'removeMany'>;
   notes: Pick<NoteRepository, 'listBySubject'>;
@@ -86,7 +89,9 @@ async function recordingFilesOfSubject(
   ).flat();
 
   return recordings.flatMap((recording) =>
-    recording.audioStoragePath ? [recording.storagePath, recording.audioStoragePath] : [recording.storagePath],
+    recording.audioStoragePath
+      ? [recording.storagePath, recording.audioStoragePath]
+      : [recording.storagePath],
   );
 }
 
@@ -174,7 +179,9 @@ export async function removeUnassignedTasks(
   userId: UserId,
   repositories: Pick<AcademicCleanupRepositories, 'tasks'>,
 ): Promise<number> {
-  const tasks = (await repositories.tasks.listByUser(userId)).filter((task) => task.subjectId === null);
+  const tasks = (await repositories.tasks.listByUser(userId)).filter(
+    (task) => task.subjectId === null,
+  );
   await repositories.tasks.removeMany(
     userId,
     tasks.map((task) => task.id),

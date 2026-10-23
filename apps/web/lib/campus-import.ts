@@ -27,7 +27,10 @@ export type ImportCourseLink = {
 export type CourseImportPlan = { mode: 'link'; subjectId: string } | { mode: 'create' };
 
 /** Identifies a course offering; the same code can exist in two sessions. */
-export function campusCourseKey(course: { externalId: string; sessionId?: string | undefined }): string {
+export function campusCourseKey(course: {
+  externalId: string;
+  sessionId?: string | undefined;
+}): string {
   return `${course.externalId}#${course.sessionId ?? ''}`;
 }
 
@@ -107,7 +110,9 @@ export function buildIngestRequest(
   confirmedSchedule: ScheduleDraft | null,
 ) {
   return {
-    ...(plan.mode === 'link' ? { mode: 'link' as const, subjectId: plan.subjectId } : { mode: 'create' as const }),
+    ...(plan.mode === 'link'
+      ? { mode: 'link' as const, subjectId: plan.subjectId }
+      : { mode: 'create' as const }),
     snapshot,
     ...(confirmedSchedule
       ? {

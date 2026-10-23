@@ -11,7 +11,9 @@ describe('relative due labels', () => {
   });
 
   it('shows the deadline time for today and tomorrow', () => {
-    expect(relativeDueLabel({ dueDate: today, dueTime: '23:45' }, today, false)).toBe('Hoy · 23:45');
+    expect(relativeDueLabel({ dueDate: today, dueTime: '23:45' }, today, false)).toBe(
+      'Hoy · 23:45',
+    );
     expect(relativeDueLabel({ dueDate: '2026-10-24', dueTime: null }, today, false)).toBe('Mañana');
   });
 

@@ -28,9 +28,11 @@ export function describeScheduleDraft(draft: ScheduleDraft): string {
     .map((day) => day.label)
     .join(', ');
 
-  return [days || 'Sin días', `${draft.startTime}–${draft.endTime}`, MODALITY_LABELS[draft.modality]].join(
-    ' · ',
-  );
+  return [
+    days || 'Sin días',
+    `${draft.startTime}–${draft.endTime}`,
+    MODALITY_LABELS[draft.modality],
+  ].join(' · ');
 }
 
 /**
@@ -66,7 +68,9 @@ export function ScheduleReview({
       </p>
       <p className="mt-1 text-xs">{describeScheduleDraft(draft)}</p>
       {draft.meetingUrl ? (
-        <p className="text-[color:var(--color-ink-muted)] mt-0.5 truncate text-xs">{draft.meetingUrl}</p>
+        <p className="text-[color:var(--color-ink-muted)] mt-0.5 truncate text-xs">
+          {draft.meetingUrl}
+        </p>
       ) : null}
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
         Evidencia: <q>{suggestion.evidence}</q>

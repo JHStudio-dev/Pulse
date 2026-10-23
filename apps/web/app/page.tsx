@@ -275,25 +275,27 @@ export default async function HomePage() {
           </div>
 
           <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-t border-[color:var(--color-border)]">
-            {deadlines
-              .slice(0, 5)
-              .map(({ task }: { task: Task }) => {
-                const late = isOverdue(task, today);
-                const subject = task.subjectId ? subjectsById.get(task.subjectId) : undefined;
+            {deadlines.slice(0, 5).map(({ task }: { task: Task }) => {
+              const late = isOverdue(task, today);
+              const subject = task.subjectId ? subjectsById.get(task.subjectId) : undefined;
 
-                return (
-                  <li
-                    key={task.id}
-                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
-                  >
-                    <span className="text-sm">{task.title}</span>
-                    <span className="text-[color:var(--color-ink-muted)] text-xs">
-                      {subject ? `${subject.name} · ` : ''}
-                      {relativeDueLabel({ dueDate: task.dueDate!, dueTime: task.dueTime }, today, late)}
-                    </span>
-                  </li>
-                );
-              })}
+              return (
+                <li
+                  key={task.id}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
+                >
+                  <span className="text-sm">{task.title}</span>
+                  <span className="text-[color:var(--color-ink-muted)] text-xs">
+                    {subject ? `${subject.name} · ` : ''}
+                    {relativeDueLabel(
+                      { dueDate: task.dueDate!, dueTime: task.dueTime },
+                      today,
+                      late,
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

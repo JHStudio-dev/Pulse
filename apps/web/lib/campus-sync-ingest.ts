@@ -186,7 +186,10 @@ export async function ingestCampusSnapshot(
 
     if (!subject) return { ok: false, status: 404, error: 'subject_not_found' };
 
-    if (subject.campusInstanceId !== null && subject.campusInstanceId !== connection.campusInstanceId) {
+    if (
+      subject.campusInstanceId !== null &&
+      subject.campusInstanceId !== connection.campusInstanceId
+    ) {
       return { ok: false, status: 409, error: 'subject_campus_mismatch' };
     }
 

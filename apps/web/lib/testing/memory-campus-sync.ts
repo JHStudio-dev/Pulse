@@ -56,7 +56,10 @@ export interface MemoryCampusSyncState {
 
 export const CAMPUS_INSTANCE = 'campus-ujcv' as CampusInstanceId;
 
-export function makePeriod(userId: UserId, overrides: Partial<AcademicPeriod> = {}): AcademicPeriod {
+export function makePeriod(
+  userId: UserId,
+  overrides: Partial<AcademicPeriod> = {},
+): AcademicPeriod {
   return {
     id: nextId<AcademicPeriodId>('period'),
     userId,
@@ -191,7 +194,13 @@ export function createMemoryCampusSync(): {
         return own(state.tasks, userId).find((task) => task.id === id) ?? null;
       },
       async create(userId, input) {
-        const task: Task = { ...input, id: nextId<TaskId>('task'), userId, createdAt: NOW, updatedAt: NOW };
+        const task: Task = {
+          ...input,
+          id: nextId<TaskId>('task'),
+          userId,
+          createdAt: NOW,
+          updatedAt: NOW,
+        };
         state.tasks.push(task);
         return task;
       },
@@ -336,12 +345,20 @@ export function createMemoryCampusSync(): {
       async markTaskApplied(userId, itemId, taskId) {
         const item = own(state.items, userId).find((row) => row.id === itemId);
         if (!item) throw notFound('Item');
-        return Object.assign(item, { appliedTaskId: taskId, appliedDocumentId: null, appliedAt: NOW });
+        return Object.assign(item, {
+          appliedTaskId: taskId,
+          appliedDocumentId: null,
+          appliedAt: NOW,
+        });
       },
       async markDocumentApplied(userId, itemId, documentId) {
         const item = own(state.items, userId).find((row) => row.id === itemId);
         if (!item) throw notFound('Item');
-        return Object.assign(item, { appliedTaskId: null, appliedDocumentId: documentId, appliedAt: NOW });
+        return Object.assign(item, {
+          appliedTaskId: null,
+          appliedDocumentId: documentId,
+          appliedAt: NOW,
+        });
       },
       async completeRun(userId, runId, summary) {
         const run = own(state.runs, userId).find((row) => row.id === runId);

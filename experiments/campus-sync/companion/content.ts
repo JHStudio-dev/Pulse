@@ -222,7 +222,11 @@ async function syncDocuments(course: CampusCourseRef): Promise<SyncedDocument[]>
   return [...results.values()];
 }
 
-async function waitForJqGridRows(page: Document, tableSelector: string, label: string): Promise<void> {
+async function waitForJqGridRows(
+  page: Document,
+  tableSelector: string,
+  label: string,
+): Promise<void> {
   const rendered = await waitForCondition(
     () =>
       page.querySelector(`${tableSelector} tbody tr.jqgrow`) !== null ||

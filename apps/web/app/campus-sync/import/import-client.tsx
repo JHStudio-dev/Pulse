@@ -149,7 +149,8 @@ export function CampusSyncImport({
 
         for (const item of incoming) {
           const suggestion = inferCampusScheduleSuggestions(item)[0];
-          if (suggestion) nextDrafts[campusCourseKey(item.course)] = scheduleDraftFromSuggestion(suggestion);
+          if (suggestion)
+            nextDrafts[campusCourseKey(item.course)] = scheduleDraftFromSuggestion(suggestion);
         }
 
         setReceivedBatch(true);
@@ -170,7 +171,9 @@ export function CampusSyncImport({
 
       setSnapshot(incoming);
       setDrafts(
-        suggestion ? { [campusCourseKey(incoming.course)]: scheduleDraftFromSuggestion(suggestion) } : {},
+        suggestion
+          ? { [campusCourseKey(incoming.course)]: scheduleDraftFromSuggestion(suggestion) }
+          : {},
       );
       setStatus(`${courseLabel(incoming)} listo para importar.`);
     };
@@ -210,7 +213,10 @@ export function CampusSyncImport({
     const byCourse = new Map<string, string[]>();
     for (const warning of sectionWarnings) {
       const key = failureKey(warning);
-      byCourse.set(key, [...(byCourse.get(key) ?? []), SECTION_LABELS[warning.section] ?? warning.section]);
+      byCourse.set(key, [
+        ...(byCourse.get(key) ?? []),
+        SECTION_LABELS[warning.section] ?? warning.section,
+      ]);
     }
     return byCourse;
   }, [sectionWarnings]);
@@ -252,7 +258,9 @@ export function CampusSyncImport({
     setBusy(true);
     setImports((current) => ({
       ...current,
-      ...Object.fromEntries(targets.map((item) => [campusCourseKey(item.course), { status: 'pending' }])),
+      ...Object.fromEntries(
+        targets.map((item) => [campusCourseKey(item.course), { status: 'pending' }]),
+      ),
     }));
 
     const imported: Array<{ externalId: string; sessionId?: string }> = [];
@@ -351,7 +359,10 @@ export function CampusSyncImport({
       </p>
 
       {receivedBatch ? (
-        <section className="mt-6 border-y border-[color:var(--color-border)] py-5" aria-labelledby="bulk-sync-heading">
+        <section
+          className="mt-6 border-y border-[color:var(--color-border)] py-5"
+          aria-labelledby="bulk-sync-heading"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 id="bulk-sync-heading" className="text-base font-medium">
@@ -392,8 +403,8 @@ export function CampusSyncImport({
           {batchSnapshots.length > 0 ? (
             <p className="text-[color:var(--color-ink-muted)] mt-3 max-w-2xl text-xs">
               Cada curso conserva la materia a la que ya está vinculado; si no, se une a una materia
-              con el mismo código o nombre, y solo entonces se crea una nueva. Los horarios detectados
-              se guardan únicamente si los confirmas.
+              con el mismo código o nombre, y solo entonces se crea una nueva. Los horarios
+              detectados se guardan únicamente si los confirmas.
             </p>
           ) : null}
 
@@ -439,7 +450,10 @@ export function CampusSyncImport({
                       {entry?.status === 'done' ? (
                         <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
                           {entry.result.createdSubject ? 'Materia creada' : 'Vinculada'} ·{' '}
-                          <a href={`/subjects/${entry.result.subjectId}`} className="underline underline-offset-4">
+                          <a
+                            href={`/subjects/${entry.result.subjectId}`}
+                            className="underline underline-offset-4"
+                          >
                             {entry.result.subjectName}
                           </a>{' '}
                           · {plural(entry.result.summary.newCount, 'nuevo')} ·{' '}
@@ -527,7 +541,8 @@ export function CampusSyncImport({
               <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
                 Fechas detectadas:{' '}
                 {snapshot.assignments.filter((assignment) => Boolean(assignment.dueAt)).length} de{' '}
-                {snapshot.assignments.length} tareas. Pulse no inventa fechas que el campus no muestra.
+                {snapshot.assignments.length} tareas. Pulse no inventa fechas que el campus no
+                muestra.
               </p>
             ) : null}
           </div>
@@ -539,7 +554,9 @@ export function CampusSyncImport({
               draft={singleDraft}
               confirmed={Boolean(confirmed[singleKey])}
               disabled={busy}
-              onConfirmChange={(value) => setConfirmed((current) => ({ ...current, [singleKey]: value }))}
+              onConfirmChange={(value) =>
+                setConfirmed((current) => ({ ...current, [singleKey]: value }))
+              }
               onDraftChange={(changes) => updateDraft(singleKey, changes)}
             />
           ) : (

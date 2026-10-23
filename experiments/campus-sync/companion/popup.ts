@@ -426,7 +426,11 @@ openPulse?.addEventListener('click', async () => {
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'local') return;
-  if (!(RUN_STORAGE_KEY in changes || BATCH_STORAGE_KEY in changes || SNAPSHOT_STORAGE_KEY in changes)) {
+  if (!(
+    RUN_STORAGE_KEY in changes ||
+    BATCH_STORAGE_KEY in changes ||
+    SNAPSHOT_STORAGE_KEY in changes
+  )) {
     return;
   }
 

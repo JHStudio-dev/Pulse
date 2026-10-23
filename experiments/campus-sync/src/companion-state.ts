@@ -75,7 +75,10 @@ export interface SyncRun {
   courses: CourseProgress[];
 }
 
-export function campusCourseKey(course: { externalId: string; sessionId?: string | undefined }): string {
+export function campusCourseKey(course: {
+  externalId: string;
+  sessionId?: string | undefined;
+}): string {
   return `${course.externalId}#${course.sessionId ?? ''}`;
 }
 
@@ -302,13 +305,15 @@ export async function syncCourseBatch(
       const courseTitle = snapshot.course.title || title;
 
       batch.snapshots.push(snapshot);
-      batch.warnings.push(
-        ...unread.map((entry) => ({ ...owner, title: courseTitle, ...entry })),
-      );
+      batch.warnings.push(...unread.map((entry) => ({ ...owner, title: courseTitle, ...entry })));
       run = updateSyncRunCourse(
         run,
         key,
-        { status: 'done', title: courseTitle, unreadSections: unread.map((entry) => entry.section) },
+        {
+          status: 'done',
+          title: courseTitle,
+          unreadSections: unread.map((entry) => entry.section),
+        },
         now(),
       );
     } catch (error) {

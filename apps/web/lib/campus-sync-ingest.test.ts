@@ -103,7 +103,10 @@ describe('campus snapshot ingestion', () => {
 
     expect(second).toMatchObject({
       ok: true,
-      result: { createdSubject: false, summary: { newCount: 0, changedCount: 0, unchangedCount: 4 } },
+      result: {
+        createdSubject: false,
+        summary: { newCount: 0, changedCount: 0, unchangedCount: 4 },
+      },
     });
     expect(memory.state.subjects).toHaveLength(1);
     expect(memory.state.links).toHaveLength(1);
@@ -212,14 +215,20 @@ describe('confirmed schedules during ingestion', () => {
     const unrelated = makeSubject(STUDENT, period.id, { name: 'Historia', code: 'HIS101' });
     memory.state.subjects.push(unrelated);
 
-    const outcome = await ingestCampusSnapshot(STUDENT, create(snapshot(), SCHEDULE), memory.repositories);
+    const outcome = await ingestCampusSnapshot(
+      STUDENT,
+      create(snapshot(), SCHEDULE),
+      memory.repositories,
+    );
     if (!outcome.ok) throw new Error(outcome.error);
 
     expect(memory.state.schedules.map((slot) => [slot.subjectId, slot.weekday])).toEqual([
       [outcome.result.subjectId, 1],
       [outcome.result.subjectId, 3],
     ]);
-    expect(memory.state.subjects.find((subject) => subject.id === outcome.result.subjectId)).toMatchObject({
+    expect(
+      memory.state.subjects.find((subject) => subject.id === outcome.result.subjectId),
+    ).toMatchObject({
       defaultModality: 'virtual',
       defaultMeetingUrl: 'https://meet.google.com/abc-defg-hij',
     });

@@ -7,8 +7,7 @@ export type CompanionRequest =
   | { type: 'pulse:sync-courses'; courses: CourseTarget[] };
 
 export type SyncCourseResponse =
-  | { ok: true; snapshot: CampusSnapshot; unread: CampusSection[] }
-  | { ok: false; error: string };
+  { ok: true; snapshot: CampusSnapshot; unread: CampusSection[] } | { ok: false; error: string };
 
 /** Batch runs report progress through storage, so the popup may close meanwhile. */
 export type StartSyncResponse = { ok: true } | { ok: false; error: string };

@@ -100,7 +100,9 @@ describe('retrying a batch', () => {
   it('replaces a course that now synced and drops its old error', () => {
     const previous: StoredBatch = {
       snapshots: [snapshot('HIS101')],
-      errors: [{ courseExternalId: 'MAT102', sessionId: '0', title: 'Geometría', error: 'timeout' }],
+      errors: [
+        { courseExternalId: 'MAT102', sessionId: '0', title: 'Geometría', error: 'timeout' },
+      ],
       warnings: [],
     };
 
@@ -131,7 +133,9 @@ describe('retrying a batch', () => {
 
     const merged = mergeSyncBatch(previous, {
       snapshots: [],
-      errors: [{ courseExternalId: 'HIS101', sessionId: '0', title: 'Historia', error: 'HTTP 500' }],
+      errors: [
+        { courseExternalId: 'HIS101', sessionId: '0', title: 'Historia', error: 'HTTP 500' },
+      ],
       warnings: [],
     });
 
@@ -155,19 +159,29 @@ describe('retrying a batch', () => {
       ],
     };
 
-    const merged = mergeSyncBatch(previous, { snapshots: [snapshot('HIS101')], errors: [], warnings: [] });
+    const merged = mergeSyncBatch(previous, {
+      snapshots: [snapshot('HIS101')],
+      errors: [],
+      warnings: [],
+    });
     expect(merged.warnings).toEqual([]);
   });
 
   it('does not confuse two sessions of the same course', () => {
-    const previous: StoredBatch = { snapshots: [snapshot('ADM201', '0', 1)], errors: [], warnings: [] };
+    const previous: StoredBatch = {
+      snapshots: [snapshot('ADM201', '0', 1)],
+      errors: [],
+      warnings: [],
+    };
     const merged = mergeSyncBatch(previous, {
       snapshots: [snapshot('ADM201', '7', 4)],
       errors: [],
       warnings: [],
     });
 
-    expect(merged.snapshots.map((item) => [item.course.sessionId, item.assignments.length])).toEqual([
+    expect(
+      merged.snapshots.map((item) => [item.course.sessionId, item.assignments.length]),
+    ).toEqual([
       ['0', 1],
       ['7', 4],
     ]);
@@ -183,8 +197,20 @@ describe('retrying a batch', () => {
       snapshots: [snapshot('HIS101')],
       errors: [{ courseExternalId: 'MAT102', sessionId: '0', title: 'Geometría', error: 'x' }],
       warnings: [
-        { courseExternalId: 'HIS101', sessionId: '0', title: 'Historia', section: 'events', error: 'x' },
-        { courseExternalId: 'HIS101', sessionId: '0', title: 'Historia', section: 'announcements', error: 'x' },
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'events',
+          error: 'x',
+        },
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'announcements',
+          error: 'x',
+        },
       ],
     });
 
@@ -201,7 +227,13 @@ describe('stored batch', () => {
       snapshots: [snapshot('HIS101'), snapshot('MAT102')],
       errors: [{ courseExternalId: 'ADM201', sessionId: '0', title: 'Administración', error: 'x' }],
       warnings: [
-        { courseExternalId: 'HIS101', sessionId: '0', title: 'Historia', section: 'events', error: 'x' },
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'events',
+          error: 'x',
+        },
       ],
     };
 
@@ -234,7 +266,9 @@ describe('reading course sections', () => {
 
     expect(result.sections.assignments).toHaveLength(2);
     expect(result.sections.announcements).toEqual([]);
-    expect(result.unread).toEqual([{ section: 'announcements', error: 'Campus returned HTTP 403' }]);
+    expect(result.unread).toEqual([
+      { section: 'announcements', error: 'Campus returned HTTP 403' },
+    ]);
   });
 
   it('fails the course when no section could be read', async () => {
@@ -310,7 +344,8 @@ describe('syncing a batch of courses', () => {
 
   it('keeps syncing after one course fails', async () => {
     const { batch, run, fatalError } = await runBatch(async (course) => {
-      if (course.externalId === 'MAT102') throw new Error('La lista de tareas no terminó de cargar');
+      if (course.externalId === 'MAT102')
+        throw new Error('La lista de tareas no terminó de cargar');
       return { snapshot: snapshot(course.externalId), unread: [] };
     });
 
@@ -330,7 +365,8 @@ describe('syncing a batch of courses', () => {
   it('records unread sections against the course without failing it', async () => {
     const { batch, run } = await runBatch(async (course) => ({
       snapshot: snapshot(course.externalId),
-      unread: course.externalId === 'HIS101' ? [{ section: 'announcements', error: 'HTTP 403' }] : [],
+      unread:
+        course.externalId === 'HIS101' ? [{ section: 'announcements', error: 'HTTP 403' }] : [],
     }));
 
     expect(batch.snapshots).toHaveLength(3);

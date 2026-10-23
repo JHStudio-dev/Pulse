@@ -83,7 +83,9 @@ function world() {
   const notes: Array<Pick<Note, 'id' | 'userId' | 'subjectId'>> = [];
   // Sessions carry no owner field; the test keeps one beside each row.
   const sessions: Array<{ id: ClassSessionId; userId: UserId; subjectId: SubjectId }> = [];
-  const recordings: Array<Pick<Recording, 'id' | 'userId' | 'classSessionId' | 'storagePath' | 'audioStoragePath'>> = [];
+  const recordings: Array<
+    Pick<Recording, 'id' | 'userId' | 'classSessionId' | 'storagePath' | 'audioStoragePath'>
+  > = [];
   const removedFiles: string[] = [];
   let storageFails = false;
 
@@ -111,7 +113,9 @@ function world() {
         );
       },
       async remove(userId, id) {
-        const index = subjects.findIndex((subject) => subject.userId === userId && subject.id === id);
+        const index = subjects.findIndex(
+          (subject) => subject.userId === userId && subject.id === id,
+        );
         if (index !== -1) subjects.splice(index, 1);
         // Mirrors the foreign keys: tasks and documents are detached, not deleted.
         for (const row of [...tasks, ...documents]) {
@@ -152,7 +156,9 @@ function world() {
     },
     recordings: {
       async listBySession(userId, sessionId) {
-        return own(recordings, userId).filter((row) => row.classSessionId === sessionId) as Recording[];
+        return own(recordings, userId).filter(
+          (row) => row.classSessionId === sessionId,
+        ) as Recording[];
       },
     },
     async removeRecordingFiles(paths) {
