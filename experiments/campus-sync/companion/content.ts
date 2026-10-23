@@ -18,6 +18,7 @@ import {
   BATCH_STORAGE_KEY,
   RUN_STORAGE_KEY,
   SNAPSHOT_STORAGE_KEY,
+  CAMPUS_SECTIONS,
   createSyncRun,
   failSyncRun,
   finishSyncRun,
@@ -586,6 +587,9 @@ async function syncCourse(
       assignments,
       announcements: sections.announcements,
       events,
+      readSections: CAMPUS_SECTIONS.filter(
+        (section) => !unread.some((entry) => entry.section === section),
+      ),
     },
     unread,
   };

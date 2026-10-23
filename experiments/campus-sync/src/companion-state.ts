@@ -23,12 +23,21 @@ export const CAMPUS_SECTION_LABELS: Record<CampusSection, string> = {
   events: 'Agenda',
 };
 
+export const CAMPUS_SECTIONS: readonly CampusSection[] = [
+  'documents',
+  'assignments',
+  'announcements',
+  'events',
+];
+
 export interface CampusSnapshot {
   course: SyncedCourse;
   documents: SyncedDocument[];
   assignments: SyncedAssignment[];
   announcements: SyncedAnnouncement[];
   events: SyncedEvent[];
+  /** Sections read completely; Pulse only treats missing items in these as removed. */
+  readSections?: CampusSection[];
 }
 
 export interface CourseTarget extends CampusCourseRef {
@@ -163,16 +172,49 @@ export function describeSyncRun(run: SyncRun): {
  * that fails again keeps an earlier snapshot if there is one, so a retry never
  * leaves less to import than before.
  */
+/**
+ * Combines two reads of the same course.
+ *
+ * Each section comes from the newer read when it got through, and otherwise
+ * from the older one, so a retry never drops a section that was read before.
+ */
+export function mergeCourseSnapshot(
+  previous: CampusSnapshot,
+  next: CampusSnapshot,
+  previousUnread: readonly CampusSection[] = [],
+): CampusSnapshot {
+  const previousRead =
+    previous.readSections ?? CAMPUS_SECTIONS.filter((section) => !previousUnread.includes(section));
+  const nextRead = next.readSections ?? CAMPUS_SECTIONS;
+  const fromNext = (section: CampusSection) =>
+    nextRead.includes(section) || !previousRead.includes(section);
+
+  return {
+    course: { ...previous.course, ...next.course },
+    documents: fromNext('documents') ? next.documents : previous.documents,
+    assignments: fromNext('assignments') ? next.assignments : previous.assignments,
+    announcements: fromNext('announcements') ? next.announcements : previous.announcements,
+    events: fromNext('events') ? next.events : previous.events,
+    readSections: CAMPUS_SECTIONS.filter(
+      (section) => nextRead.includes(section) || previousRead.includes(section),
+    ),
+  };
+}
+
 export function mergeSyncBatch(previous: StoredBatch | null, next: StoredBatch): StoredBatch {
   if (!previous) return next;
 
   const synced = new Set(next.snapshots.map((snapshot) => campusCourseKey(snapshot.course)));
-  const snapshots = previous.snapshots.map(
-    (snapshot) =>
-      next.snapshots.find(
-        (candidate) => campusCourseKey(candidate.course) === campusCourseKey(snapshot.course),
-      ) ?? snapshot,
-  );
+  const snapshots = previous.snapshots.map((snapshot) => {
+    const key = campusCourseKey(snapshot.course);
+    const retried = next.snapshots.find((candidate) => campusCourseKey(candidate.course) === key);
+    if (!retried) return snapshot;
+
+    const unread = previous.warnings
+      .filter((warning) => failureKey(warning) === key)
+      .map((warning) => warning.section);
+    return mergeCourseSnapshot(snapshot, retried, unread);
+  });
 
   for (const snapshot of next.snapshots) {
     const key = campusCourseKey(snapshot.course);
@@ -195,7 +237,12 @@ export function mergeSyncBatch(previous: StoredBatch | null, next: StoredBatch):
     ],
     warnings: [
       ...previous.warnings.filter((warning) => !synced.has(failureKey(warning))),
-      ...next.warnings,
+      ...next.warnings.filter((warning) => {
+        const merged = snapshots.find(
+          (snapshot) => campusCourseKey(snapshot.course) === failureKey(warning),
+        );
+        return !merged?.readSections?.includes(warning.section);
+      }),
     ],
   };
 }

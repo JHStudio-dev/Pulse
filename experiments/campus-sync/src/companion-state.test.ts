@@ -7,6 +7,7 @@ import {
   finishSyncRun,
   isSyncRunActive,
   mapWithConcurrency,
+  mergeCourseSnapshot,
   mergeSyncBatch,
   readCourseSections,
   readStoredBatch,
@@ -410,5 +411,113 @@ describe('syncing a batch of courses', () => {
       'done,done,syncing',
       'done,done,done',
     ]);
+  });
+});
+
+describe('retrying a course section by section', () => {
+  const announcement = {
+    externalId: 'a-1',
+    courseExternalId: 'HIS101',
+    title: 'Bienvenida',
+    sourceUrl: 'https://campus.ujcv.edu.hn/main/announcements/announcements.php?id=1',
+  };
+  const document = {
+    externalId: 'd-1',
+    courseExternalId: 'HIS101',
+    name: 'Sílabo.pdf',
+    kind: 'file' as const,
+    sourceUrl: 'https://campus.ujcv.edu.hn/courses/HIS101/document/silabo.pdf',
+  };
+
+  it('keeps sections read before and takes the ones read now', () => {
+    const first: CampusSnapshot = {
+      ...snapshot('HIS101', '0', 2),
+      documents: [document],
+      readSections: ['documents', 'assignments', 'events'],
+    };
+    const retry: CampusSnapshot = {
+      ...snapshot('HIS101', '0', 3),
+      announcements: [announcement],
+      readSections: ['assignments', 'announcements', 'events'],
+    };
+
+    const merged = mergeCourseSnapshot(first, retry);
+
+    expect(merged.documents).toEqual([document]);
+    expect(merged.announcements).toEqual([announcement]);
+    expect(merged.assignments).toHaveLength(3);
+    expect(merged.readSections).toEqual(['documents', 'assignments', 'announcements', 'events']);
+  });
+
+  it('drops a warning only once some read got the section', () => {
+    const previous: StoredBatch = {
+      snapshots: [{ ...snapshot('HIS101'), readSections: ['documents', 'assignments', 'events'] }],
+      errors: [],
+      warnings: [
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'announcements',
+          error: 'x',
+        },
+      ],
+    };
+
+    const stillFailing = mergeSyncBatch(previous, {
+      snapshots: [{ ...snapshot('HIS101'), readSections: ['documents', 'assignments', 'events'] }],
+      errors: [],
+      warnings: [
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'announcements',
+          error: 'y',
+        },
+      ],
+    });
+    expect(stillFailing.warnings.map((warning) => warning.error)).toEqual(['y']);
+
+    const nowRead = mergeSyncBatch(previous, {
+      snapshots: [
+        {
+          ...snapshot('HIS101'),
+          announcements: [announcement],
+          readSections: ['assignments', 'announcements'],
+        },
+      ],
+      errors: [],
+      warnings: [
+        {
+          courseExternalId: 'HIS101',
+          sessionId: '0',
+          title: 'Historia',
+          section: 'documents',
+          error: 'z',
+        },
+      ],
+    });
+    expect(nowRead.warnings).toEqual([]);
+    expect(nowRead.snapshots[0]?.readSections).toEqual([
+      'documents',
+      'assignments',
+      'announcements',
+      'events',
+    ]);
+  });
+
+  it('works out what an older snapshot read from its warnings', () => {
+    const older = { ...snapshot('HIS101'), documents: [document] };
+    const retry: CampusSnapshot = {
+      ...snapshot('HIS101'),
+      announcements: [announcement],
+      readSections: ['announcements'],
+    };
+
+    const merged = mergeCourseSnapshot(older, retry, ['announcements']);
+
+    expect(merged.documents).toEqual([document]);
+    expect(merged.announcements).toEqual([announcement]);
   });
 });
