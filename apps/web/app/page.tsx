@@ -17,6 +17,13 @@ import { requireUser } from '@/lib/session';
 import { NextClass } from './next-class';
 import { TodaySchedule } from './today-schedule';
 
+function describeCampusFreshness(days: number | null): string {
+  if (days === null) return 'campus sin sincronizar';
+  if (days <= 0) return 'campus sincronizado hoy';
+  if (days === 1) return 'campus sincronizado ayer';
+  return `campus sincronizado hace ${days} días`;
+}
+
 /** Campus data older than this is worth a nudge. */
 const CAMPUS_STALE_DAYS = 7;
 
@@ -185,6 +192,7 @@ export default async function HomePage() {
       <h1 className="text-2xl font-semibold tracking-tight">{period.name}</h1>
       <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
         {subjects.length} {subjects.length === 1 ? 'materia' : 'materias'} en curso
+        {usesCampusSync ? ` · ${describeCampusFreshness(campusDaysSinceSync)}` : ''}
       </p>
 
       <div className="mt-6">
