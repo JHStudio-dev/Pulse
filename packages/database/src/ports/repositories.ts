@@ -103,6 +103,8 @@ export interface CampusSyncRepository {
   ): Promise<CampusSubjectLink>;
   startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun>;
   listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]>;
+  /** Tasks that came from the campus, with the assignment page they mirror. */
+  listAppliedTasks(userId: UserId): Promise<Array<{ taskId: TaskId; sourceUrl: string | null }>>;
   upsertItem(
     userId: UserId,
     subjectLinkId: CampusSubjectLinkId,

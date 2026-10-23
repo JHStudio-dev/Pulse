@@ -54,12 +54,16 @@ export default async function TasksPage({
   const params = await searchParams;
   const groupedView = params.view !== 'all';
 
-  const [subjects, archivedSubjects, allTasks, reminders] = await Promise.all([
+  const [subjects, archivedSubjects, allTasks, reminders, campusTasks] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.subjects.listArchivedByPeriod(userId, period.id),
     db.tasks.listByUser(userId),
     db.reminders.listByUser(userId),
+    db.campusSync.listAppliedTasks(userId),
   ]);
+  const campusSources = new Map<string, string | null>(
+    campusTasks.map((entry) => [entry.taskId, entry.sourceUrl]),
+  );
 
   const subjectsById: ReadonlyMap<SubjectId, Subject> = new Map(subjects.map((subject) => [subject.id, subject]));
   const options = subjects.map((subject) => ({ id: subject.id as string, name: subject.name }));
@@ -128,6 +132,7 @@ export default async function TasksPage({
       subjects={options}
       today={today}
       reminderCounts={reminderCounts}
+      campusSources={campusSources}
       showSubject={showSubject}
     />
   );

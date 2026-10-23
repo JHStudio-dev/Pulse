@@ -94,6 +94,22 @@ describe('campus snapshot ingestion', () => {
     expect(memory.state.documents.map((document) => document.title)).toEqual(['Sílabo.pdf']);
   });
 
+  it('remembers which tasks came from which campus page', async () => {
+    const memory = createMemoryCampusSync();
+    memory.addStudent(STUDENT);
+
+    await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
+
+    const applied = await memory.repositories.campusSync.listAppliedTasks(STUDENT);
+    expect(applied.map((entry) => entry.sourceUrl)).toEqual([
+      'https://campus.ujcv.edu.hn/main/work/work_list.php?id=1',
+      'https://campus.ujcv.edu.hn/main/work/work_list.php?id=2',
+    ]);
+    expect(new Set(applied.map((entry) => entry.taskId))).toEqual(
+      new Set(memory.state.tasks.map((task) => task.id)),
+    );
+  });
+
   it('changes nothing when the same snapshot arrives again', async () => {
     const memory = createMemoryCampusSync();
     memory.addStudent(STUDENT);

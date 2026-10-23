@@ -166,6 +166,22 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       return (data as CampusSyncItemRow[]).map(toCampusSyncItem);
     },
 
+    async listAppliedTasks(
+      userId: UserId,
+    ): Promise<Array<{ taskId: TaskId; sourceUrl: string | null }>> {
+      const { data, error } = await client
+        .from(ITEMS)
+        .select('applied_task_id, source_url')
+        .eq('user_id', userId)
+        .not('applied_task_id', 'is', null);
+
+      if (error) throw translateError(error);
+      return (data as Array<{ applied_task_id: string; source_url: string | null }>).map((row) => ({
+        taskId: row.applied_task_id as TaskId,
+        sourceUrl: row.source_url,
+      }));
+    },
+
     async upsertItem(
       userId: UserId,
       subjectLinkId: CampusSubjectLinkId,

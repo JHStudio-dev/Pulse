@@ -25,14 +25,16 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   if (!subject) notFound();
 
   const today = instantToZonedDate(new Date(), period.timeZone);
-  const [schedules, sessions, documents, tasks, reminders, periodSubjects] = await Promise.all([
-    db.schedules.listBySubject(userId, subject.id),
-    db.sessions.listBySubject(userId, subject.id),
-    db.documents.listBySubject(userId, subject.id),
-    db.tasks.listBySubject(userId, subject.id),
-    db.reminders.listByUser(userId),
-    db.subjects.listByPeriod(userId, period.id),
-  ]);
+  const [schedules, sessions, documents, tasks, reminders, periodSubjects, campusTasks] =
+    await Promise.all([
+      db.schedules.listBySubject(userId, subject.id),
+      db.sessions.listBySubject(userId, subject.id),
+      db.documents.listBySubject(userId, subject.id),
+      db.tasks.listBySubject(userId, subject.id),
+      db.reminders.listByUser(userId),
+      db.subjects.listByPeriod(userId, period.id),
+      db.campusSync.listAppliedTasks(userId),
+    ]);
 
   const upcoming = sessions
     .filter((session) => session.status !== 'cancelled' && session.date >= today)
@@ -107,6 +109,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             subjects={subjectOptions}
             today={today}
             reminderCounts={reminderCounts}
+            campusSources={new Map(campusTasks.map((entry) => [entry.taskId, entry.sourceUrl]))}
             showSubject={false}
           />
         )}

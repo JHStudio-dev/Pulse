@@ -300,6 +300,11 @@ export function createMemoryCampusSync(): {
       async listItems(userId, subjectLinkId) {
         return own(state.items, userId).filter((item) => item.subjectLinkId === subjectLinkId);
       },
+      async listAppliedTasks(userId) {
+        return own(state.items, userId).flatMap((item) =>
+          item.appliedTaskId ? [{ taskId: item.appliedTaskId, sourceUrl: item.sourceUrl }] : [],
+        );
+      },
       async upsertItem(userId, subjectLinkId, runId, input, diff) {
         const change = diff === 'unchanged' ? {} : { lastChangeKind: diff, lastChangedAt: NOW };
         const existing = own(state.items, userId).find(

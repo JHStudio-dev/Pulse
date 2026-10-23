@@ -49,6 +49,7 @@ export function TaskList({
   subjects,
   today,
   reminderCounts,
+  campusSources = new Map(),
   showSubject = true,
 }: {
   tasks: readonly Task[];
@@ -56,6 +57,8 @@ export function TaskList({
   subjects: { id: string; name: string }[];
   today: string;
   reminderCounts: ReadonlyMap<string, number>;
+  /** Campus page of each task Campus Sync created; null when the campus gave none. */
+  campusSources?: ReadonlyMap<string, string | null>;
   showSubject?: boolean;
 }) {
   return (
@@ -94,6 +97,21 @@ export function TaskList({
                 {done ? ` · ${STATUS_LABEL[task.status]}` : ''}
                 {!done && task.status === 'in_progress' ? ' · En progreso' : ''}
                 {!done && level.length > 0 ? ` · Prioridad ${level.toLowerCase()}` : ''}
+                {campusSources.has(task.id) ? ' · ' : ''}
+                {campusSources.has(task.id) ? (
+                  campusSources.get(task.id) ? (
+                    <a
+                      href={campusSources.get(task.id)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline-offset-4 hover:underline"
+                    >
+                      Campus<span className="sr-only"> (abre la tarea en el campus)</span>
+                    </a>
+                  ) : (
+                    'Campus'
+                  )
+                ) : null}
               </p>
             </div>
 
