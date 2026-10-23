@@ -67,7 +67,7 @@ export function TaskList({
         const level = LEVEL_LABEL[priority.level];
 
         return (
-          <li key={task.id} className="flex items-start gap-3 py-3">
+          <li key={task.id} className="flex flex-wrap items-start gap-x-3 gap-y-1.5 py-3">
             <form action={toggleTaskDone} className="pt-0.5">
               <input type="hidden" name="taskId" value={task.id} />
               <button
@@ -97,7 +97,8 @@ export function TaskList({
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Under the title on narrow screens so the title keeps its width */}
+            <div className="ml-7 flex w-full items-center gap-3 sm:ml-0 sm:w-auto">
               {!done ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <AddReminder

@@ -92,6 +92,35 @@ export default async function TasksPage({
   // The cleanup action sits on the first "Sin materia" heading on the page.
   const unassignedOpen = openGroups.some((group) => group.key === UNASSIGNED_GROUP);
 
+  const renderGroups = (groups: TaskGroup[], idPrefix: string, cleanupKey: string | null) => (
+    <div className="mt-4 space-y-8">
+      {groups.map((group) => (
+        <section key={group.key} aria-labelledby={`${idPrefix}-${group.key}`}>
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 id={`${idPrefix}-${group.key}`} className="text-sm font-medium">
+              {group.key === UNASSIGNED_GROUP ? (
+                group.label
+              ) : (
+                <Link href={`/subjects/${group.key}`} className="underline-offset-4 hover:underline">
+                  {group.label}
+                </Link>
+              )}
+            </h3>
+            <div className="flex items-baseline gap-3">
+              {group.key === cleanupKey ? (
+                <DeleteUnassignedTasksButton taskCount={unassignedCount} />
+              ) : null}
+              <span className="text-[color:var(--color-ink-muted)] text-xs tabular-nums">
+                {group.tasks.length}
+              </span>
+            </div>
+          </div>
+          {renderTaskList(group.tasks, false)}
+        </section>
+      ))}
+    </div>
+  );
+
   const renderTaskList = (items: readonly Task[], showSubject = true) => (
     <TaskList
       tasks={items}
@@ -123,28 +152,26 @@ export default async function TasksPage({
             <DeleteAllTasksButton taskCount={periodTaskCount} periodName={period.name} />
           ) : null}
 
-          <div className="flex items-center gap-1 rounded-md border border-[color:var(--color-border)] p-1 text-xs">
-            <Link
-              href="/tasks"
-              aria-current={groupedView ? 'page' : undefined}
-              className={[
-                'rounded px-2 py-1',
-                groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
-              ].join(' ')}
-            >
-              Por materia
-            </Link>
-            <Link
-              href="/tasks?view=all"
-              aria-current={!groupedView ? 'page' : undefined}
-              className={[
-                'rounded px-2 py-1',
-                !groupedView ? 'bg-[color:var(--color-surface-raised)] font-medium' : 'text-[color:var(--color-ink-muted)]',
-              ].join(' ')}
-            >
-              Todas
-            </Link>
-          </div>
+          <nav aria-label="Vista de tareas" className="flex items-center gap-4 text-xs">
+            {[
+              { href: '/tasks', label: 'Por materia', current: groupedView },
+              { href: '/tasks?view=all', label: 'Todas', current: !groupedView },
+            ].map((tab) => (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                aria-current={tab.current ? 'page' : undefined}
+                className={[
+                  'border-b pb-1',
+                  tab.current
+                    ? 'border-[color:var(--color-ink)] font-medium'
+                    : 'text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] border-transparent',
+                ].join(' ')}
+              >
+                {tab.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
 
@@ -170,26 +197,7 @@ export default async function TasksPage({
                 No te queda nada pendiente.
               </p>
             ) : groupedView ? (
-              <div className="mt-4 space-y-8">
-                {openGroups.map((group) => (
-                  <section key={group.key} aria-labelledby={`tasks-${group.key}`}>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <h3 id={`tasks-${group.key}`} className="text-sm font-medium">
-                        {group.label}
-                      </h3>
-                      <div className="flex items-baseline gap-3">
-                        {group.key === UNASSIGNED_GROUP ? (
-                          <DeleteUnassignedTasksButton taskCount={unassignedCount} />
-                        ) : null}
-                        <span className="text-[color:var(--color-ink-muted)] text-xs">
-                          {group.tasks.length} {group.tasks.length === 1 ? 'tarea' : 'tareas'}
-                        </span>
-                      </div>
-                    </div>
-                    {renderTaskList(group.tasks, false)}
-                  </section>
-                ))}
-              </div>
+              renderGroups(openGroups, 'tasks', UNASSIGNED_GROUP)
             ) : (
               renderTaskList(ranked)
             )}
@@ -200,26 +208,7 @@ export default async function TasksPage({
               <h2 id="done-heading" className="text-sm font-medium">Completadas</h2>
 
               {groupedView ? (
-                <div className="mt-4 space-y-8">
-                  {doneGroups.map((group) => (
-                    <section key={group.key} aria-labelledby={`done-${group.key}`}>
-                      <div className="flex items-baseline justify-between gap-3">
-                        <h3 id={`done-${group.key}`} className="text-sm font-medium">
-                          {group.label}
-                        </h3>
-                        <div className="flex items-baseline gap-3">
-                          {group.key === UNASSIGNED_GROUP && !unassignedOpen ? (
-                            <DeleteUnassignedTasksButton taskCount={unassignedCount} />
-                          ) : null}
-                          <span className="text-[color:var(--color-ink-muted)] text-xs">
-                            {group.tasks.length}
-                          </span>
-                        </div>
-                      </div>
-                      {renderTaskList(group.tasks, false)}
-                    </section>
-                  ))}
-                </div>
+                renderGroups(doneGroups, 'done', unassignedOpen ? null : UNASSIGNED_GROUP)
               ) : (
                 renderTaskList(done)
               )}
