@@ -1,6 +1,5 @@
 import {
-  getChamiloCourseId,
-  getChamiloSessionId,
+  getChamiloCourseRef,
   inspectChamiloAssignmentDeadline,
   mergeChamiloAssignmentDeadlines,
   mergeChamiloAssignmentDetail,
@@ -63,15 +62,7 @@ function detectPageKind(url: URL): PageKind {
 }
 
 function currentCourseRef(): CampusCourseRef | null {
-  const externalId = getChamiloCourseId(location.href);
-  if (!externalId) return null;
-
-  const sessionId = getChamiloSessionId(location.href);
-
-  return {
-    externalId,
-    ...(sessionId !== undefined ? { sessionId } : {}),
-  };
+  return getChamiloCourseRef(location.href);
 }
 
 function inspectCurrentPage() {

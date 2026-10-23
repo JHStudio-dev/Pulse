@@ -83,6 +83,22 @@ export function getChamiloSessionId(value: string): string | undefined {
   }
 }
 
+/** Chamilo treats a missing id_session and id_session=0 as the same course. */
+export function normalizeChamiloSessionId(value: string | null | undefined): string {
+  const clean = value?.trim();
+  return clean ? clean : '0';
+}
+
+export function getChamiloCourseRef(value: string): CampusCourseRef | null {
+  const externalId = getChamiloCourseId(value);
+  if (!externalId) return null;
+
+  return {
+    externalId,
+    sessionId: normalizeChamiloSessionId(getChamiloSessionId(value)),
+  };
+}
+
 export function parseChamiloCourses(document: Document, baseUrl: string): SyncedCourse[] {
   const courses = new Map<string, SyncedCourse>();
 
@@ -90,23 +106,29 @@ export function parseChamiloCourses(document: Document, baseUrl: string): Synced
     const sourceUrl = resolveAnchorUrl(anchor, baseUrl);
     if (!sourceUrl) continue;
 
-    const externalId = getChamiloCourseId(sourceUrl);
-    if (!externalId) continue;
+    const course = getChamiloCourseRef(sourceUrl);
+    if (!course) continue;
 
     const title = cleanText(anchor.innerText || anchor.textContent);
     if (!title) continue;
 
-    const sessionId = getChamiloSessionId(sourceUrl);
+    // The first link is the course title; later ones are usually tool shortcuts.
+    const key = `${course.externalId}#${course.sessionId}`;
+    if (courses.has(key)) continue;
 
-    courses.set(externalId, {
-      externalId,
-      title,
-      sourceUrl,
-      ...(sessionId !== undefined ? { sessionId } : {}),
-    });
+    courses.set(key, { ...course, title, sourceUrl });
   }
 
   return [...courses.values()];
+}
+
+/** A login form means the campus session expired and every tool will look empty. */
+export function isChamiloLoginPage(document: Document): boolean {
+  return (
+    document.querySelector('form#formLogin, form[action*="login" i] input[type="password"]') !==
+      null ||
+    document.querySelector('input[type="password"][name="password"]') !== null
+  );
 }
 
 

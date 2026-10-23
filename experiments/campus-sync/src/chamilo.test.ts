@@ -6,7 +6,9 @@ import {
   getChamiloCourseId,
   getChamiloDirectoryPath,
   getChamiloDocumentId,
+  getChamiloCourseRef,
   getChamiloSessionId,
+  isChamiloLoginPage,
   parseChamiloCourses,
   parseChamiloDocuments,
   sanitizeCampusUrl,
@@ -76,6 +78,62 @@ describe('Chamilo course discovery', () => {
         }),
       ]),
     );
+  });
+});
+
+describe('Chamilo course identity', () => {
+  it('treats a missing session as session 0', () => {
+    expect(
+      getChamiloCourseRef('https://campus.ujcv.edu.hn/courses/ADM2011C1/index.php'),
+    ).toEqual({ externalId: 'ADM2011C1', sessionId: '0' });
+  });
+
+  it('keeps a real session id', () => {
+    expect(
+      getChamiloCourseRef('https://campus.ujcv.edu.hn/main/work/work.php?cidReq=ADM2011C1&id_session=14'),
+    ).toEqual({ externalId: 'ADM2011C1', sessionId: '14' });
+  });
+
+  it('lists a course once when links disagree on the session parameter', () => {
+    const dom = new JSDOM(`
+      <main>
+        <a href="/courses/ADM2011C1/index.php?id_session=0">ADMINISTRACION I - SECCION C</a>
+        <a href="/courses/ADM2011C1/index.php">Ir al curso</a>
+        <a href="/main/work/work.php?cidReq=ADM2011C1&id_session=0">Tareas</a>
+      </main>
+    `, { url: 'https://campus.ujcv.edu.hn/' });
+
+    expect(parseChamiloCourses(dom.window.document, dom.window.location.href)).toEqual([
+      expect.objectContaining({
+        externalId: 'ADM2011C1',
+        sessionId: '0',
+        title: 'ADMINISTRACION I - SECCION C',
+      }),
+    ]);
+  });
+
+  it('keeps separate sessions of the same course', () => {
+    const dom = new JSDOM(`
+      <main>
+        <a href="/courses/ADM2011C1/index.php?id_session=0">ADMINISTRACION I</a>
+        <a href="/courses/ADM2011C1/index.php?id_session=7">ADMINISTRACION I - VERANO</a>
+      </main>
+    `, { url: 'https://campus.ujcv.edu.hn/' });
+
+    const courses = parseChamiloCourses(dom.window.document, dom.window.location.href);
+    expect(courses.map((course) => course.sessionId)).toEqual(['0', '7']);
+  });
+
+  it('recognizes the login page of an expired session', () => {
+    const login = new JSDOM(`
+      <form id="formLogin" action="/index.php" method="post">
+        <input name="login"><input type="password" name="password">
+      </form>
+    `);
+    const course = new JSDOM('<main><h2>ADMINISTRACION I</h2></main>');
+
+    expect(isChamiloLoginPage(login.window.document)).toBe(true);
+    expect(isChamiloLoginPage(course.window.document)).toBe(false);
   });
 });
 
