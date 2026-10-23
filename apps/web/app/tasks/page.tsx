@@ -5,6 +5,7 @@ import type { Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
 import { tasksOfSubjects } from '@/lib/academic-cleanup';
+import { campusOrigins } from '@/lib/campus-origin';
 import { DeleteAllTasksButton, DeleteUnassignedTasksButton } from './delete-all-tasks-button';
 import { DismissedCampusTasks } from './dismissed-campus-tasks';
 import { QuickAdd } from './quick-add';
@@ -55,19 +56,17 @@ export default async function TasksPage({
   const params = await searchParams;
   const groupedView = params.view !== 'all';
 
-  const [subjects, archivedSubjects, allTasks, reminders, campusTasks, dismissedItems, campusLinks] =
+  const [subjects, archivedSubjects, allTasks, reminders, campusTargets, dismissedItems, campusLinks] =
     await Promise.all([
       db.subjects.listByPeriod(userId, period.id),
       db.subjects.listArchivedByPeriod(userId, period.id),
       db.tasks.listByUser(userId),
       db.reminders.listByUser(userId),
-      db.campusSync.listAppliedTasks(userId),
+      db.campusSync.listAppliedTargets(userId),
       db.campusSync.listDismissedItems(userId),
       db.campusSync.listSubjectLinks(userId),
     ]);
-  const campusSources = new Map<string, string | null>(
-    campusTasks.map((entry) => [entry.taskId, entry.sourceUrl]),
-  );
+  const taskOrigins = campusOrigins(campusTargets).tasks;
 
   const subjectOfLink = new Map(campusLinks.map((link) => [link.id as string, link.subjectId]));
   const dismissedCampusTasks = dismissedItems.flatMap((item) => {
@@ -146,7 +145,7 @@ export default async function TasksPage({
       subjects={options}
       today={today}
       reminderCounts={reminderCounts}
-      campusSources={campusSources}
+      campusOrigins={taskOrigins}
       showSubject={showSubject}
     />
   );

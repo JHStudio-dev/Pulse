@@ -5,6 +5,7 @@ import type { Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { AddReminder } from '@/app/reminders/add-reminder';
 import { TaskList } from '@/app/tasks/task-list';
+import { campusOrigins } from '@/lib/campus-origin';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
@@ -25,7 +26,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   if (!subject) notFound();
 
   const today = instantToZonedDate(new Date(), period.timeZone);
-  const [schedules, sessions, documents, tasks, reminders, periodSubjects, campusTasks] =
+  const [schedules, sessions, documents, tasks, reminders, periodSubjects, campusTargets] =
     await Promise.all([
       db.schedules.listBySubject(userId, subject.id),
       db.sessions.listBySubject(userId, subject.id),
@@ -33,7 +34,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
       db.tasks.listBySubject(userId, subject.id),
       db.reminders.listByUser(userId),
       db.subjects.listByPeriod(userId, period.id),
-      db.campusSync.listAppliedTasks(userId),
+      db.campusSync.listAppliedTargets(userId),
     ]);
 
   const upcoming = sessions
@@ -54,6 +55,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   }
 
   const subjectOptions = periodSubjects.map((item) => ({ id: item.id as string, name: item.name }));
+  const origins = campusOrigins(campusTargets);
 
   return (
     <AppShell email={email} subjects={subjectOptions}>
@@ -109,7 +111,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             subjects={subjectOptions}
             today={today}
             reminderCounts={reminderCounts}
-            campusSources={new Map(campusTasks.map((entry) => [entry.taskId, entry.sourceUrl]))}
+            campusOrigins={origins.tasks}
             showSubject={false}
           />
         )}
@@ -234,6 +236,9 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
 
                 <span className="text-[color:var(--color-ink-muted)] text-xs">
                   {document.source === 'campus_sync' ? 'Campus · ' : ''}
+                  {origins.documents.get(document.id)?.removed
+                    ? 'ya no figura en el campus · '
+                    : ''}
                   {describeType(document.mimeType)}
                   {document.sizeBytes === null ? '' : ` · ${formatSize(document.sizeBytes)}`} ·{' '}
                   {formatSessionDate(document.createdAt.slice(0, 10))}

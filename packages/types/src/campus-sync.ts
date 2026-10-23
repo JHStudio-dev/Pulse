@@ -80,6 +80,14 @@ export interface CampusSyncItem {
   removedAt: Instant | null;
 }
 
+/** A Pulse task or document that Campus Sync created, and where it came from. */
+export interface CampusAppliedTarget {
+  taskId: TaskId | null;
+  documentId: DocumentId | null;
+  sourceUrl: string | null;
+  removedAt: Instant | null;
+}
+
 export interface CampusSyncItemInput {
   kind: CampusSyncItemKind;
   externalId: string;

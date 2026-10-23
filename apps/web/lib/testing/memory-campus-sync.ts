@@ -352,9 +352,18 @@ export function createMemoryCampusSync(): {
         if (!item) throw notFound('Dismissed item');
         return Object.assign(item, { dismissedAt: null });
       },
-      async listAppliedTasks(userId) {
+      async listAppliedTargets(userId) {
         return own(state.items, userId).flatMap((item) =>
-          item.appliedTaskId ? [{ taskId: item.appliedTaskId, sourceUrl: item.sourceUrl }] : [],
+          item.appliedTaskId || item.appliedDocumentId
+            ? [
+                {
+                  taskId: item.appliedTaskId,
+                  documentId: item.appliedDocumentId,
+                  sourceUrl: item.sourceUrl,
+                  removedAt: item.removedAt,
+                },
+              ]
+            : [],
         );
       },
       async upsertItem(userId, subjectLinkId, runId, input, diff) {

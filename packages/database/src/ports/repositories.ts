@@ -1,5 +1,6 @@
 import type {
   AcademicPeriod,
+  CampusAppliedTarget,
   AcademicPeriodId,
   CampusConnection,
   CampusConnectionId,
@@ -115,8 +116,8 @@ export interface CampusSyncRepository {
   /** Assignments whose task the student deleted and has not restored. */
   listDismissedItems(userId: UserId): Promise<CampusSyncItem[]>;
   restoreDismissedItem(userId: UserId, itemId: CampusSyncItemId): Promise<CampusSyncItem>;
-  /** Tasks that came from the campus, with the assignment page they mirror. */
-  listAppliedTasks(userId: UserId): Promise<Array<{ taskId: TaskId; sourceUrl: string | null }>>;
+  /** Tasks and documents that came from the campus, with the page they mirror. */
+  listAppliedTargets(userId: UserId): Promise<CampusAppliedTarget[]>;
   upsertItem(
     userId: UserId,
     subjectLinkId: CampusSubjectLinkId,

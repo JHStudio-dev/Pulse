@@ -9,6 +9,8 @@ export interface CampusAnnouncementEntry {
   content: string | null;
   sourceUrl: string | null;
   updatedAt: string;
+  /** The campus no longer lists it. */
+  removed: boolean;
 }
 
 export interface CampusChangeEntry {
@@ -16,7 +18,7 @@ export interface CampusChangeEntry {
   subjectId: string;
   subjectName: string;
   kind: CampusSyncItem['kind'];
-  change: 'new' | 'changed';
+  change: 'new' | 'changed' | 'removed';
   title: string;
   changedAt: string;
   sourceUrl: string | null;
@@ -91,18 +93,27 @@ export function buildCampusChanges(
 ): CampusChangeEntry[] {
   return items
     .flatMap((item) => {
-      if (!item.lastChangeKind || !item.lastChangedAt) return [];
+      // A removal is the latest news about an item once it happens.
+      const change =
+        item.removedAt !== null
+          ? { change: 'removed' as const, changedAt: item.removedAt }
+          : item.lastChangeKind && item.lastChangedAt
+            ? { change: item.lastChangeKind, changedAt: item.lastChangedAt }
+            : null;
 
-      return [{
-        id: item.id as string,
-        subjectId: subject.id as string,
-        subjectName: subject.name,
-        kind: item.kind,
-        change: item.lastChangeKind,
-        title: itemTitle(item),
-        changedAt: item.lastChangedAt,
-        sourceUrl: item.sourceUrl,
-      }];
+      if (!change) return [];
+
+      return [
+        {
+          id: item.id as string,
+          subjectId: subject.id as string,
+          subjectName: subject.name,
+          kind: item.kind,
+          ...change,
+          title: itemTitle(item),
+          sourceUrl: item.sourceUrl,
+        },
+      ];
     })
     .sort((a, b) => b.changedAt.localeCompare(a.changedAt));
 }
@@ -122,6 +133,7 @@ export function buildCampusAnnouncements(
       content: plainText(text(item.payload['content'])),
       sourceUrl: item.sourceUrl,
       updatedAt: text(item.payload['updatedAt']) ?? item.firstSeenAt,
+      removed: item.removedAt !== null,
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

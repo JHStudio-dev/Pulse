@@ -100,7 +100,9 @@ describe('campus snapshot ingestion', () => {
 
     await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
 
-    const applied = await memory.repositories.campusSync.listAppliedTasks(STUDENT);
+    const applied = (await memory.repositories.campusSync.listAppliedTargets(STUDENT)).filter(
+      (entry) => entry.taskId !== null,
+    );
     expect(applied.map((entry) => entry.sourceUrl)).toEqual([
       'https://campus.ujcv.edu.hn/main/work/work_list.php?id=1',
       'https://campus.ujcv.edu.hn/main/work/work_list.php?id=2',

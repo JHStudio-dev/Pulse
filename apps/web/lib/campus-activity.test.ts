@@ -32,6 +32,8 @@ function item(overrides: Partial<CampusSyncItem>): CampusSyncItem {
     appliedAt: null,
     appliedTaskId: null,
     appliedDocumentId: null,
+    dismissedAt: null,
+    removedAt: null,
     ...overrides,
   } as CampusSyncItem;
 }
@@ -112,6 +114,34 @@ describe('campus activity', () => {
 
     expect(event && campusEventDate(event)).toBe('2026-10-12');
     expect(event && campusEventTime(event)).toBe('23:45');
+  });
+});
+
+describe('campus removals in activity', () => {
+  it('reports an item the campus stopped listing as removed', () => {
+    const [entry] = buildCampusChanges(
+      [
+        item({
+          kind: 'assignment',
+          payload: { title: 'Ensayo final' },
+          lastChangeKind: 'changed',
+          lastChangedAt: '2026-10-01T18:00:00.000Z',
+          removedAt: '2026-10-05T09:00:00.000Z',
+        }),
+      ],
+      subject,
+    );
+
+    expect(entry).toMatchObject({ change: 'removed', changedAt: '2026-10-05T09:00:00.000Z' });
+  });
+
+  it('keeps a removed announcement visible and says so', () => {
+    const [entry] = buildCampusAnnouncements(
+      [item({ payload: { title: 'Cambio de aula' }, removedAt: '2026-10-05T09:00:00.000Z' })],
+      subject,
+    );
+
+    expect(entry).toMatchObject({ title: 'Cambio de aula', removed: true });
   });
 });
 

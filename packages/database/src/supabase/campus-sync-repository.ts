@@ -1,5 +1,6 @@
 import type {
   AcademicPeriodId,
+  CampusAppliedTarget,
   CampusConnectionId,
   CampusSyncDiffState,
   CampusSyncItemId,
@@ -225,19 +226,26 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       return toCampusSyncItem(data as CampusSyncItemRow);
     },
 
-    async listAppliedTasks(
-      userId: UserId,
-    ): Promise<Array<{ taskId: TaskId; sourceUrl: string | null }>> {
+    async listAppliedTargets(userId: UserId): Promise<CampusAppliedTarget[]> {
       const { data, error } = await client
         .from(ITEMS)
-        .select('applied_task_id, source_url')
+        .select('applied_task_id, applied_document_id, source_url, removed_at')
         .eq('user_id', userId)
-        .not('applied_task_id', 'is', null);
+        .or('applied_task_id.not.is.null,applied_document_id.not.is.null');
 
       if (error) throw translateError(error);
-      return (data as Array<{ applied_task_id: string; source_url: string | null }>).map((row) => ({
-        taskId: row.applied_task_id as TaskId,
+      return (
+        data as Array<
+          Pick<
+            CampusSyncItemRow,
+            'applied_task_id' | 'applied_document_id' | 'source_url' | 'removed_at'
+          >
+        >
+      ).map((row) => ({
+        taskId: row.applied_task_id as TaskId | null,
+        documentId: row.applied_document_id as DocumentId | null,
         sourceUrl: row.source_url,
+        removedAt: row.removed_at,
       }));
     },
 

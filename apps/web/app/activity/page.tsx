@@ -12,11 +12,26 @@ import {
 } from '@/lib/campus-activity';
 import { requireUser } from '@/lib/session';
 
-const CHANGE_LABELS: Record<CampusSyncItemKind, { new: string; changed: string }> = {
-  assignment: { new: 'Nueva tarea', changed: 'Tarea actualizada' },
-  document: { new: 'Nuevo documento', changed: 'Documento actualizado' },
-  announcement: { new: 'Nuevo anuncio', changed: 'Anuncio actualizado' },
-  event: { new: 'Nuevo evento', changed: 'Evento actualizado' },
+const CHANGE_LABELS: Record<
+  CampusSyncItemKind,
+  { new: string; changed: string; removed: string }
+> = {
+  assignment: {
+    new: 'Nueva tarea',
+    changed: 'Tarea actualizada',
+    removed: 'Tarea retirada del campus',
+  },
+  document: {
+    new: 'Nuevo documento',
+    changed: 'Documento actualizado',
+    removed: 'Documento retirado del campus',
+  },
+  announcement: {
+    new: 'Nuevo anuncio',
+    changed: 'Anuncio actualizado',
+    removed: 'Anuncio retirado del campus',
+  },
+  event: { new: 'Nuevo evento', changed: 'Evento actualizado', removed: 'Evento retirado' },
 };
 
 function describeLastSync(lastSyncedAt: string | null, now: Date): string {
@@ -190,6 +205,7 @@ export default async function ActivityPage() {
                   <span className="text-[color:var(--color-ink-muted)] text-xs">
                     {entry.subjectName}
                     {entry.author ? ` · ${entry.author}` : ''}
+                    {entry.removed ? ' · ya no figura en el campus' : ''}
                   </span>
                   <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
                     {formatMoment(entry.updatedAt, period.timeZone)}

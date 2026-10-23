@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { isOverdue, resolveTaskPriority, type PriorityLevel } from '@pulse/core';
 import type { Subject, SubjectId, Task } from '@pulse/types';
+import type { CampusOrigin } from '@/lib/campus-origin';
 import { formatSessionDate } from '@/lib/format';
 import { toggleTaskDone } from './actions';
 import { AddReminder } from '@/app/reminders/add-reminder';
@@ -49,7 +50,7 @@ export function TaskList({
   subjects,
   today,
   reminderCounts,
-  campusSources = new Map(),
+  campusOrigins = new Map(),
   showSubject = true,
 }: {
   tasks: readonly Task[];
@@ -57,8 +58,8 @@ export function TaskList({
   subjects: { id: string; name: string }[];
   today: string;
   reminderCounts: ReadonlyMap<string, number>;
-  /** Campus page of each task Campus Sync created; null when the campus gave none. */
-  campusSources?: ReadonlyMap<string, string | null>;
+  /** Tasks Campus Sync created, keyed by task id. */
+  campusOrigins?: ReadonlyMap<string, CampusOrigin>;
   showSubject?: boolean;
 }) {
   return (
@@ -68,6 +69,7 @@ export function TaskList({
         const done = task.status === 'done' || task.status === 'submitted';
         const subject = task.subjectId ? subjectsById.get(task.subjectId) : undefined;
         const level = LEVEL_LABEL[priority.level];
+        const origin = campusOrigins.get(task.id);
 
         return (
           <li key={task.id} className="flex flex-wrap items-start gap-x-3 gap-y-1.5 py-3">
@@ -97,21 +99,20 @@ export function TaskList({
                 {done ? ` · ${STATUS_LABEL[task.status]}` : ''}
                 {!done && task.status === 'in_progress' ? ' · En progreso' : ''}
                 {!done && level.length > 0 ? ` · Prioridad ${level.toLowerCase()}` : ''}
-                {campusSources.has(task.id) ? ' · ' : ''}
-                {campusSources.has(task.id) ? (
-                  campusSources.get(task.id) ? (
-                    <a
-                      href={campusSources.get(task.id)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline-offset-4 hover:underline"
-                    >
-                      Campus<span className="sr-only"> (abre la tarea en el campus)</span>
-                    </a>
-                  ) : (
-                    'Campus'
-                  )
+                {origin ? ' · ' : ''}
+                {origin?.sourceUrl ? (
+                  <a
+                    href={origin.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline-offset-4 hover:underline"
+                  >
+                    Campus<span className="sr-only"> (abre la tarea en el campus)</span>
+                  </a>
+                ) : origin ? (
+                  'Campus'
                 ) : null}
+                {origin?.removed ? ' · ya no figura en el campus' : ''}
               </p>
             </div>
 
@@ -135,7 +136,7 @@ export function TaskList({
                   ) : null}
                 </div>
               ) : null}
-              <EditTask task={task} subjects={subjects} fromCampus={campusSources.has(task.id)} />
+              <EditTask task={task} subjects={subjects} fromCampus={origin !== undefined} />
             </div>
           </li>
         );
