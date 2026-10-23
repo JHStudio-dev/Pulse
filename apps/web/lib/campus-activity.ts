@@ -126,6 +126,39 @@ export function buildCampusAnnouncements(
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
+function isAgendaEvent(item: CampusSyncItem): boolean {
+  return item.kind === 'event' && eventSourceType(item.payload['sourceType']) === 'agenda';
+}
+
+/**
+ * Drops agenda events the campus no longer lists.
+ *
+ * Agenda events carry no campus id, so a moved event arrives as a new item and
+ * the old one stays stored. Upcoming events missing from the latest agenda
+ * read are left out; past ones stay as history, since later reads start at the
+ * current month and never see them again.
+ */
+export function withoutStaleAgendaEvents(
+  items: readonly CampusSyncItem[],
+  today: string,
+): CampusSyncItem[] {
+  const latest = items
+    .filter(isAgendaEvent)
+    .reduce<CampusSyncItem | null>(
+      (current, item) => (!current || item.lastSeenAt > current.lastSeenAt ? item : current),
+      null,
+    );
+
+  if (!latest) return [...items];
+
+  return items.filter((item) => {
+    if (!isAgendaEvent(item) || item.lastSyncRunId === latest.lastSyncRunId) return true;
+
+    const date = text(item.payload['startsAt'])?.slice(0, 10);
+    return date !== undefined && date < today;
+  });
+}
+
 export function buildCampusEvents(
   items: readonly CampusSyncItem[],
   subject: Subject,

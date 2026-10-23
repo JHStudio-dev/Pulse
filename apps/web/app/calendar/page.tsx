@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation';
 import { instantToZonedDate } from '@pulse/core';
 import type { IsoDate, Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
-import { buildCampusEvents, campusEventDate, campusEventTime } from '@/lib/campus-activity';
+import {
+  buildCampusEvents,
+  campusEventDate,
+  campusEventTime,
+  withoutStaleAgendaEvents,
+} from '@/lib/campus-activity';
 import {
   clampMonth,
   endOfMonth,
@@ -63,7 +68,7 @@ export default async function CalendarPage({
     .flatMap((link, index) => {
       const subject = subjectsById.get(link.subjectId);
       if (!subject) return [];
-      return buildCampusEvents(campusItemGroups[index] ?? [], subject);
+      return buildCampusEvents(withoutStaleAgendaEvents(campusItemGroups[index] ?? [], today), subject);
     })
     .filter((event) => event.sourceType === 'agenda')
     .filter((event) => {

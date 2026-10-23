@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { CampusSyncItem, Subject } from '@pulse/types';
+import type { CampusSyncItem, CampusSyncItemId, CampusSyncRunId, Subject } from '@pulse/types';
 import {
   buildCampusAnnouncements,
   buildCampusChanges,
   buildCampusEvents,
   campusEventDate,
   campusEventTime,
+  withoutStaleAgendaEvents,
 } from './campus-activity';
 
 const subject = {
@@ -111,5 +112,71 @@ describe('campus activity', () => {
 
     expect(event && campusEventDate(event)).toBe('2026-10-12');
     expect(event && campusEventTime(event)).toBe('23:45');
+  });
+});
+
+describe('stale agenda events', () => {
+  function agenda(id: string, run: string, startsAt: string, seenAt: string): CampusSyncItem {
+    return item({
+      id: id as CampusSyncItemId,
+      kind: 'event',
+      lastSyncRunId: run as CampusSyncRunId,
+      lastSeenAt: seenAt,
+      payload: { title: 'Examen parcial', startsAt, allDay: false, sourceType: 'agenda' },
+    });
+  }
+
+  const TODAY = '2026-10-10';
+
+  it('hides an upcoming event the latest agenda read no longer lists', () => {
+    const moved = [
+      agenda('old', 'run-1', '2026-10-20T08:00:00', '2026-10-01T12:00:00.000Z'),
+      agenda('new', 'run-2', '2026-10-22T08:00:00', '2026-10-08T12:00:00.000Z'),
+    ];
+
+    expect(withoutStaleAgendaEvents(moved, TODAY).map((entry) => entry.id)).toEqual(['new']);
+  });
+
+  it('keeps past events as history', () => {
+    const items = [
+      agenda('past', 'run-1', '2026-09-20T08:00:00', '2026-09-15T12:00:00.000Z'),
+      agenda('current', 'run-2', '2026-10-22T08:00:00', '2026-10-08T12:00:00.000Z'),
+    ];
+
+    expect(withoutStaleAgendaEvents(items, TODAY).map((entry) => entry.id)).toEqual([
+      'past',
+      'current',
+    ]);
+  });
+
+  it('keeps everything when the latest sync did not read the agenda', () => {
+    const items = [
+      agenda('a', 'run-1', '2026-10-20T08:00:00', '2026-10-01T12:00:00.000Z'),
+      item({
+        id: 'doc' as CampusSyncItemId,
+        kind: 'document',
+        lastSyncRunId: 'run-2' as CampusSyncRunId,
+        lastSeenAt: '2026-10-08T12:00:00.000Z',
+      }),
+    ];
+
+    expect(withoutStaleAgendaEvents(items, TODAY).map((entry) => entry.id)).toEqual(['a', 'doc']);
+  });
+
+  it('leaves assignment deadlines and other items alone', () => {
+    const items = [
+      agenda('new', 'run-2', '2026-10-22T08:00:00', '2026-10-08T12:00:00.000Z'),
+      item({
+        id: 'deadline' as CampusSyncItemId,
+        kind: 'event',
+        lastSyncRunId: 'run-1' as CampusSyncRunId,
+        payload: { title: 'Entrega', startsAt: '2026-10-25T23:59:00', sourceType: 'assignment' },
+      }),
+    ];
+
+    expect(withoutStaleAgendaEvents(items, TODAY).map((entry) => entry.id)).toEqual([
+      'new',
+      'deadline',
+    ]);
   });
 });

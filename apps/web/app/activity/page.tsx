@@ -6,6 +6,7 @@ import {
   buildCampusAnnouncements,
   buildCampusChanges,
   buildCampusEvents,
+  withoutStaleAgendaEvents,
   campusEventDate,
   campusEventTime,
 } from '@/lib/campus-activity';
@@ -96,14 +97,15 @@ export default async function ActivityPage() {
     return buildCampusAnnouncements(itemGroups[index] ?? [], subject);
   }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
+  const now = new Date();
+  const today = instantToZonedDate(now, period.timeZone);
+
   const events = activeLinks.flatMap((link, index) => {
     const subject = subjectsById.get(link.subjectId);
     if (!subject) return [];
-    return buildCampusEvents(itemGroups[index] ?? [], subject);
+    return buildCampusEvents(withoutStaleAgendaEvents(itemGroups[index] ?? [], today), subject);
   });
 
-  const now = new Date();
-  const today = instantToZonedDate(now, period.timeZone);
   const nowTime = instantToZonedTime(now, period.timeZone);
   const upcomingEvents = events.filter((event) => isUpcomingCampusEvent(event, today, nowTime));
   const upcomingIds = new Set(upcomingEvents.map((event) => event.id));
