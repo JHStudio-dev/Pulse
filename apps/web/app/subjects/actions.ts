@@ -98,6 +98,7 @@ function cleanupRepositories({
     periods: db.periods,
     subjects: db.subjects,
     tasks: db.tasks,
+    campusSync: db.campusSync,
     documents: db.documents,
     notes: db.notes,
     sessions: db.sessions,

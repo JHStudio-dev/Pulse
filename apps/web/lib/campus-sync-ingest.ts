@@ -1,4 +1,5 @@
 import {
+  campusItemNeedsApply,
   classifyCampusSyncItem,
   missingScheduleWeekdays,
   normalizeExternalSessionId,
@@ -268,11 +269,7 @@ export async function ingestCampusSnapshot(
 
       const persisted = await campusSync.upsertItem(userId, subjectLink.id, run.id, item, state);
 
-      if (
-        state !== 'unchanged' ||
-        (persisted.kind === 'assignment' && persisted.appliedTaskId === null) ||
-        (persisted.kind === 'document' && persisted.appliedDocumentId === null)
-      ) {
+      if (campusItemNeedsApply(persisted, state)) {
         await applyCampusSyncItem(userId, subject.id, persisted, repositories);
       }
     }

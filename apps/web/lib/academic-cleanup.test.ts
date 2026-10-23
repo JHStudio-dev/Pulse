@@ -87,6 +87,7 @@ function world() {
     Pick<Recording, 'id' | 'userId' | 'classSessionId' | 'storagePath' | 'audioStoragePath'>
   > = [];
   const removedFiles: string[] = [];
+  const dismissedTasks: string[] = [];
   let storageFails = false;
 
   const own = <T extends { userId: UserId }>(rows: T[], userId: UserId) =>
@@ -134,6 +135,11 @@ function world() {
         tasks = tasks.filter((row) => row.userId !== userId || !ids.includes(row.id));
       },
     },
+    campusSync: {
+      async dismissAppliedTasks(_userId, ids) {
+        dismissedTasks.push(...ids);
+      },
+    },
     documents: {
       async listBySubject(userId, subjectId) {
         return own(documents, userId).filter((row) => row.subjectId === subjectId);
@@ -176,6 +182,7 @@ function world() {
     previous,
     repositories,
     removedFiles,
+    dismissedTasks,
     subjects,
     notes,
     sessions,
@@ -228,6 +235,8 @@ describe('removing a subject permanently', () => {
 
     await removeSubjectPermanently(STUDENT, subject.id, w.repositories);
 
+    // The campus link goes with the subject, so there is nothing to suppress.
+    expect(w.dismissedTasks).toEqual([]);
     expect(w.subjects.map((row) => row.id)).toEqual([other.id]);
     expect(w.tasks.map((row) => row.title)).toEqual(['Otra materia']);
     expect(w.documents).toEqual([expect.objectContaining({ id: upload.id, subjectId: null })]);
@@ -293,6 +302,8 @@ describe('removing tasks in bulk', () => {
 
     expect(await removeActivePeriodTasks(STUDENT, w.repositories)).toBe(2);
     expect(w.tasks.map((row) => row.title)).toEqual(['Histórica', 'Sin materia']);
+    // Campus tasks among them must not be reimported by the next sync.
+    expect(w.dismissedTasks).toHaveLength(2);
   });
 
   it('removes tasks without a subject only when asked explicitly', async () => {

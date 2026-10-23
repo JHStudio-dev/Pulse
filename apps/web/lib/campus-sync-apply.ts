@@ -1,5 +1,6 @@
 import type {
   CampusSyncItem,
+  CampusSyncItemId,
   DocumentId,
   DocumentRecord,
   SubjectId,
@@ -199,4 +200,28 @@ export async function applyCampusSyncItem(
   if (item.kind === 'document') {
     await applyDocument(userId, subjectId, item, repositories.documents, repositories.campusSync);
   }
+}
+
+/**
+ * Brings back a campus task the student had deleted.
+ *
+ * The task is recreated from the last campus copy right away rather than on
+ * the next sync, so the student sees the result of the choice immediately.
+ */
+export async function restoreDismissedCampusTask(
+  userId: UserId,
+  itemId: CampusSyncItemId,
+  repositories: CampusSyncApplyRepositories & {
+    campusSync: Pick<CampusSyncRepository, 'listSubjectLinks' | 'restoreDismissedItem'>;
+  },
+): Promise<boolean> {
+  const item = await repositories.campusSync.restoreDismissedItem(userId, itemId);
+  const link = (await repositories.campusSync.listSubjectLinks(userId)).find(
+    (candidate) => candidate.id === item.subjectLinkId,
+  );
+
+  if (!link) return false;
+
+  await applyCampusSyncItem(userId, link.subjectId, item, repositories);
+  return true;
 }

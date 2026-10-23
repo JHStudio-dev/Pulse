@@ -20,6 +20,7 @@ import type {
   TaskId,
   UserId,
 } from '@pulse/types';
+import type { TaskRepository } from '@pulse/database';
 import type { CampusSyncIngestRepositories } from '../campus-sync-ingest';
 
 /**
@@ -101,10 +102,15 @@ export function makeSubject(
   };
 }
 
+export type MemoryCampusSyncRepositories = CampusSyncIngestRepositories & {
+  tasks: CampusSyncIngestRepositories['tasks'] & Pick<TaskRepository, 'removeMany'>;
+};
+
 export function createMemoryCampusSync(): {
   state: MemoryCampusSyncState;
-  repositories: CampusSyncIngestRepositories;
+  repositories: MemoryCampusSyncRepositories;
   addStudent(userId: UserId): { period: AcademicPeriod; connection: CampusConnection };
+  /** A task vanishing outside Pulse's own actions, as the foreign key sees it. */
   deleteTask(id: TaskId): void;
 } {
   const state: MemoryCampusSyncState = {
@@ -122,7 +128,14 @@ export function createMemoryCampusSync(): {
   const own = <T extends { userId: UserId }>(rows: T[], userId: UserId) =>
     rows.filter((row) => row.userId === userId);
 
-  const repositories: CampusSyncIngestRepositories = {
+  function detachTasks(ids: readonly TaskId[]): void {
+    state.tasks = state.tasks.filter((task) => !ids.includes(task.id));
+    for (const item of state.items) {
+      if (item.appliedTaskId && ids.includes(item.appliedTaskId)) item.appliedTaskId = null;
+    }
+  }
+
+  const repositories: MemoryCampusSyncRepositories = {
     periods: {
       async findActive(userId) {
         return own(state.periods, userId).find((period) => period.status === 'active') ?? null;
@@ -190,6 +203,13 @@ export function createMemoryCampusSync(): {
     },
 
     tasks: {
+      async removeMany(userId, ids) {
+        detachTasks(
+          own(state.tasks, userId)
+            .filter((task) => ids.includes(task.id))
+            .map((task) => task.id),
+        );
+      },
       async findById(userId, id) {
         return own(state.tasks, userId).find((task) => task.id === id) ?? null;
       },
@@ -300,6 +320,29 @@ export function createMemoryCampusSync(): {
       async listItems(userId, subjectLinkId) {
         return own(state.items, userId).filter((item) => item.subjectLinkId === subjectLinkId);
       },
+      async dismissAppliedTasks(userId, taskIds) {
+        for (const item of own(state.items, userId)) {
+          if (
+            item.kind === 'assignment' &&
+            item.appliedTaskId &&
+            taskIds.includes(item.appliedTaskId)
+          ) {
+            item.dismissedAt = NOW;
+          }
+        }
+      },
+      async listDismissedItems(userId) {
+        return own(state.items, userId).filter(
+          (item) => item.dismissedAt !== null && item.appliedTaskId === null,
+        );
+      },
+      async restoreDismissedItem(userId, itemId) {
+        const item = own(state.items, userId).find(
+          (row) => row.id === itemId && row.dismissedAt !== null,
+        );
+        if (!item) throw notFound('Dismissed item');
+        return Object.assign(item, { dismissedAt: null });
+      },
       async listAppliedTasks(userId) {
         return own(state.items, userId).flatMap((item) =>
           item.appliedTaskId ? [{ taskId: item.appliedTaskId, sourceUrl: item.sourceUrl }] : [],
@@ -342,6 +385,7 @@ export function createMemoryCampusSync(): {
           appliedAt: null,
           appliedTaskId: null,
           appliedDocumentId: null,
+          dismissedAt: null,
           ...change,
         };
         state.items.push(item);
@@ -403,10 +447,7 @@ export function createMemoryCampusSync(): {
       return { period, connection };
     },
     deleteTask(id) {
-      state.tasks = state.tasks.filter((task) => task.id !== id);
-      for (const item of state.items) {
-        if (item.appliedTaskId === id) item.appliedTaskId = null;
-      }
+      detachTasks([id]);
     },
   };
 }

@@ -1,5 +1,6 @@
 import type {
   AcademicPeriodRepository,
+  CampusSyncRepository,
   ClassSessionRepository,
   DocumentRepository,
   NoteRepository,
@@ -7,7 +8,7 @@ import type {
   SubjectRepository,
   TaskRepository,
 } from '@pulse/database';
-import type { DocumentRecord, SubjectId, Task, UserId } from '@pulse/types';
+import type { DocumentRecord, SubjectId, Task, TaskId, UserId } from '@pulse/types';
 
 /**
  * Permanent removal of academic records.
@@ -23,6 +24,8 @@ import type { DocumentRecord, SubjectId, Task, UserId } from '@pulse/types';
  *
  * Files the student uploaded, notes and inbox captures are kept unassigned.
  * Tasks never record a period, so bulk task removal is scoped through subjects.
+ * Deleting a task that came from the campus records the decision on its campus
+ * item, so the next sync does not bring it back.
  */
 
 export interface AcademicCleanupRepositories {
@@ -32,6 +35,7 @@ export interface AcademicCleanupRepositories {
     'findById' | 'listByPeriod' | 'listArchivedByPeriod' | 'remove'
   >;
   tasks: Pick<TaskRepository, 'listByUser' | 'listBySubject' | 'removeMany'>;
+  campusSync: Pick<CampusSyncRepository, 'dismissAppliedTasks'>;
   documents: Pick<DocumentRepository, 'listBySubject' | 'removeMany'>;
   notes: Pick<NoteRepository, 'listBySubject'>;
   sessions: Pick<ClassSessionRepository, 'listBySubject'>;
@@ -157,18 +161,40 @@ export async function removeActivePeriodSubjects(
   return subjectIds.length;
 }
 
+/**
+ * Deletes tasks the student chose to remove.
+ *
+ * The decision is recorded first: once a task is gone, nothing ties it back to
+ * the campus assignment it came from. If the delete then fails, the task still
+ * exists and keeps syncing, so a half-finished removal hides nothing.
+ */
+export async function removeTasks(
+  userId: UserId,
+  taskIds: readonly TaskId[],
+  repositories: {
+    tasks: Pick<TaskRepository, 'removeMany'>;
+    campusSync: Pick<CampusSyncRepository, 'dismissAppliedTasks'>;
+  },
+): Promise<void> {
+  if (taskIds.length === 0) return;
+
+  await repositories.campusSync.dismissAppliedTasks(userId, taskIds);
+  await repositories.tasks.removeMany(userId, taskIds);
+}
+
 /** Tasks of the active period's subjects. Tasks without a subject are left alone. */
 export async function removeActivePeriodTasks(
   userId: UserId,
-  repositories: Pick<AcademicCleanupRepositories, 'periods' | 'subjects' | 'tasks'>,
+  repositories: Pick<AcademicCleanupRepositories, 'periods' | 'subjects' | 'tasks' | 'campusSync'>,
 ): Promise<number> {
   const subjectIds = await activePeriodSubjectIds(userId, repositories);
   if (!subjectIds) return 0;
 
   const tasks = tasksOfSubjects(await repositories.tasks.listByUser(userId), new Set(subjectIds));
-  await repositories.tasks.removeMany(
+  await removeTasks(
     userId,
     tasks.map((task) => task.id),
+    repositories,
   );
 
   return tasks.length;
@@ -177,14 +203,15 @@ export async function removeActivePeriodTasks(
 /** Tasks with no subject, which cannot be placed in any period. */
 export async function removeUnassignedTasks(
   userId: UserId,
-  repositories: Pick<AcademicCleanupRepositories, 'tasks'>,
+  repositories: Pick<AcademicCleanupRepositories, 'tasks' | 'campusSync'>,
 ): Promise<number> {
   const tasks = (await repositories.tasks.listByUser(userId)).filter(
     (task) => task.subjectId === null,
   );
-  await repositories.tasks.removeMany(
+  await removeTasks(
     userId,
     tasks.map((task) => task.id),
+    repositories,
   );
 
   return tasks.length;
