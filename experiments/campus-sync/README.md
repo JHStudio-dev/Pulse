@@ -68,6 +68,21 @@ CHAMILO_API_KEY="your-own-key" \
 npm run probe -- chamilo
 ```
 
+### Campus Companion
+
+The Chrome extension in `companion/` reads UJCV through the student's own
+signed-in tab. It never sees a password.
+
+```bash
+cd experiments/campus-sync
+npm run typecheck
+npm run build:companion
+```
+
+Load `companion/` as an unpacked extension from `chrome://extensions`. After a
+rebuild, reload the extension **and** the campus tab: a tab keeps the content
+script it was opened with. The built `*.js` bundles are gitignored.
+
 ## Results
 
 Each run writes `findings/<platform>.md`. **Those files are gitignored**,
