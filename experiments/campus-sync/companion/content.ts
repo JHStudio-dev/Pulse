@@ -3,6 +3,7 @@ import {
   getChamiloSessionId,
   inspectChamiloAssignmentDeadline,
   mergeChamiloAssignmentDeadlines,
+  mergeChamiloAssignmentDetail,
   parseChamiloAnnouncementDetail,
   parseChamiloAnnouncements,
   parseChamiloAssignmentDetail,
@@ -209,16 +210,7 @@ async function syncAssignments(
         assignment.sourceUrl,
       );
 
-      if (!detail) return assignment;
-
-      return {
-        ...assignment,
-        ...detail,
-        ...(assignment.dueAt !== undefined ? { dueAt: assignment.dueAt } : {}),
-        ...(detail.dueAt !== undefined && assignment.dueAt === undefined
-          ? { dueAt: detail.dueAt }
-          : {}),
-      };
+      return mergeChamiloAssignmentDetail(assignment, detail);
     }),
   );
 }

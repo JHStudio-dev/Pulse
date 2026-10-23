@@ -4,6 +4,7 @@ import {
   inferChamiloAssignmentDueAt,
   inspectChamiloAssignmentDeadline,
   mergeChamiloAssignmentDeadlines,
+  mergeChamiloAssignmentDetail,
   normalizeChamiloDateTime,
   parseChamiloAssignments,
   parseChamiloAssignmentDetail,
@@ -202,5 +203,96 @@ describe('Chamilo deadlines', () => {
     `);
     expect(parseChamiloAssignmentDetail(dom.window.document, COURSE, DETAIL_URL)?.dueAt)
       .toBe('2026-10-12T23:45:00');
+  });
+});
+
+describe('Chamilo deadline priority', () => {
+  const listed = {
+    externalId: '2074726',
+    courseExternalId: COURSE.externalId,
+    title: 'TAREA 3 - FECHA LIMITE 5 DE OCTUBRE DE 2026',
+    sourceUrl: DETAIL_URL,
+  };
+
+  const agendaEvent = {
+    courseExternalId: COURSE.externalId,
+    title: 'Entrega de tarea TAREA 3',
+    startsAt: '2026-10-07T23:59:00',
+    allDay: false,
+    sourceType: 'assignment' as const,
+    sourceExternalId: '2074726',
+    sourceUrl: DETAIL_URL,
+  };
+
+  it('marks a deadline read from the title', () => {
+    const dom = new JSDOM(`
+      <table><tbody><tr>
+        <td><a href="${DETAIL_URL}">${listed.title}</a></td>
+      </tr></tbody></table>
+    `);
+
+    expect(parseChamiloAssignments(dom.window.document, COURSE, LIST_URL)[0]).toMatchObject({
+      dueAt: '2026-10-05',
+      dueAtSource: 'title',
+    });
+  });
+
+  it('lets a stored detail deadline replace a title date from the list', () => {
+    const merged = mergeChamiloAssignmentDetail(
+      { ...listed, dueAt: '2026-10-05', dueAtSource: 'title' },
+      { ...listed, dueAt: '2026-10-06T23:00:00', dueAtSource: 'campus', hasSubmission: false },
+    );
+
+    expect(merged).toMatchObject({ dueAt: '2026-10-06T23:00:00', dueAtSource: 'campus' });
+  });
+
+  it('keeps the list deadline when both pages store one', () => {
+    const merged = mergeChamiloAssignmentDetail(
+      { ...listed, dueAt: '2026-10-06T23:00:00', dueAtSource: 'campus' },
+      { ...listed, dueAt: '2026-10-08T23:00:00', dueAtSource: 'campus' },
+    );
+
+    expect(merged.dueAt).toBe('2026-10-06T23:00:00');
+  });
+
+  it('keeps the title date when nothing else is available', () => {
+    const merged = mergeChamiloAssignmentDetail(
+      { ...listed, dueAt: '2026-10-05', dueAtSource: 'title' },
+      { ...listed, description: 'Leer el capítulo 2' },
+    );
+
+    expect(merged).toMatchObject({
+      dueAt: '2026-10-05',
+      dueAtSource: 'title',
+      description: 'Leer el capítulo 2',
+    });
+  });
+
+  it('leaves the deadline empty when the campus exposes none', () => {
+    const merged = mergeChamiloAssignmentDetail(
+      { ...listed, title: 'Entrega de ensayo' },
+      { ...listed, title: 'Entrega de ensayo' },
+    );
+
+    expect(merged.dueAt).toBeUndefined();
+    expect(mergeChamiloAssignmentDeadlines([merged], [])[0]?.dueAt).toBeUndefined();
+  });
+
+  it('prefers the agenda deadline over a date read from the title', () => {
+    const [assignment] = mergeChamiloAssignmentDeadlines(
+      [{ ...listed, dueAt: '2026-10-05', dueAtSource: 'title' }],
+      [agendaEvent],
+    );
+
+    expect(assignment).toMatchObject({ dueAt: '2026-10-07T23:59:00', dueAtSource: 'campus' });
+  });
+
+  it('ignores agenda events linked to another assignment', () => {
+    const [assignment] = mergeChamiloAssignmentDeadlines(
+      [{ ...listed, title: 'Entrega de ensayo' }],
+      [{ ...agendaEvent, sourceExternalId: '999' }],
+    );
+
+    expect(assignment?.dueAt).toBeUndefined();
   });
 });

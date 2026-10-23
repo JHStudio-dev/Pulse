@@ -30,6 +30,8 @@ export interface SyncedAssignment {
   title: string;
   description?: string;
   dueAt?: string;
+  /** Title dates are a fallback; any date Chamilo stores outranks them. */
+  dueAtSource?: 'campus' | 'title';
   sourceUrl: string;
   submissionUrl?: string;
   hasSubmission?: boolean;

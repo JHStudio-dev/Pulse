@@ -693,6 +693,20 @@ function structuredChamiloAssignmentDueAt(document: Document): string | undefine
     .find((value): value is string => value !== undefined);
 }
 
+function resolveAssignmentDueAt(
+  structured: string | undefined,
+  title: string,
+): Pick<SyncedAssignment, 'dueAt' | 'dueAtSource'> {
+  if (structured !== undefined) return { dueAt: structured, dueAtSource: 'campus' };
+
+  const inferred = inferChamiloAssignmentDueAt(title);
+  return inferred !== undefined ? { dueAt: inferred, dueAtSource: 'title' } : {};
+}
+
+function hasCampusDueAt(assignment: SyncedAssignment): boolean {
+  return assignment.dueAt !== undefined && assignment.dueAtSource !== 'title';
+}
+
 export function parseChamiloAssignments(
   document: Document,
   course: CampusCourseRef,
@@ -730,16 +744,14 @@ export function parseChamiloAssignments(
     const rowDocument = row.ownerDocument.implementation.createHTMLDocument();
     rowDocument.body.append(row.cloneNode(true));
 
-    const dueAt =
-      structuredChamiloAssignmentDueAt(rowDocument) ??
-      inferChamiloAssignmentDueAt(title);
+    const due = resolveAssignmentDueAt(structuredChamiloAssignmentDueAt(rowDocument), title);
 
     assignments.push({
       externalId,
       courseExternalId: course.externalId,
       title,
       sourceUrl: assignmentLink.href,
-      ...(dueAt !== undefined ? { dueAt } : {}),
+      ...due,
     });
   }
 
@@ -839,9 +851,7 @@ export function parseChamiloAssignmentDetail(
     ? sanitizeCampusUrl(submissionLink.href, pageUrl)
     : undefined;
 
-  const dueAt =
-    structuredChamiloAssignmentDueAt(document) ??
-    inferChamiloAssignmentDueAt(heading);
+  const due = resolveAssignmentDueAt(structuredChamiloAssignmentDueAt(document), heading);
 
   return {
     externalId,
@@ -849,10 +859,27 @@ export function parseChamiloAssignmentDetail(
     title: heading,
     sourceUrl: sanitizeCampusUrl(pageUrl, pageUrl),
     hasSubmission: hasChamiloSubmission(document),
-    ...(dueAt !== undefined ? { dueAt } : {}),
+    ...due,
     ...(description !== undefined ? { description } : {}),
     ...(submissionUrl !== undefined ? { submissionUrl } : {}),
   };
+}
+
+/** Detail fields win, except a title-derived date never replaces a stored one. */
+export function mergeChamiloAssignmentDetail(
+  listed: SyncedAssignment,
+  detail: SyncedAssignment | null,
+): SyncedAssignment {
+  if (!detail) return listed;
+
+  const due = [listed, detail].find(hasCampusDueAt) ?? [listed, detail].find((item) => item.dueAt);
+  const merged: SyncedAssignment = { ...listed, ...detail };
+  delete merged.dueAt;
+  delete merged.dueAtSource;
+
+  return due?.dueAt === undefined
+    ? merged
+    : { ...merged, dueAt: due.dueAt, dueAtSource: due.dueAtSource ?? 'campus' };
 }
 
 export function mergeChamiloAssignmentDeadlines(
@@ -876,10 +903,10 @@ export function mergeChamiloAssignmentDeadlines(
   }
 
   return assignments.map((assignment) => {
-    if (assignment.dueAt !== undefined) return assignment;
+    if (hasCampusDueAt(assignment)) return assignment;
 
     const dueAt = dueByAssignmentId.get(assignment.externalId);
-    return dueAt === undefined ? assignment : { ...assignment, dueAt };
+    return dueAt === undefined ? assignment : { ...assignment, dueAt, dueAtSource: 'campus' };
   });
 }
 
