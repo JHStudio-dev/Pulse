@@ -3,6 +3,7 @@ import type {
   CampusConnectionId,
   CampusSyncDiffState,
   CampusSyncItemId,
+  CampusSyncItemKind,
   DocumentId,
   TaskId,
   CampusSubjectLink,
@@ -269,6 +270,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
             content_hash: item.contentHash,
             payload: item.payload,
             last_seen_at: now,
+            removed_at: null,
             ...change,
           },
           { onConflict: 'user_id,campus_subject_link_id,kind,external_id' },
@@ -278,6 +280,26 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
 
       if (error) throw translateError(error);
       return toCampusSyncItem(data as CampusSyncItemRow);
+    },
+
+    async markMissingItemsRemoved(
+      userId: UserId,
+      subjectLinkId: CampusSubjectLinkId,
+      runId: CampusSyncRunId,
+      kinds: readonly CampusSyncItemKind[],
+    ): Promise<void> {
+      if (kinds.length === 0) return;
+
+      const { error } = await client
+        .from(ITEMS)
+        .update({ removed_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('campus_subject_link_id', subjectLinkId)
+        .in('kind', [...kinds])
+        .neq('last_sync_run_id', runId)
+        .is('removed_at', null);
+
+      if (error) throw translateError(error);
     },
 
     async markTaskApplied(

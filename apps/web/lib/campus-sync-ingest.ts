@@ -1,6 +1,7 @@
 import {
   campusItemNeedsApply,
   classifyCampusSyncItem,
+  confirmedCampusKinds,
   missingScheduleWeekdays,
   normalizeExternalSessionId,
   prepareCampusSyncSnapshot,
@@ -278,6 +279,14 @@ export async function ingestCampusSnapshot(
         await applyCampusSyncItem(userId, subject.id, persisted, repositories);
       }
     }
+
+    // Only fully read sections can show that the campus removed something.
+    await campusSync.markMissingItemsRemoved(
+      userId,
+      subjectLink.id,
+      run.id,
+      confirmedCampusKinds(snapshot),
+    );
 
     const completed = await campusSync.completeRun(userId, run.id, summary);
     await connections.markSyncSuccess(userId, connection.id);

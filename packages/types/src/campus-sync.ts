@@ -76,6 +76,8 @@ export interface CampusSyncItem {
   appliedDocumentId: DocumentId | null;
   /** Set when the student deleted the task this assignment created. */
   dismissedAt: Instant | null;
+  /** Set when a complete read of its section no longer listed it. */
+  removedAt: Instant | null;
 }
 
 export interface CampusSyncItemInput {
@@ -148,12 +150,16 @@ export interface CampusSyncEventSnapshot {
   sourceUrl?: string | undefined;
 }
 
+export type CampusSyncSection = 'documents' | 'assignments' | 'announcements' | 'events';
+
 export interface CampusSyncSnapshot {
   course: CampusSyncCourseSnapshot;
   documents: CampusSyncDocumentSnapshot[];
   assignments: CampusSyncAssignmentSnapshot[];
   announcements: CampusSyncAnnouncementSnapshot[];
   events: CampusSyncEventSnapshot[];
+  /** Sections the reader got through completely. Absent means unknown. */
+  readSections?: CampusSyncSection[] | undefined;
 }
 
 export type CampusScheduleConfidence = 'high' | 'medium';

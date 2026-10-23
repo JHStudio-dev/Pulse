@@ -224,6 +224,7 @@ describe('toCampusSyncItem', () => {
     applied_task_id: null,
     applied_document_id: null,
     dismissed_at: null,
+    removed_at: null,
   };
 
   it('maps the latest campus change metadata', () => {

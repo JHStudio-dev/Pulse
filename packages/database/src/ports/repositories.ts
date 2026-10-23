@@ -9,6 +9,7 @@ import type {
   CampusSubjectLinkId,
   CampusSyncItem,
   CampusSyncItemId,
+  CampusSyncItemKind,
   CampusSyncDiffState,
   CampusSyncItemInput,
   CampusSyncRun,
@@ -123,6 +124,17 @@ export interface CampusSyncRepository {
     item: CampusSyncItemInput,
     state: CampusSyncDiffState,
   ): Promise<CampusSyncItem>;
+  /**
+   * Marks items of the given kinds that this run did not see.
+   *
+   * Callers pass only kinds whose section was read completely.
+   */
+  markMissingItemsRemoved(
+    userId: UserId,
+    subjectLinkId: CampusSubjectLinkId,
+    runId: CampusSyncRunId,
+    kinds: readonly CampusSyncItemKind[],
+  ): Promise<void>;
   markTaskApplied(
     userId: UserId,
     itemId: CampusSyncItemId,

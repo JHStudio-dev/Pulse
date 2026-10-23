@@ -373,6 +373,7 @@ export function createMemoryCampusSync(): {
             contentHash: input.contentHash,
             payload: input.payload,
             lastSeenAt: NOW,
+            removedAt: null,
             ...change,
           });
         }
@@ -395,10 +396,23 @@ export function createMemoryCampusSync(): {
           appliedTaskId: null,
           appliedDocumentId: null,
           dismissedAt: null,
+          removedAt: null,
           ...change,
         };
         state.items.push(item);
         return item;
+      },
+      async markMissingItemsRemoved(userId, subjectLinkId, runId, kinds) {
+        for (const item of own(state.items, userId)) {
+          if (
+            item.subjectLinkId === subjectLinkId &&
+            kinds.includes(item.kind) &&
+            item.lastSyncRunId !== runId &&
+            item.removedAt === null
+          ) {
+            item.removedAt = NOW;
+          }
+        }
       },
       async markTaskApplied(userId, itemId, taskId) {
         const item = own(state.items, userId).find((row) => row.id === itemId);

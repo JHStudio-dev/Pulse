@@ -68,6 +68,10 @@ export const campusSyncSnapshotSchema = z.object({
   assignments: z.array(campusSyncAssignmentSnapshotSchema).max(500),
   announcements: z.array(campusSyncAnnouncementSnapshotSchema).max(500),
   events: z.array(campusSyncEventSnapshotSchema).max(2_000),
+  readSections: z
+    .array(z.enum(['documents', 'assignments', 'announcements', 'events']))
+    .max(4)
+    .optional(),
 });
 
 export type CampusSyncSnapshotInput = z.infer<typeof campusSyncSnapshotSchema>;
