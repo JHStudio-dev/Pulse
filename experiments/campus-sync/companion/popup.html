@@ -320,29 +320,122 @@
         white-space: nowrap;
       }
 
-      .failures {
-        margin-top: 13px;
-        border-top: 1px solid #39262b;
-        border-bottom: 1px solid #39262b;
-        padding: 10px 0 9px;
+      .run {
+        margin-top: 16px;
       }
 
-      .failures[hidden] {
+      .run[hidden] {
         display: none;
       }
 
-      .failures-head {
+      .run-head {
         display: flex;
         align-items: baseline;
         justify-content: space-between;
         gap: 12px;
+        margin-bottom: 8px;
       }
 
-      .failures-head h3 {
+      .run-head h2 {
         margin: 0;
-        color: #d99a9a;
-        font-size: 9px;
+        color: #788497;
+        font-size: 8px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      #run-count {
+        color: #5f82b7;
+        font-size: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .run-track {
+        height: 1px;
+        background: #222b37;
+      }
+
+      .run-bar {
+        width: 0;
+        height: 1px;
+        background: #6ea8ff;
+        transition: width 200ms ease;
+      }
+
+      .run-list {
+        max-height: 228px;
+        margin: 0;
+        padding: 0;
+        overflow-y: auto;
+        list-style: none;
+      }
+
+      .run-item {
+        display: grid;
+        grid-template-columns: 18px 1fr auto;
+        gap: 10px;
+        align-items: baseline;
+        padding: 8px 0;
+        border-bottom: 1px solid #1a212b;
+      }
+
+      .run-index {
+        color: #3f4a59;
+        font-size: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .run-copy {
+        min-width: 0;
+      }
+
+      .run-course {
+        display: block;
+        overflow: hidden;
+        color: #aab3c0;
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .run-detail {
+        display: block;
+        margin-top: 2px;
+        color: #657184;
+        font-size: 8px;
+        overflow-wrap: anywhere;
+      }
+
+      .run-state {
+        color: #4f5a6a;
+        font-size: 7px;
         font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .run-item[data-status="syncing"] .run-course {
+        color: #ffffff;
+      }
+
+      .run-item[data-status="syncing"] .run-state {
+        color: #79aef9;
+      }
+
+      .run-item[data-status="done"] .run-state {
+        color: #8d98aa;
+      }
+
+      .run-item[data-status="error"] .run-state,
+      .run-item[data-status="error"] .run-detail {
+        color: #d99a9a;
+      }
+
+      .run-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 9px;
       }
 
       .retry-failed {
@@ -350,44 +443,16 @@
         background: transparent;
         padding: 0;
         color: #7ba8e8;
-        font-size: 8px;
+        font-size: 9px;
         cursor: pointer;
+      }
+
+      .retry-failed[hidden] {
+        display: none;
       }
 
       .retry-failed:hover:not(:disabled) {
         color: #a8c8f4;
-      }
-
-      .failed-list {
-        margin: 8px 0 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .failed-list li {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 10px;
-        padding: 6px 0;
-        border-top: 1px solid #20191c;
-      }
-
-      .failed-list li:first-child {
-        border-top: 0;
-      }
-
-      .failed-course {
-        min-width: 0;
-        overflow: hidden;
-        color: #c8ced8;
-        font-size: 9px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .failed-reason {
-        color: #735c63;
-        font-size: 8px;
       }
 
       .utilities {
@@ -547,6 +612,18 @@
         <span aria-hidden="true">→</span>
       </button>
 
+      <section id="run" class="run" aria-labelledby="run-title" hidden>
+        <div class="run-head">
+          <h2 id="run-title">Sincronización</h2>
+          <span id="run-count">0 / 0</span>
+        </div>
+        <div class="run-track" aria-hidden="true"><div id="run-bar" class="run-bar"></div></div>
+        <ol id="run-list" class="run-list"></ol>
+        <div class="run-actions">
+          <button id="retry-failed" class="retry-failed" type="button" hidden>Reintentar</button>
+        </div>
+      </section>
+
       <section id="summary" hidden>
         <div class="summary-head">
           <p id="summary-title">Resumen</p>
@@ -560,14 +637,6 @@
           <div class="metric"><strong id="metric-news">0</strong><span>Anuncios</span></div>
           <div class="metric"><strong id="metric-events">0</strong><span>Eventos</span></div>
         </div>
-      </section>
-
-      <section id="failed-section" class="failures" hidden>
-        <div class="failures-head">
-          <h3>Materias con error de lectura</h3>
-          <button id="retry-failed" class="retry-failed" type="button">Reintentar</button>
-        </div>
-        <ul id="failed-list" class="failed-list"></ul>
       </section>
 
       <div class="utilities">

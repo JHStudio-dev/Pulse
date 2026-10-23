@@ -130,10 +130,18 @@ describe('Chamilo course identity', () => {
         <input name="login"><input type="password" name="password">
       </form>
     `);
+    const loginWithoutId = new JSDOM(`
+      <form action="/index.php" method="post">
+        <input name="login"><input type="password" name="password">
+      </form>
+    `);
     const course = new JSDOM('<main><h2>ADMINISTRACION I</h2></main>');
+    const protectedTool = new JSDOM('<form><input type="password" name="password"></form>');
 
     expect(isChamiloLoginPage(login.window.document)).toBe(true);
+    expect(isChamiloLoginPage(loginWithoutId.window.document)).toBe(true);
     expect(isChamiloLoginPage(course.window.document)).toBe(false);
+    expect(isChamiloLoginPage(protectedTool.window.document)).toBe(false);
   });
 });
 

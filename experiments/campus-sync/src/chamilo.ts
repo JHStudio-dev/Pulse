@@ -124,10 +124,11 @@ export function parseChamiloCourses(document: Document, baseUrl: string): Synced
 
 /** A login form means the campus session expired and every tool will look empty. */
 export function isChamiloLoginPage(document: Document): boolean {
+  if (document.querySelector('form#formLogin') !== null) return true;
+
   return (
-    document.querySelector('form#formLogin, form[action*="login" i] input[type="password"]') !==
-      null ||
-    document.querySelector('input[type="password"][name="password"]') !== null
+    document.querySelector('input[name="login"]') !== null &&
+    document.querySelector('input[type="password"]') !== null
   );
 }
 
