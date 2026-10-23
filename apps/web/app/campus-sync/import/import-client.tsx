@@ -1,29 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { inferCampusScheduleSuggestions } from '@pulse/core';
-import type { CampusSyncSnapshot, Modality, Weekday } from '@pulse/types';
-
-type SubjectOption = { id: string; name: string; code: string | null };
-
-
-type ScheduleDraft = {
-  weekdays: Weekday[];
-  startTime: string;
-  endTime: string;
-  modality: Modality;
-  meetingUrl: string;
-};
-
-const DAY_LABELS: ReadonlyArray<{ value: Weekday; label: string }> = [
-  { value: 1, label: 'Lun' },
-  { value: 2, label: 'Mar' },
-  { value: 3, label: 'Mié' },
-  { value: 4, label: 'Jue' },
-  { value: 5, label: 'Vie' },
-  { value: 6, label: 'Sáb' },
-  { value: 7, label: 'Dom' },
-];
+import type { CampusSyncSnapshot } from '@pulse/types';
+import {
+  buildIngestRequest,
+  campusCourseKey,
+  ingestErrorMessage,
+  isScheduleDraftComplete,
+  planCourseImport,
+  scheduleDraftFromSuggestion,
+  type ImportCourseLink,
+  type ImportSubjectOption,
+  type ScheduleDraft,
+} from '@/lib/campus-import';
+import { ScheduleReview } from './schedule-review';
 
 type SyncResult = {
   runId: string;
@@ -40,14 +31,33 @@ type SyncResult = {
   };
 };
 
-type BatchSyncResult = {
-  succeeded: number;
-  failed: number;
-  createdSubjects: number;
-  newCount: number;
-  changedCount: number;
-  unchangedCount: number;
-  errors: Array<{ course: string; error: string }>;
+type CourseFailure = {
+  courseExternalId: string;
+  sessionId?: string;
+  title: string;
+  error: string;
+};
+
+type SectionWarning = CourseFailure & { section: string };
+
+type CourseImport =
+  | { status: 'pending' }
+  | { status: 'importing' }
+  | { status: 'done'; result: SyncResult }
+  | { status: 'error'; error: string };
+
+const IMPORT_STATUS_LABELS: Record<CourseImport['status'], string> = {
+  pending: 'Pendiente',
+  importing: 'Importando',
+  done: 'Importada',
+  error: 'Error',
+};
+
+const SECTION_LABELS: Record<string, string> = {
+  documents: 'documentos',
+  assignments: 'tareas',
+  announcements: 'anuncios',
+  events: 'agenda',
 };
 
 function isSnapshotMessage(value: unknown): value is {
@@ -59,99 +69,110 @@ function isSnapshotMessage(value: unknown): value is {
   return message.type === 'pulse:campus-sync:snapshot' && message.snapshot !== undefined;
 }
 
-type BatchSourceError = {
-  courseExternalId: string;
-  title: string;
-  error: string;
-};
-
 function isBatchMessage(value: unknown): value is {
   type: 'pulse:campus-sync:batch';
   snapshots: CampusSyncSnapshot[];
-  errors: BatchSourceError[];
+  errors?: CourseFailure[];
+  warnings?: SectionWarning[];
 } {
   if (!value || typeof value !== 'object') return false;
-  const message = value as { type?: unknown; snapshots?: unknown; errors?: unknown };
-  return (
-    message.type === 'pulse:campus-sync:batch' &&
-    Array.isArray(message.snapshots) &&
-    message.snapshots.length > 0
-  );
+  const message = value as { type?: unknown; snapshots?: unknown };
+  return message.type === 'pulse:campus-sync:batch' && Array.isArray(message.snapshots);
 }
 
-function normalized(value: string | undefined | null): string {
-  return (value ?? '').trim().toLocaleLowerCase('es');
+function failureKey(entry: CourseFailure): string {
+  return campusCourseKey({ externalId: entry.courseExternalId, sessionId: entry.sessionId });
 }
 
-export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
+function courseLabel(snapshot: CampusSyncSnapshot): string {
+  return snapshot.course.title ?? snapshot.course.externalId;
+}
+
+function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+async function postIngest(body: unknown): Promise<SyncResult | { error: string }> {
+  try {
+    const response = await fetch('/api/campus-sync/ingest', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => ({}))) as Partial<SyncResult> & {
+      error?: string;
+    };
+
+    if (!response.ok || !data.summary) return { error: data.error ?? 'sync_failed' };
+    return data as SyncResult;
+  } catch {
+    return { error: 'network' };
+  }
+}
+
+export function CampusSyncImport({
+  subjects,
+  connectionId,
+  links,
+}: {
+  subjects: ImportSubjectOption[];
+  connectionId: string | null;
+  links: ImportCourseLink[];
+}) {
   const [snapshot, setSnapshot] = useState<CampusSyncSnapshot | null>(null);
   const [batchSnapshots, setBatchSnapshots] = useState<CampusSyncSnapshot[]>([]);
-  const [batchSourceErrors, setBatchSourceErrors] = useState<BatchSourceError[]>([]);
-  const [batchScheduleDrafts, setBatchScheduleDrafts] = useState<Record<string, ScheduleDraft>>({});
-  const [batchScheduleConfirmed, setBatchScheduleConfirmed] = useState<Record<string, boolean>>({});
+  const [sourceErrors, setSourceErrors] = useState<CourseFailure[]>([]);
+  const [sectionWarnings, setSectionWarnings] = useState<SectionWarning[]>([]);
+  const [receivedBatch, setReceivedBatch] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, ScheduleDraft>>({});
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
+  const [imports, setImports] = useState<Record<string, CourseImport>>({});
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
   const [status, setStatus] = useState('Buscando datos del Campus Companion…');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
-  const [batchResult, setBatchResult] = useState<BatchSyncResult | null>(null);
-  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
-  const [confirmSchedule, setConfirmSchedule] = useState(false);
+  const usedSubjects = useRef(new Set<string>());
+  const received = useRef(false);
 
   useEffect(() => {
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window) return;
+      if (!isBatchMessage(event.data) && !isSnapshotMessage(event.data)) return;
+
+      // The bridge may answer twice; the first delivery wins so edits survive.
+      if (received.current) return;
+      received.current = true;
 
       if (isBatchMessage(event.data)) {
-        const received = event.data.snapshots;
-        const drafts: Record<string, ScheduleDraft> = {};
+        const incoming = event.data.snapshots;
+        const nextDrafts: Record<string, ScheduleDraft> = {};
 
-        for (const item of received) {
+        for (const item of incoming) {
           const suggestion = inferCampusScheduleSuggestions(item)[0];
-          if (!suggestion) continue;
-
-          drafts[item.course.externalId] = {
-            weekdays: [...suggestion.weekdays],
-            startTime: suggestion.startTime,
-            endTime: suggestion.endTime,
-            modality: suggestion.modality,
-            meetingUrl: suggestion.meetingUrl ?? '',
-          };
+          if (suggestion) nextDrafts[campusCourseKey(item.course)] = scheduleDraftFromSuggestion(suggestion);
         }
 
-        setBatchSnapshots(received);
-        setBatchSourceErrors(Array.isArray(event.data.errors) ? event.data.errors : []);
-        setBatchScheduleDrafts(drafts);
-        setBatchScheduleConfirmed({});
-        setSnapshot(received[0] ?? null);
-        setScheduleDraft(null);
-        setConfirmSchedule(false);
-        setStatus(`${received.length} materias listas para importar.`);
+        setReceivedBatch(true);
+        setBatchSnapshots(incoming);
+        setSourceErrors(Array.isArray(event.data.errors) ? event.data.errors : []);
+        setSectionWarnings(Array.isArray(event.data.warnings) ? event.data.warnings : []);
+        setDrafts(nextDrafts);
+        setStatus(
+          incoming.length > 0
+            ? `${plural(incoming.length, 'materia lista', 'materias listas')} para importar.`
+            : 'Ninguna materia pudo leerse del campus. Reintenta desde la extensión.',
+        );
         return;
       }
 
-      if (!isSnapshotMessage(event.data)) return;
+      const incoming = event.data.snapshot;
+      const suggestion = inferCampusScheduleSuggestions(incoming)[0];
 
-      const received = event.data.snapshot;
-      setBatchSnapshots([]);
-      setBatchSourceErrors([]);
-      setBatchScheduleDrafts({});
-      setBatchScheduleConfirmed({});
-      setSnapshot(received);
-
-      const suggested = inferCampusScheduleSuggestions(received)[0];
-      setScheduleDraft(
-        suggested
-          ? {
-              weekdays: [...suggested.weekdays],
-              startTime: suggested.startTime,
-              endTime: suggested.endTime,
-              modality: suggested.modality,
-              meetingUrl: suggested.meetingUrl ?? '',
-            }
-          : null,
+      setSnapshot(incoming);
+      setDrafts(
+        suggestion ? { [campusCourseKey(incoming.course)]: scheduleDraftFromSuggestion(suggestion) } : {},
       );
-      setConfirmSchedule(false);
-      setStatus(`${received.course.title ?? received.course.externalId} listo para importar.`);
+      setStatus(`${courseLabel(incoming)} listo para importar.`);
     };
 
     window.addEventListener('message', receive);
@@ -163,7 +184,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
           ? 'No hay una sincronización pendiente. Sincroniza un curso o todas tus materias desde la extensión.'
           : current,
       );
-    }, 1500);
+    }, 2500);
 
     return () => {
       window.clearTimeout(timeout);
@@ -171,447 +192,315 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
     };
   }, []);
 
-  const scheduleSuggestions = useMemo(
-    () => (snapshot ? inferCampusScheduleSuggestions(snapshot) : []),
-    [snapshot],
+  const batchTotals = useMemo(
+    () =>
+      batchSnapshots.reduce(
+        (total, item) => ({
+          documents: total.documents + item.documents.length,
+          assignments: total.assignments + item.assignments.length,
+          announcements: total.announcements + item.announcements.length,
+          events: total.events + item.events.length,
+        }),
+        { documents: 0, assignments: 0, announcements: 0, events: 0 },
+      ),
+    [batchSnapshots],
   );
 
-  const counts = useMemo(() => {
-    if (!snapshot) return null;
+  const unreadSections = useMemo(() => {
+    const byCourse = new Map<string, string[]>();
+    for (const warning of sectionWarnings) {
+      const key = failureKey(warning);
+      byCourse.set(key, [...(byCourse.get(key) ?? []), SECTION_LABELS[warning.section] ?? warning.section]);
+    }
+    return byCourse;
+  }, [sectionWarnings]);
+
+  const importCounts = useMemo(() => {
+    const values = Object.values(imports);
     return {
-      documents: snapshot.documents.length,
-      assignments: snapshot.assignments.length,
-      assignmentsWithDueDate: snapshot.assignments.filter((assignment) => Boolean(assignment.dueAt)).length,
-      announcements: snapshot.announcements.length,
-      events: snapshot.events.length,
+      done: values.filter((entry) => entry.status === 'done'),
+      failed: batchSnapshots.filter(
+        (item) => imports[campusCourseKey(item.course)]?.status === 'error',
+      ),
     };
-  }, [snapshot]);
+  }, [imports, batchSnapshots]);
 
-  const batchCounts = useMemo(() => {
-    if (batchSnapshots.length === 0) return null;
-
-    return batchSnapshots.reduce(
-      (total, item) => ({
-        documents: total.documents + item.documents.length,
-        assignments: total.assignments + item.assignments.length,
-        announcements: total.announcements + item.announcements.length,
-        events: total.events + item.events.length,
-      }),
-      { documents: 0, assignments: 0, announcements: 0, events: 0 },
-    );
-  }, [batchSnapshots]);
-
-  function updateBatchSchedule(courseExternalId: string, changes: Partial<ScheduleDraft>) {
-    setBatchScheduleDrafts((current) => {
-      const draft = current[courseExternalId];
-      if (!draft) return current;
-
-      return {
-        ...current,
-        [courseExternalId]: {
-          ...draft,
-          ...changes,
-        },
-      };
+  function updateDraft(key: string, changes: Partial<ScheduleDraft>) {
+    setDrafts((current) => {
+      const draft = current[key];
+      return draft ? { ...current, [key]: { ...draft, ...changes } } : current;
     });
   }
 
-  function toggleBatchScheduleDay(courseExternalId: string, day: Weekday) {
-    const draft = batchScheduleDrafts[courseExternalId];
-    if (!draft) return;
-
-    const checked = draft.weekdays.includes(day);
-    updateBatchSchedule(courseExternalId, {
-      weekdays: checked
-        ? draft.weekdays.filter((value) => value !== day)
-        : [...draft.weekdays, day].sort(),
-    });
+  function confirmedDraft(key: string): ScheduleDraft | null {
+    return confirmed[key] ? (drafts[key] ?? null) : null;
   }
 
-  async function ingestAll() {
-    if (batchSnapshots.length === 0 || busy) return;
+  async function importCourses(targets: CampusSyncSnapshot[]) {
+    if (targets.length === 0 || busy) return;
 
-    const invalidSchedule = batchSnapshots.find((item) => {
-      if (!batchScheduleConfirmed[item.course.externalId]) return false;
-      const draft = batchScheduleDrafts[item.course.externalId];
-
-      return (
-        !draft ||
-        draft.weekdays.length === 0 ||
-        !draft.startTime ||
-        !draft.endTime ||
-        draft.startTime >= draft.endTime
-      );
+    const incomplete = targets.find((item) => {
+      const draft = confirmedDraft(campusCourseKey(item.course));
+      return draft !== null && !isScheduleDraftComplete(draft);
     });
 
-    if (invalidSchedule) {
-      setStatus(
-        `Revisa el horario de ${invalidSchedule.course.title ?? invalidSchedule.course.externalId} antes de importar.`,
-      );
+    if (incomplete) {
+      setStatus(`Revisa el horario de ${courseLabel(incomplete)} antes de importar.`);
       return;
     }
 
     setBusy(true);
-    setResult(null);
-    setBatchResult(null);
+    setImports((current) => ({
+      ...current,
+      ...Object.fromEntries(targets.map((item) => [campusCourseKey(item.course), { status: 'pending' }])),
+    }));
 
-    const aggregate: BatchSyncResult = {
-      succeeded: 0,
-      failed: 0,
-      createdSubjects: 0,
-      newCount: 0,
-      changedCount: 0,
-      unchangedCount: 0,
-      errors: [],
-    };
+    const imported: Array<{ externalId: string; sessionId?: string }> = [];
+    let failed = 0;
 
-    const usedSubjects = new Set<string>();
+    for (const [index, item] of targets.entries()) {
+      const key = campusCourseKey(item.course);
+      setStatus(`Importando ${index + 1} / ${targets.length} · ${courseLabel(item)}`);
+      setImports((current) => ({ ...current, [key]: { status: 'importing' } }));
 
-    try {
-      for (let index = 0; index < batchSnapshots.length; index += 1) {
-        const item = batchSnapshots[index]!;
-        const label = item.course.title ?? item.course.externalId;
-        setStatus(`Importando ${index + 1} de ${batchSnapshots.length}: ${label}`);
+      const plan = planCourseImport(item, {
+        connectionId,
+        subjects,
+        links,
+        usedSubjectIds: usedSubjects.current,
+      });
+      const response = await postIngest(buildIngestRequest(item, plan, confirmedDraft(key)));
 
-        const match = subjects.find((subject) => {
-          if (usedSubjects.has(subject.id)) return false;
-
-          const courseCode = normalized(item.course.code ?? item.course.externalId);
-          const subjectCode = normalized(subject.code);
-          if (courseCode && subjectCode && courseCode === subjectCode) return true;
-
-          return normalized(subject.name) === normalized(item.course.title);
-        });
-
-        const draft = batchScheduleDrafts[item.course.externalId];
-        const includeSchedule = Boolean(
-          batchScheduleConfirmed[item.course.externalId] && draft,
-        );
-
-        const request = match
-          ? { mode: 'link' as const, subjectId: match.id, snapshot: item }
-          : { mode: 'create' as const, snapshot: item };
-
-        const response = await fetch('/api/campus-sync/ingest', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            ...request,
-            ...(includeSchedule && draft
-              ? {
-                  schedule: {
-                    weekdays: draft.weekdays,
-                    startTime: draft.startTime,
-                    endTime: draft.endTime,
-                    modality: draft.modality,
-                    meetingUrl: draft.meetingUrl.trim() || null,
-                    location: { campus: null, building: null, room: null },
-                  },
-                }
-              : {}),
-          }),
-        });
-
-        const data = (await response.json()) as SyncResult | { error?: string };
-
-        if (!response.ok || !('summary' in data)) {
-          aggregate.failed += 1;
-          aggregate.errors.push({
-            course: label,
-            error: 'error' in data && data.error ? data.error : 'sync_failed',
-          });
-          continue;
-        }
-
-        if (match) usedSubjects.add(match.id);
-
-        aggregate.succeeded += 1;
-        if (data.createdSubject) aggregate.createdSubjects += 1;
-        aggregate.newCount += data.summary.newCount;
-        aggregate.changedCount += data.summary.changedCount;
-        aggregate.unchangedCount += data.summary.unchangedCount;
+      if ('error' in response) {
+        failed += 1;
+        setImports((current) => ({
+          ...current,
+          [key]: { status: 'error', error: ingestErrorMessage(response.error) },
+        }));
+        continue;
       }
 
-      setBatchResult(aggregate);
-      setStatus(
-        aggregate.failed === 0
-          ? `${aggregate.succeeded} materias sincronizadas correctamente.`
-          : `${aggregate.succeeded} materias sincronizadas · ${aggregate.failed} con error.`,
-      );
-
-      if (aggregate.failed === 0) {
-        window.postMessage({ type: 'pulse:campus-sync:consumed' }, window.location.origin);
-      }
-    } catch {
-      setStatus('Se interrumpió la sincronización masiva.');
-    } finally {
-      setBusy(false);
+      usedSubjects.current.add(response.subjectId);
+      imported.push({
+        externalId: item.course.externalId,
+        ...(item.course.sessionId !== undefined ? { sessionId: item.course.sessionId } : {}),
+      });
+      setImports((current) => ({ ...current, [key]: { status: 'done', result: response } }));
     }
+
+    // Only what reached Pulse leaves the extension; failures stay for a retry.
+    if (imported.length > 0) {
+      window.postMessage(
+        { type: 'pulse:campus-sync:consumed', courses: imported },
+        window.location.origin,
+      );
+    }
+
+    setStatus(
+      failed === 0
+        ? `${plural(imported.length, 'materia importada', 'materias importadas')}.`
+        : `${imported.length} importadas · ${failed} con error.`,
+    );
+    setBusy(false);
   }
 
-  async function ingest(mode: 'create' | 'link') {
+  async function importSingle(mode: 'create' | 'link') {
     if (!snapshot || busy) return;
     if (mode === 'link' && !subjectId) return;
 
-    if (
-      confirmSchedule &&
-      scheduleDraft &&
-      (scheduleDraft.weekdays.length === 0 ||
-        !scheduleDraft.startTime ||
-        !scheduleDraft.endTime ||
-        scheduleDraft.startTime >= scheduleDraft.endTime)
-    ) {
+    const key = campusCourseKey(snapshot.course);
+    const draft = confirmedDraft(key);
+
+    if (draft && !isScheduleDraftComplete(draft)) {
       setStatus('Revisa los días y las horas antes de confirmar el horario.');
       return;
     }
 
     setBusy(true);
     setResult(null);
-    setBatchResult(null);
     setStatus(mode === 'create' ? 'Creando materia y guardando…' : 'Vinculando y guardando…');
 
-    try {
-      const response = await fetch('/api/campus-sync/ingest', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          ...(mode === 'link' ? { subjectId } : {}),
-          snapshot,
-          ...(confirmSchedule && scheduleDraft
-            ? {
-                schedule: {
-                  weekdays: scheduleDraft.weekdays,
-                  startTime: scheduleDraft.startTime,
-                  endTime: scheduleDraft.endTime,
-                  modality: scheduleDraft.modality,
-                  meetingUrl: scheduleDraft.meetingUrl.trim() || null,
-                  location: { campus: null, building: null, room: null },
-                },
-              }
-            : {}),
-        }),
-      });
+    const response = await postIngest(
+      buildIngestRequest(snapshot, mode === 'link' ? { mode, subjectId } : { mode }, draft),
+    );
 
-      const data = (await response.json()) as SyncResult | { error?: string };
-      if (!response.ok || !('summary' in data)) {
-        setStatus('No se pudo guardar la sincronización.');
-        return;
-      }
-
-      setResult(data);
+    if ('error' in response) {
+      setStatus(ingestErrorMessage(response.error));
+    } else {
+      setResult(response);
       setStatus(
-        data.createdSubject
-          ? `${data.subjectName} fue creada y sincronizada.`
-          : `${data.subjectName} quedó vinculada y sincronizada.`,
+        response.createdSubject
+          ? `${response.subjectName} fue creada y sincronizada.`
+          : `${response.subjectName} quedó vinculada y sincronizada.`,
       );
       window.postMessage({ type: 'pulse:campus-sync:consumed' }, window.location.origin);
-    } catch {
-      setStatus('No se pudo contactar Pulse.');
-    } finally {
-      setBusy(false);
     }
+
+    setBusy(false);
   }
+
+  const singleKey = snapshot ? campusCourseKey(snapshot.course) : '';
+  const singleSuggestion = snapshot ? inferCampusScheduleSuggestions(snapshot)[0] : undefined;
+  const singleDraft = drafts[singleKey];
+  const anyImported = Object.keys(imports).length > 0;
 
   return (
     <div className="mt-6">
-      <p className="text-[color:var(--color-ink-muted)] text-sm">{status}</p>
+      <p className="text-[color:var(--color-ink-muted)] text-sm" role="status" aria-live="polite">
+        {status}
+      </p>
 
-      {batchSnapshots.length > 0 && batchCounts ? (
+      {receivedBatch ? (
         <section className="mt-6 border-y border-[color:var(--color-border)] py-5" aria-labelledby="bulk-sync-heading">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 id="bulk-sync-heading" className="text-base font-medium">
-                {batchSnapshots.length} materias detectadas
-                {batchSourceErrors.length > 0 ? ` · ${batchSourceErrors.length} con error de lectura` : ''}
+                {plural(batchSnapshots.length, 'materia detectada', 'materias detectadas')}
+                {sourceErrors.length > 0 ? ` · ${sourceErrors.length} sin leer` : ''}
               </h2>
               <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                {batchCounts.assignments} tareas · {batchCounts.documents} documentos ·{' '}
-                {batchCounts.announcements} anuncios · {batchCounts.events} eventos
+                {batchTotals.assignments} tareas · {batchTotals.documents} documentos ·{' '}
+                {batchTotals.announcements} anuncios · {batchTotals.events} eventos
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void ingestAll()}
-              disabled={busy}
-              className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
-            >
-              {busy ? 'Sincronizando…' : 'Importar todas automáticamente'}
-            </button>
+            {batchSnapshots.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                {importCounts.failed.length > 0 && !busy ? (
+                  <button
+                    type="button"
+                    onClick={() => void importCourses(importCounts.failed)}
+                    className="rounded-sm border border-[color:var(--color-border)] px-3 py-2 text-sm"
+                  >
+                    Reintentar {importCounts.failed.length} con error
+                  </button>
+                ) : null}
+                {!anyImported || busy ? (
+                  <button
+                    type="button"
+                    onClick={() => void importCourses(batchSnapshots)}
+                    disabled={busy}
+                    className="rounded-sm border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
+                  >
+                    {busy ? 'Importando…' : 'Importar todas'}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
-          <p className="text-[color:var(--color-ink-muted)] mt-3 max-w-2xl text-xs">
-            Pulse reutiliza una materia existente cuando coincide el código. Las demás se crean
-            automáticamente. Revisa los horarios detectados y confirma únicamente los que quieras
-            guardar.
-          </p>
+          {batchSnapshots.length > 0 ? (
+            <p className="text-[color:var(--color-ink-muted)] mt-3 max-w-2xl text-xs">
+              Cada curso conserva la materia a la que ya está vinculado; si no, se une a una materia
+              con el mismo código o nombre, y solo entonces se crea una nueva. Los horarios detectados
+              se guardan únicamente si los confirmas.
+            </p>
+          ) : null}
 
-          <ul className="mt-4 space-y-3 text-sm">
-            {batchSnapshots.map((item) => {
-              const courseId = item.course.externalId;
+          <ol className="mt-4 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)] text-sm">
+            {batchSnapshots.map((item, index) => {
+              const key = campusCourseKey(item.course);
               const suggestion = inferCampusScheduleSuggestions(item)[0];
-              const draft = batchScheduleDrafts[courseId];
-              const confirmed = Boolean(batchScheduleConfirmed[courseId]);
+              const draft = drafts[key];
+              const entry = imports[key];
+              const unread = unreadSections.get(key) ?? [];
 
               return (
-                <li
-                  key={courseId}
-                  className="border-y border-[color:var(--color-border)] px-1 py-3"
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium">
-                      {item.course.title ?? item.course.externalId}
+                <li key={key} className="py-3">
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-[color:var(--color-ink-muted)] w-6 shrink-0 text-xs tabular-nums">
+                      {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span className="text-[color:var(--color-ink-muted)] text-xs">
-                      {item.assignments.length} tareas
-                    </span>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <span className="font-medium">{courseLabel(item)}</span>
+                        <span
+                          className={[
+                            'text-xs uppercase tracking-wide',
+                            entry?.status === 'error'
+                              ? 'text-red-400'
+                              : 'text-[color:var(--color-ink-muted)]',
+                          ].join(' ')}
+                        >
+                          {entry ? IMPORT_STATUS_LABELS[entry.status] : null}
+                        </span>
+                      </div>
 
-                  {suggestion && draft ? (
-                    <div className="mt-3">
-                      <label className="flex items-center gap-2 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={confirmed}
-                          onChange={(event) =>
-                            setBatchScheduleConfirmed((current) => ({
-                              ...current,
-                              [courseId]: event.target.checked,
-                            }))
-                          }
-                        />
-                        Guardar horario detectado
-                      </label>
-
-                      <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                        {draft.weekdays
-                          .map((weekday) => DAY_LABELS.find((day) => day.value === weekday)?.label)
-                          .filter(Boolean)
-                          .join(', ')}
-                        {' · '}
-                        {draft.startTime}–{draft.endTime}
-                        {' · '}
-                        confianza {suggestion.confidence === 'high' ? 'alta' : 'media'}
+                      <p className="text-[color:var(--color-ink-muted)] mt-0.5 text-xs">
+                        {plural(item.assignments.length, 'tarea')} ·{' '}
+                        {plural(item.documents.length, 'documento')}
+                        {unread.length > 0 ? ` · sin leer: ${unread.join(', ')}` : ''}
                       </p>
 
-                      {confirmed ? (
-                        <div className="mt-3 grid gap-3 border-t border-[color:var(--color-border)] pt-3">
-                          <fieldset>
-                            <legend className="text-xs font-medium">Días</legend>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {DAY_LABELS.map((day) => (
-                                <label key={day.value} className="flex items-center gap-1.5 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={draft.weekdays.includes(day.value)}
-                                    onChange={() => toggleBatchScheduleDay(courseId, day.value)}
-                                  />
-                                  {day.label}
-                                </label>
-                              ))}
-                            </div>
-                          </fieldset>
+                      {entry?.status === 'error' ? (
+                        <p className="mt-1 text-xs text-red-400">{entry.error}</p>
+                      ) : null}
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <label className="text-xs">
-                              Inicio
-                              <input
-                                type="time"
-                                value={draft.startTime}
-                                onChange={(event) =>
-                                  updateBatchSchedule(courseId, {
-                                    startTime: event.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                              />
-                            </label>
-                            <label className="text-xs">
-                              Fin
-                              <input
-                                type="time"
-                                value={draft.endTime}
-                                onChange={(event) =>
-                                  updateBatchSchedule(courseId, {
-                                    endTime: event.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                              />
-                            </label>
-                          </div>
+                      {entry?.status === 'done' ? (
+                        <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                          {entry.result.createdSubject ? 'Materia creada' : 'Vinculada'} ·{' '}
+                          <a href={`/subjects/${entry.result.subjectId}`} className="underline underline-offset-4">
+                            {entry.result.subjectName}
+                          </a>{' '}
+                          · {plural(entry.result.summary.newCount, 'nuevo')} ·{' '}
+                          {plural(entry.result.summary.changedCount, 'cambiado')}
+                        </p>
+                      ) : null}
 
-                          <label className="text-xs">
-                            Modalidad
-                            <select
-                              value={draft.modality}
-                              onChange={(event) =>
-                                updateBatchSchedule(courseId, {
-                                  modality: event.target.value as Modality,
-                                })
-                              }
-                              className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                            >
-                              <option value="unconfirmed">Sin confirmar</option>
-                              <option value="virtual">Virtual</option>
-                              <option value="in_person">Presencial</option>
-                              <option value="hybrid">Híbrida</option>
-                            </select>
-                          </label>
+                      {suggestion && draft && entry?.status !== 'done' ? (
+                        <ScheduleReview
+                          id={`schedule-${index}`}
+                          suggestion={suggestion}
+                          draft={draft}
+                          confirmed={Boolean(confirmed[key])}
+                          disabled={busy}
+                          onConfirmChange={(value) =>
+                            setConfirmed((current) => ({ ...current, [key]: value }))
+                          }
+                          onDraftChange={(changes) => updateDraft(key, changes)}
+                        />
+                      ) : null}
 
-                          <label className="text-xs">
-                            Enlace de clase
-                            <input
-                              type="url"
-                              value={draft.meetingUrl}
-                              onChange={(event) =>
-                                updateBatchSchedule(courseId, {
-                                  meetingUrl: event.target.value,
-                                })
-                              }
-                              placeholder="Opcional"
-                              className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                            />
-                          </label>
-
-                          <p className="text-[color:var(--color-ink-muted)] text-xs">
-                            Evidencia: {suggestion.evidence}
-                          </p>
-                        </div>
+                      {!suggestion && entry?.status !== 'done' ? (
+                        <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+                          Sin horario claro en el campus.
+                        </p>
                       ) : null}
                     </div>
-                  ) : (
-                    <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
-                      Sin horario suficientemente claro en el campus.
-                    </p>
-                  )}
+                  </div>
                 </li>
               );
             })}
-          </ul>
+          </ol>
 
-          {batchSourceErrors.length > 0 ? (
-            <div className="mt-4 border-t border-[color:var(--color-border)] pt-3">
-              <p className="text-xs font-medium">No se pudieron leer</p>
+          {sourceErrors.length > 0 ? (
+            <div className="mt-4">
+              <p className="text-xs font-medium">No se pudieron leer del campus</p>
               <ul className="text-[color:var(--color-ink-muted)] mt-2 space-y-1 text-xs">
-                {batchSourceErrors.map((entry) => (
-                  <li key={entry.courseExternalId}>
+                {sourceErrors.map((entry) => (
+                  <li key={failureKey(entry)}>
                     {entry.title || entry.courseExternalId}: {entry.error}
                   </li>
                 ))}
               </ul>
+              <p className="text-[color:var(--color-ink-muted)] mt-2 text-xs">
+                Reintenta estas materias desde la extensión con el campus abierto.
+              </p>
             </div>
+          ) : null}
+
+          {importCounts.done.length > 0 && !busy ? (
+            <a href="/tasks" className="mt-4 inline-block text-sm underline underline-offset-4">
+              Ver tareas por materia
+            </a>
           ) : null}
         </section>
       ) : null}
 
-      {batchSnapshots.length === 0 && snapshot && counts ? (
+      {!receivedBatch && snapshot ? (
         <>
           <div className="mt-5 border-y border-[color:var(--color-border)] py-4">
-            <p className="text-base font-medium">
-              {snapshot.course.title ?? snapshot.course.externalId}
-            </p>
+            <p className="text-base font-medium">{courseLabel(snapshot)}</p>
             <dl className="text-[color:var(--color-ink-muted)] mt-2 grid gap-1 text-xs">
               <div className="flex gap-2">
                 <dt className="font-medium">Código</dt>
@@ -631,150 +520,35 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
               ) : null}
             </dl>
             <p className="text-[color:var(--color-ink-muted)] mt-3 text-xs">
-              {counts.documents} documentos · {counts.assignments} tareas · {counts.announcements}{' '}
-              anuncios · {counts.events} eventos
+              {snapshot.documents.length} documentos · {snapshot.assignments.length} tareas ·{' '}
+              {snapshot.announcements.length} anuncios · {snapshot.events.length} eventos
             </p>
-            {counts.assignments > 0 ? (
+            {snapshot.assignments.length > 0 ? (
               <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                Fechas detectadas: {counts.assignmentsWithDueDate} de {counts.assignments} tareas.
-                {counts.assignmentsWithDueDate === 0
-                  ? ' El campus no proporcionó fechas reconocibles para este curso.'
-                  : ''}
+                Fechas detectadas:{' '}
+                {snapshot.assignments.filter((assignment) => Boolean(assignment.dueAt)).length} de{' '}
+                {snapshot.assignments.length} tareas. Pulse no inventa fechas que el campus no muestra.
               </p>
             ) : null}
           </div>
 
+          {singleSuggestion && singleDraft ? (
+            <ScheduleReview
+              id="schedule-single"
+              suggestion={singleSuggestion}
+              draft={singleDraft}
+              confirmed={Boolean(confirmed[singleKey])}
+              disabled={busy}
+              onConfirmChange={(value) => setConfirmed((current) => ({ ...current, [singleKey]: value }))}
+              onDraftChange={(changes) => updateDraft(singleKey, changes)}
+            />
+          ) : (
+            <p className="text-[color:var(--color-ink-muted)] mt-4 text-xs">
+              No encontré un horario suficientemente claro. Puedes configurarlo manualmente después.
+            </p>
+          )}
 
-          <div className="mt-6 border-t border-[color:var(--color-border)] pt-5">
-            <p className="text-sm font-medium">Horario detectado</p>
-
-            {scheduleDraft && scheduleSuggestions[0] ? (
-              <>
-                <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                  Aproximación del campus · confianza {scheduleSuggestions[0].confidence === 'high' ? 'alta' : 'media'}.
-                  Revísala antes de guardarla.
-                </p>
-
-                <div className="mt-4 grid gap-4">
-                  <fieldset>
-                    <legend className="text-xs font-medium">Días</legend>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {DAY_LABELS.map((day) => {
-                        const checked = scheduleDraft.weekdays.includes(day.value);
-                        return (
-                          <label
-                            key={day.value}
-                            className="flex items-center gap-1.5 rounded-md border border-[color:var(--color-border)] px-2 py-1 text-xs"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() =>
-                                setScheduleDraft((current) =>
-                                  current
-                                    ? {
-                                        ...current,
-                                        weekdays: checked
-                                          ? current.weekdays.filter((value) => value !== day.value)
-                                          : [...current.weekdays, day.value].sort(),
-                                      }
-                                    : current,
-                                )
-                              }
-                            />
-                            {day.label}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-xs">
-                      Inicio
-                      <input
-                        type="time"
-                        value={scheduleDraft.startTime}
-                        onChange={(event) =>
-                          setScheduleDraft((current) =>
-                            current ? { ...current, startTime: event.target.value } : current,
-                          )
-                        }
-                        className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                      />
-                    </label>
-                    <label className="text-xs">
-                      Fin
-                      <input
-                        type="time"
-                        value={scheduleDraft.endTime}
-                        onChange={(event) =>
-                          setScheduleDraft((current) =>
-                            current ? { ...current, endTime: event.target.value } : current,
-                          )
-                        }
-                        className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                      />
-                    </label>
-                  </div>
-
-                  <label className="text-xs">
-                    Modalidad
-                    <select
-                      value={scheduleDraft.modality}
-                      onChange={(event) =>
-                        setScheduleDraft((current) =>
-                          current
-                            ? { ...current, modality: event.target.value as Modality }
-                            : current,
-                        )
-                      }
-                      className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                    >
-                      <option value="unconfirmed">Sin confirmar</option>
-                      <option value="virtual">Virtual</option>
-                      <option value="in_person">Presencial</option>
-                      <option value="hybrid">Híbrida</option>
-                    </select>
-                  </label>
-
-                  <label className="text-xs">
-                    Enlace de clase
-                    <input
-                      type="url"
-                      value={scheduleDraft.meetingUrl}
-                      onChange={(event) =>
-                        setScheduleDraft((current) =>
-                          current ? { ...current, meetingUrl: event.target.value } : current,
-                        )
-                      }
-                      placeholder="Opcional"
-                      className="mt-1 block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5"
-                    />
-                  </label>
-
-                  <p className="text-[color:var(--color-ink-muted)] text-xs">
-                    Evidencia: {scheduleSuggestions[0].evidence}
-                  </p>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={confirmSchedule}
-                      onChange={(event) => setConfirmSchedule(event.target.checked)}
-                    />
-                    Confirmar y guardar este horario
-                  </label>
-                </div>
-              </>
-            ) : (
-              <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
-                No encontré un horario suficientemente claro. Puedes configurarlo manualmente después.
-              </p>
-            )}
-          </div>
-
-          <div className="mt-5">
+          <div className="mt-6">
             <p className="text-sm font-medium">Crear desde el campus</p>
             <p className="text-[color:var(--color-ink-muted)] mt-1 max-w-xl text-xs">
               Pulse crea la materia con el nombre, código y docente detectados. Si confirmas el
@@ -782,9 +556,9 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
             </p>
             <button
               type="button"
-              onClick={() => void ingest('create')}
+              onClick={() => void importSingle('create')}
               disabled={busy}
-              className="mt-3 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
+              className="mt-3 rounded-sm border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
             >
               {busy ? 'Guardando…' : 'Crear materia automáticamente'}
             </button>
@@ -798,7 +572,7 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
                 <select
                   value={subjectId}
                   onChange={(event) => setSubjectId(event.target.value)}
-                  className="block w-full rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-2"
+                  className="block w-full rounded-sm border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3 py-2"
                 >
                   {subjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
@@ -811,37 +585,15 @@ export function CampusSyncImport({ subjects }: { subjects: SubjectOption[] }) {
 
               <button
                 type="button"
-                onClick={() => void ingest('link')}
+                onClick={() => void importSingle('link')}
                 disabled={busy || !subjectId}
-                className="mt-3 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
+                className="mt-3 rounded-sm border border-[color:var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
               >
                 {busy ? 'Guardando…' : 'Vincular materia existente'}
               </button>
             </div>
           ) : null}
         </>
-      ) : null}
-
-      {batchResult ? (
-        <section className="mt-6 border-t border-[color:var(--color-border)] pt-4" aria-labelledby="bulk-result-heading">
-          <h2 id="bulk-result-heading" className="text-sm font-medium">Resultado</h2>
-          <p className="text-[color:var(--color-ink-muted)] mt-1 text-sm">
-            {batchResult.succeeded} materias listas
-            {batchResult.failed > 0 ? ` · ${batchResult.failed} con error` : ''}
-            {' · '}{batchResult.newCount} nuevos · {batchResult.changedCount} cambiados ·{' '}
-            {batchResult.unchangedCount} sin cambios
-          </p>
-          {batchResult.errors.length > 0 ? (
-            <ul className="text-[color:var(--color-ink-muted)] mt-3 space-y-1 text-xs">
-              {batchResult.errors.map((entry) => (
-                <li key={entry.course}>{entry.course}: {entry.error}</li>
-              ))}
-            </ul>
-          ) : null}
-          <a href="/tasks" className="mt-3 inline-block text-sm underline underline-offset-4">
-            Ver tareas por materia
-          </a>
-        </section>
       ) : null}
 
       {result ? (

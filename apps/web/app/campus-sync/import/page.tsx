@@ -8,9 +8,10 @@ export default async function CampusSyncImportPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const [subjects, connection] = await Promise.all([
+  const [subjects, connection, links] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.campusConnections.findByUser(userId),
+    db.campusSync.listSubjectLinks(userId),
   ]);
 
   return (
@@ -29,6 +30,13 @@ export default async function CampusSyncImportPage() {
             id: subject.id,
             name: subject.name,
             code: subject.code,
+          }))}
+          connectionId={connection.id}
+          links={links.map((link) => ({
+            campusConnectionId: link.campusConnectionId,
+            externalCourseId: link.externalCourseId,
+            externalSessionId: link.externalSessionId,
+            subjectId: link.subjectId,
           }))}
         />
       )}
