@@ -3,6 +3,7 @@
 import type { SubjectId, TaskId } from '@pulse/types';
 import { createTaskSchema, updateTaskSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
+import { removeActivePeriodTasks, removeUnassignedTasks } from '@/lib/academic-cleanup';
 import { requireUser } from '@/lib/session';
 
 export interface TaskResult {
@@ -145,23 +146,12 @@ export async function deleteTask(formData: FormData): Promise<void> {
 
 export async function deleteAllTasksInActivePeriod(): Promise<void> {
   const { userId, db } = await requireUser();
-  const period = await db.periods.findActive(userId);
-  if (!period) return;
+  await removeActivePeriodTasks(userId, db);
+  refreshTaskViews();
+}
 
-  const [activeSubjects, archivedSubjects, allTasks] = await Promise.all([
-    db.subjects.listByPeriod(userId, period.id),
-    db.subjects.listArchivedByPeriod(userId, period.id),
-    db.tasks.listByUser(userId),
-  ]);
-
-  const subjectIds = new Set(
-    [...activeSubjects, ...archivedSubjects].map((subject) => subject.id as string),
-  );
-
-  const tasks = allTasks.filter(
-    (task) => task.subjectId === null || subjectIds.has(task.subjectId as string),
-  );
-
-  await Promise.all(tasks.map((task) => db.tasks.remove(userId, task.id)));
+export async function deleteUnassignedTasks(): Promise<void> {
+  const { userId, db } = await requireUser();
+  await removeUnassignedTasks(userId, db);
   refreshTaskViews();
 }

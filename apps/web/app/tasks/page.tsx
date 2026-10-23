@@ -4,9 +4,12 @@ import { instantToZonedDate, isOverdue, sortTasksByPriority } from '@pulse/core'
 import type { Subject, SubjectId, Task } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { requireUser } from '@/lib/session';
-import { DeleteAllTasksButton } from './delete-all-tasks-button';
+import { tasksOfSubjects } from '@/lib/academic-cleanup';
+import { DeleteAllTasksButton, DeleteUnassignedTasksButton } from './delete-all-tasks-button';
 import { QuickAdd } from './quick-add';
 import { TaskList } from './task-list';
+
+const UNASSIGNED_GROUP = 'unassigned';
 
 type TaskGroup = {
   key: string;
@@ -29,7 +32,7 @@ function groupTasksBySubject(
   const unassigned = tasks.filter((task) => task.subjectId === null);
   if (unassigned.length > 0) {
     groups.push({
-      key: 'unassigned',
+      key: UNASSIGNED_GROUP,
       label: 'Sin materia',
       tasks: unassigned,
     });
@@ -51,8 +54,9 @@ export default async function TasksPage({
   const params = await searchParams;
   const groupedView = params.view !== 'all';
 
-  const [subjects, allTasks, reminders] = await Promise.all([
+  const [subjects, archivedSubjects, allTasks, reminders] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
+    db.subjects.listArchivedByPeriod(userId, period.id),
     db.tasks.listByUser(userId),
     db.reminders.listByUser(userId),
   ]);
@@ -63,6 +67,11 @@ export default async function TasksPage({
   const tasks = allTasks.filter(
     (task) => task.subjectId === null || subjectsById.has(task.subjectId),
   );
+  const periodTaskCount = tasksOfSubjects(
+    allTasks,
+    new Set([...subjects, ...archivedSubjects].map((subject) => subject.id as string)),
+  ).length;
+  const unassignedCount = tasks.filter((task) => task.subjectId === null).length;
 
   const reminderCounts = new Map<string, number>();
   for (const reminder of reminders) {
@@ -80,6 +89,8 @@ export default async function TasksPage({
 
   const openGroups = groupTasksBySubject(ranked, subjects);
   const doneGroups = groupTasksBySubject(done, subjects);
+  // The cleanup action sits on the first "Sin materia" heading on the page.
+  const unassignedOpen = openGroups.some((group) => group.key === UNASSIGNED_GROUP);
 
   const renderTaskList = (items: readonly Task[], showSubject = true) => (
     <TaskList
@@ -108,7 +119,9 @@ export default async function TasksPage({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {tasks.length > 0 ? <DeleteAllTasksButton taskCount={tasks.length} /> : null}
+          {periodTaskCount > 0 ? (
+            <DeleteAllTasksButton taskCount={periodTaskCount} periodName={period.name} />
+          ) : null}
 
           <div className="flex items-center gap-1 rounded-md border border-[color:var(--color-border)] p-1 text-xs">
             <Link
@@ -164,9 +177,14 @@ export default async function TasksPage({
                       <h3 id={`tasks-${group.key}`} className="text-sm font-medium">
                         {group.label}
                       </h3>
-                      <span className="text-[color:var(--color-ink-muted)] text-xs">
-                        {group.tasks.length} {group.tasks.length === 1 ? 'tarea' : 'tareas'}
-                      </span>
+                      <div className="flex items-baseline gap-3">
+                        {group.key === UNASSIGNED_GROUP ? (
+                          <DeleteUnassignedTasksButton taskCount={unassignedCount} />
+                        ) : null}
+                        <span className="text-[color:var(--color-ink-muted)] text-xs">
+                          {group.tasks.length} {group.tasks.length === 1 ? 'tarea' : 'tareas'}
+                        </span>
+                      </div>
                     </div>
                     {renderTaskList(group.tasks, false)}
                   </section>
@@ -189,9 +207,14 @@ export default async function TasksPage({
                         <h3 id={`done-${group.key}`} className="text-sm font-medium">
                           {group.label}
                         </h3>
-                        <span className="text-[color:var(--color-ink-muted)] text-xs">
-                          {group.tasks.length}
-                        </span>
+                        <div className="flex items-baseline gap-3">
+                          {group.key === UNASSIGNED_GROUP && !unassignedOpen ? (
+                            <DeleteUnassignedTasksButton taskCount={unassignedCount} />
+                          ) : null}
+                          <span className="text-[color:var(--color-ink-muted)] text-xs">
+                            {group.tasks.length}
+                          </span>
+                        </div>
                       </div>
                       {renderTaskList(group.tasks, false)}
                     </section>

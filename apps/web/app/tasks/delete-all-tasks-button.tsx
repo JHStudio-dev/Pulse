@@ -1,14 +1,24 @@
 'use client';
 
-import { deleteAllTasksInActivePeriod } from './actions';
+import { deleteAllTasksInActivePeriod, deleteUnassignedTasks } from './actions';
 
-export function DeleteAllTasksButton({ taskCount }: { taskCount: number }) {
+export function DeleteAllTasksButton({
+  taskCount,
+  periodName,
+}: {
+  taskCount: number;
+  periodName: string;
+}) {
   return (
     <form
       action={deleteAllTasksInActivePeriod}
       onSubmit={(event) => {
         const confirmed = window.confirm(
-          `¿Eliminar todas las tareas del período actual? Hay ${taskCount} visibles ahora. También se eliminarán las tareas de materias archivadas y las tareas sin materia. Esta acción no se puede deshacer.`,
+          [
+            `¿Eliminar ${taskCount === 1 ? 'la tarea' : `las ${taskCount} tareas`} de las materias de ${periodName}, incluidas las archivadas?`,
+            'Las tareas sin materia y las de otros períodos se conservan.',
+            'Esta acción no se puede deshacer.',
+          ].join('\n\n'),
         );
 
         if (!confirmed) event.preventDefault();
@@ -18,7 +28,33 @@ export function DeleteAllTasksButton({ taskCount }: { taskCount: number }) {
         type="submit"
         className="text-xs text-red-400 underline-offset-4 hover:underline"
       >
-        Eliminar todas las tareas
+        Eliminar tareas del período
+      </button>
+    </form>
+  );
+}
+
+export function DeleteUnassignedTasksButton({ taskCount }: { taskCount: number }) {
+  return (
+    <form
+      action={deleteUnassignedTasks}
+      onSubmit={(event) => {
+        const confirmed = window.confirm(
+          [
+            `¿Eliminar ${taskCount === 1 ? 'la tarea' : `las ${taskCount} tareas`} sin materia, pendientes y completadas?`,
+            'Estas tareas no pertenecen a ningún período, así que se borran todas las que ves en este grupo.',
+            'Esta acción no se puede deshacer.',
+          ].join('\n\n'),
+        );
+
+        if (!confirmed) event.preventDefault();
+      }}
+    >
+      <button
+        type="submit"
+        className="text-xs text-red-400 underline-offset-4 hover:underline"
+      >
+        Eliminar sin materia
       </button>
     </form>
   );
