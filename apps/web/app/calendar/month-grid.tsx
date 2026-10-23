@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { IsoDate } from '@pulse/types';
 import { buildMonthGrid, WEEKDAY_INITIALS, type MonthKey } from '@/lib/calendar';
+import { formatSessionDate } from '@/lib/format';
 
 /**
  * Compact month overview.
@@ -43,12 +44,21 @@ export function MonthGrid({
           const events = eventsByDate.get(day.date) ?? 0;
           const isToday = day.date === today;
           const isSelected = day.date === selected;
+          const spoken = [
+            formatSessionDate(day.date),
+            classes > 0 ? `${classes} ${classes === 1 ? 'clase' : 'clases'}` : null,
+            tasks > 0 ? `${tasks} ${tasks === 1 ? 'entrega' : 'entregas'}` : null,
+            events > 0 ? `${events} ${events === 1 ? 'evento' : 'eventos'} del campus` : null,
+          ]
+            .filter(Boolean)
+            .join(', ');
 
           return (
             <Link
               key={day.date}
               href={`/calendar?month=${month}&day=${day.date}`}
               aria-current={isSelected ? 'date' : undefined}
+              aria-label={spoken}
               className={[
                 'bg-[color:var(--color-surface)] min-h-[3.25rem] px-1 py-1 text-left',
                 day.inMonth ? '' : 'opacity-40',
