@@ -2,6 +2,7 @@ import type {
   CampusScheduleSuggestion,
   CampusSyncSnapshot,
   Modality,
+  SubjectSchedule,
   TimeOfDay,
   Weekday,
 } from '@pulse/types';
@@ -161,4 +162,22 @@ export function inferCampusScheduleSuggestions(
   }
 
   return suggestions.slice(0, 5);
+}
+
+/** Weekdays of a confirmed schedule that do not already have an identical slot. */
+export function missingScheduleWeekdays(
+  existing: ReadonlyArray<Pick<SubjectSchedule, 'weekday' | 'startTime' | 'endTime'>>,
+  confirmed: { weekdays: readonly Weekday[]; startTime: string; endTime: string },
+): Weekday[] {
+  const clock = (value: string) => value.slice(0, 5);
+
+  return [...new Set(confirmed.weekdays)].filter(
+    (weekday) =>
+      !existing.some(
+        (slot) =>
+          slot.weekday === weekday &&
+          clock(slot.startTime) === clock(confirmed.startTime) &&
+          clock(slot.endTime) === clock(confirmed.endTime),
+      ),
+  );
 }

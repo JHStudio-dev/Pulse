@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inferCampusScheduleSuggestions } from './schedule';
+import { inferCampusScheduleSuggestions, missingScheduleWeekdays } from './schedule';
 
 describe('campus schedule suggestions', () => {
   it('extracts weekdays, times and modality from campus text', () => {
@@ -38,5 +38,45 @@ describe('campus schedule suggestions', () => {
     });
 
     expect(suggestions).toEqual([]);
+  });
+});
+
+describe('confirmed campus schedules', () => {
+  const existing = [
+    { weekday: 1 as const, startTime: '18:00', endTime: '19:30' },
+    { weekday: 3 as const, startTime: '18:00', endTime: '19:30' },
+  ];
+
+  it('skips slots that already exist', () => {
+    expect(
+      missingScheduleWeekdays(existing, { weekdays: [1, 3], startTime: '18:00', endTime: '19:30' }),
+    ).toEqual([]);
+  });
+
+  it('adds only the new weekdays', () => {
+    expect(
+      missingScheduleWeekdays(existing, { weekdays: [1, 3, 5], startTime: '18:00', endTime: '19:30' }),
+    ).toEqual([5]);
+  });
+
+  it('treats a different time on the same day as a new slot', () => {
+    expect(
+      missingScheduleWeekdays(existing, { weekdays: [1], startTime: '18:00', endTime: '19:40' }),
+    ).toEqual([1]);
+  });
+
+  it('ignores repeated weekdays in the request', () => {
+    expect(
+      missingScheduleWeekdays([], { weekdays: [2, 2, 4], startTime: '07:00', endTime: '08:30' }),
+    ).toEqual([2, 4]);
+  });
+
+  it('compares stored times with seconds', () => {
+    expect(
+      missingScheduleWeekdays(
+        [{ weekday: 2, startTime: '07:00:00', endTime: '08:30:00' }],
+        { weekdays: [2], startTime: '07:00', endTime: '08:30' },
+      ),
+    ).toEqual([]);
   });
 });
