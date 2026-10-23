@@ -38,10 +38,11 @@ signed-in user, writable only by the service role.
 | Recovery | `recovery_plans`, `recovery_items` |
 | Recordings | `recordings`, `transcripts`, `transcript_segments`, `extracted_items`, `class_summaries`, `model_usage` |
 | Alerts | `reminders`, `notifications` |
+| Campus Sync | `campus_subject_links`, `campus_sync_runs`, `campus_sync_items` |
 
 Deliberately **not** created yet, because their phases have not started:
-`study_sessions`, `campus_sync_runs`, `campus_changes`. The specification lists
-them; building tables for unbuilt features only invites schema churn.
+`study_sessions`, `campus_changes`. The specification lists them; building
+tables for unbuilt features only invites schema churn.
 
 ## Decisions worth knowing
 
@@ -90,6 +91,17 @@ them; building tables for unbuilt features only invites schema churn.
 - **A reminder has exactly one target**, enforced by a check constraint against
   `target_kind`. `departure` is distinct from `start` because an in-person class
   needs a leave-now reminder offset by travel time.
+- **Deleting a subject detaches some rows and cascades others.** The database
+  cascades to schedules, class sessions (and their attendance, markers,
+  recordings and recovery plans), grade categories, assessments and the Campus
+  Sync link with its runs and items. Tasks, documents, notes and inbox items
+  only lose `subject_id`. The permanent delete action in the app also removes
+  the subject's tasks, the document links Campus Sync mirrored, and the stored
+  recording files, so nothing is left behind that the student can no longer
+  reach. Uploaded files and notes are kept unassigned.
+- **Tasks carry no period.** A task belongs to a period only through its
+  subject, so bulk task deletion is scoped through the active period's
+  subjects and never guesses for tasks without one.
 - **A profile row is created on signup** by a trigger on `auth.users`, so no
   screen has to handle a missing profile.
 

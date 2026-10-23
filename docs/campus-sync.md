@@ -78,3 +78,35 @@ recorded or reported as real-campus validation. A capability counts as validated
 only when a real student session returned it. Fixture-backed tests prove that
 the code handles a shape correctly; they say nothing about whether a campus
 actually serves that shape.
+
+## Campus Companion behavior
+
+What the Companion and the import screen do today. None of this is validated
+against a real campus beyond what the sections above record.
+
+- **Course identity.** A Chamilo course is its code plus its session id, and a
+  missing `id_session` is read as `0`, which is what Chamilo means by it.
+  Pulse also matches a link stored without a session, so links saved before
+  this normalization keep working.
+- **Sync All.** The content script runs the whole batch and writes progress
+  and results to extension storage, so the popup can close and reopen. Each
+  course moves through pending, syncing, done or error.
+- **Sections fail independently.** Documents, assignments, announcements and
+  agenda are read separately. A section that cannot be read is reported and
+  left out of the snapshot; the rest of the course still imports. A section is
+  never half read, and ingestion never deletes what a snapshot omits. An
+  expired campus session stops the batch and marks the remaining courses for
+  a retry.
+- **Retries.** Failed courses and courses with unread sections can be retried
+  without reading the others again. A retry never replaces a good snapshot
+  with a failure.
+- **Import.** A course keeps the subject it is linked to, then joins one with
+  the same code or name, and only then creates one. Only imported courses are
+  removed from the extension. Detected schedules are saved only when the
+  student confirms them, and an identical slot is never stored twice.
+- **Periods.** Campus Sync writes into the active period only. A course still
+  linked to a subject from an earlier period is refused rather than reviving
+  that subject or moving its history.
+- **Deadlines.** A date Chamilo stores (assignment list, assignment page, or
+  the linked agenda event) is used first. A deadline written in the title is a
+  fallback. Without either, the task has no date.
