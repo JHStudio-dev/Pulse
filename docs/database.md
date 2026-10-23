@@ -98,10 +98,21 @@ tables for unbuilt features only invites schema churn.
   only lose `subject_id`. The permanent delete action in the app also removes
   the subject's tasks, the document links Campus Sync mirrored, and the stored
   recording files, so nothing is left behind that the student can no longer
-  reach. Uploaded files and notes are kept unassigned.
+  reach. Uploaded files and notes are kept unassigned and listed under
+  Materias › Sin materia.
 - **Tasks carry no period.** A task belongs to a period only through its
   subject, so bulk task deletion is scoped through the active period's
   subjects and never guesses for tasks without one.
+- **A campus link belongs to one academic period.** `campus_subject_links`
+  carries its subject's `academic_period_id` through a composite key to
+  `subjects (id, academic_period_id, user_id)`, and is unique per course and
+  session within a period. The same campus course in a later period is a new
+  link and a new subject, so history never moves between periods.
+- **Campus items remember two decisions.** `dismissed_at` records that the
+  student deleted the task an assignment created, so sync does not recreate
+  it; it only counts while the task is actually gone. `removed_at` records
+  that a complete read of the item's section no longer listed it. Neither
+  deletes anything, and a section that could not be read sets neither.
 - **A profile row is created on signup** by a trigger on `auth.users`, so no
   screen has to handle a missing profile.
 

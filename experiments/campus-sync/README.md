@@ -1,8 +1,10 @@
 # Campus Sync feasibility spike
 
-Isolated experiment for Phase 0.1. **Not part of the Pulse build** — it is
-outside the npm workspaces, has no dependencies, and nothing in `apps/` or
-`packages/` imports it.
+Started as the isolated experiment for Phase 0.1. It is still **not part of the
+Pulse build**: it is outside the npm workspaces and nothing in `apps/` or
+`packages/` imports it. Its Chamilo parsers now also power Campus Companion,
+the extension in `companion/` that sends course snapshots to Pulse's import
+screen. Validation status is tracked in `docs/campus-sync.md`.
 
 ## What this answers
 
