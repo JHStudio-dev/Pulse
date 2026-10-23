@@ -296,6 +296,7 @@ export function toCampusSubjectLink(row: CampusSubjectLinkRow): CampusSubjectLin
     id: row.id as CampusSubjectLinkId,
     userId: row.user_id as UserId,
     campusConnectionId: row.campus_connection_id as CampusConnectionId,
+    academicPeriodId: row.academic_period_id as AcademicPeriodId,
     subjectId: row.subject_id as SubjectId,
     externalCourseId: row.external_course_id,
     externalSessionId: row.external_session_id,

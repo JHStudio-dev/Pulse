@@ -148,6 +148,7 @@ export interface CampusSubjectLinkRow {
   id: string;
   user_id: string;
   campus_connection_id: string;
+  academic_period_id: string;
   subject_id: string;
   external_course_id: string;
   external_session_id: string | null;

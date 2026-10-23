@@ -89,7 +89,7 @@ export function planCourseImport(
       return { mode: 'link', subjectId: linked.subjectId };
     }
 
-    // Linked elsewhere (archived or another period): the server decides.
+    // Linked to an archived subject of this period: the server decides.
     if (linked) return { mode: 'create' };
   }
 
@@ -130,8 +130,6 @@ export function buildIngestRequest(
 }
 
 const INGEST_ERRORS: Record<string, string> = {
-  course_linked_to_previous_period:
-    'Este curso sigue vinculado a una materia de un período anterior.',
   subject_not_in_active_period: 'La materia elegida no pertenece al período actual.',
   subject_not_found: 'La materia elegida ya no existe.',
   subject_campus_mismatch: 'La materia pertenece a otra universidad.',

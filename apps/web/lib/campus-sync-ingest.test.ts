@@ -275,22 +275,6 @@ describe('confirmed schedules during ingestion', () => {
 });
 
 describe('subjects outside the active period', () => {
-  it('refuses a course still linked to a subject from an earlier period', async () => {
-    const memory = createMemoryCampusSync();
-    const { period } = memory.addStudent(STUDENT);
-    await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
-
-    period.status = 'archived';
-    memory.state.periods.push(makePeriod(STUDENT, { name: 'III Periodo 2026' }));
-    const tasksBefore = structuredClone(memory.state.tasks);
-
-    const outcome = await ingestCampusSnapshot(STUDENT, create(snapshot()), memory.repositories);
-
-    expect(outcome).toEqual({ ok: false, status: 409, error: 'course_linked_to_previous_period' });
-    expect(memory.state.subjects).toHaveLength(1);
-    expect(memory.state.tasks).toEqual(tasksBefore);
-  });
-
   it('refuses to link a course to a subject from another period', async () => {
     const memory = createMemoryCampusSync();
     memory.addStudent(STUDENT);

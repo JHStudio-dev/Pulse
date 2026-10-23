@@ -1,4 +1,5 @@
 import type {
+  AcademicPeriodId,
   CampusConnectionId,
   CampusSyncDiffState,
   CampusSyncItemId,
@@ -62,6 +63,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
     async findSubjectLink(
       userId: UserId,
       campusConnectionId: CampusConnectionId,
+      academicPeriodId: AcademicPeriodId,
       externalCourseId: string,
       externalSessionId: string | null,
     ): Promise<CampusSubjectLink | null> {
@@ -70,6 +72,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
         .select('*')
         .eq('user_id', userId)
         .eq('campus_connection_id', campusConnectionId)
+        .eq('academic_period_id', academicPeriodId)
         .eq('external_course_id', externalCourseId);
 
       query =
@@ -86,6 +89,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       userId: UserId,
       input: {
         campusConnectionId: CampusConnectionId;
+        academicPeriodId: AcademicPeriodId;
         subjectId: SubjectId;
         externalCourseId: string;
         externalSessionId: string | null;
@@ -94,6 +98,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       const existing = await this.findSubjectLink(
         userId,
         input.campusConnectionId,
+        input.academicPeriodId,
         input.externalCourseId,
         input.externalSessionId,
       );
@@ -116,6 +121,7 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
         .insert({
           user_id: userId,
           campus_connection_id: input.campusConnectionId,
+          academic_period_id: input.academicPeriodId,
           subject_id: input.subjectId,
           external_course_id: input.externalCourseId,
           external_session_id: input.externalSessionId,
@@ -130,11 +136,19 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
     async updateSubjectLink(
       userId: UserId,
       id: CampusSubjectLinkId,
-      changes: { subjectId: SubjectId; externalSessionId: string | null },
+      changes: {
+        subjectId: SubjectId;
+        academicPeriodId: AcademicPeriodId;
+        externalSessionId: string | null;
+      },
     ): Promise<CampusSubjectLink> {
       const { data, error } = await client
         .from(SUBJECT_LINKS)
-        .update({ subject_id: changes.subjectId, external_session_id: changes.externalSessionId })
+        .update({
+          subject_id: changes.subjectId,
+          academic_period_id: changes.academicPeriodId,
+          external_session_id: changes.externalSessionId,
+        })
         .eq('user_id', userId)
         .eq('id', id)
         .select()

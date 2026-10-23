@@ -1,4 +1,5 @@
 import type {
+  AcademicPeriodId,
   CampusConnectionId,
   CampusSubjectLinkId,
   CampusSyncItemId,
@@ -29,6 +30,8 @@ export interface CampusSubjectLink {
   id: CampusSubjectLinkId;
   userId: UserId;
   campusConnectionId: CampusConnectionId;
+  /** The subject's period; the same course in another period gets its own link. */
+  academicPeriodId: AcademicPeriodId;
   subjectId: SubjectId;
   externalCourseId: string;
   externalSessionId: string | null;

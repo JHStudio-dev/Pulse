@@ -84,6 +84,7 @@ export interface CampusSyncRepository {
   findSubjectLink(
     userId: UserId,
     campusConnectionId: CampusConnectionId,
+    academicPeriodId: AcademicPeriodId,
     externalCourseId: string,
     externalSessionId: string | null,
   ): Promise<CampusSubjectLink | null>;
@@ -91,6 +92,7 @@ export interface CampusSyncRepository {
     userId: UserId,
     input: {
       campusConnectionId: CampusConnectionId;
+      academicPeriodId: AcademicPeriodId;
       subjectId: SubjectId;
       externalCourseId: string;
       externalSessionId: string | null;
@@ -99,7 +101,11 @@ export interface CampusSyncRepository {
   updateSubjectLink(
     userId: UserId,
     id: CampusSubjectLinkId,
-    changes: { subjectId: SubjectId; externalSessionId: string | null },
+    changes: {
+      subjectId: SubjectId;
+      academicPeriodId: AcademicPeriodId;
+      externalSessionId: string | null;
+    },
   ): Promise<CampusSubjectLink>;
   startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun>;
   listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]>;

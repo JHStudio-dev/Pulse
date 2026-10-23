@@ -148,11 +148,61 @@ async function main() {
 
   const subjectLinkRow = await db.query(
     `insert into campus_subject_links
-       (user_id, campus_connection_id, subject_id, external_course_id, external_session_id)
-     values ($1, $2, $3, 'ADM2011C1', '0') returning id`,
-    [studentA, campusConnectionId, subjectId],
+       (user_id, campus_connection_id, academic_period_id, subject_id,
+        external_course_id, external_session_id)
+     values ($1, $2, $3, $4, 'ADM2011C1', '0') returning id`,
+    [studentA, campusConnectionId, periodId, subjectId],
   );
   const subjectLinkId = subjectLinkRow.rows[0].id;
+
+  // The same campus course in a later period is a separate link and subject.
+  const nextPeriod = await db.query(
+    `insert into academic_periods (user_id, name, start_date, end_date, time_zone)
+     values ($1, 'Next period', '2026-07-01', '2026-11-30', 'America/Tegucigalpa')
+     returning id`,
+    [studentA],
+  );
+  const nextPeriodId = nextPeriod.rows[0].id;
+  const nextSubject = await db.query(
+    `insert into subjects (user_id, academic_period_id, name)
+     values ($1, $2, 'Fisica I') returning id`,
+    [studentA, nextPeriodId],
+  );
+  const nextLink = await db.query(
+    `insert into campus_subject_links
+       (user_id, campus_connection_id, academic_period_id, subject_id,
+        external_course_id, external_session_id)
+     values ($1, $2, $3, $4, 'ADM2011C1', '0') returning id`,
+    [studentA, campusConnectionId, nextPeriodId, nextSubject.rows[0].id],
+  );
+  check('the same campus course links once per period', nextLink.rows.length, 1);
+
+  let mismatchedPeriod = false;
+  try {
+    await db.query(
+      `insert into campus_subject_links
+         (user_id, campus_connection_id, academic_period_id, subject_id, external_course_id)
+       values ($1, $2, $3, $4, 'MAT102')`,
+      [studentA, campusConnectionId, nextPeriodId, subjectId],
+    );
+  } catch {
+    mismatchedPeriod = true;
+  }
+  check('a campus link cannot claim another period than its subject', mismatchedPeriod, true);
+
+  let duplicateLink = false;
+  try {
+    await db.query(
+      `insert into campus_subject_links
+         (user_id, campus_connection_id, academic_period_id, subject_id,
+          external_course_id, external_session_id)
+       values ($1, $2, $3, $4, 'ADM2011C1', '0')`,
+      [studentA, campusConnectionId, periodId, subjectId],
+    );
+  } catch {
+    duplicateLink = true;
+  }
+  check('a campus course links only once within a period', duplicateLink, true);
 
   const syncRunRow = await db.query(
     `insert into campus_sync_runs
@@ -169,7 +219,10 @@ async function main() {
     [studentA, subjectLinkId, syncRunId],
   );
 
-  const ownSubjects = await db.query('select count(*)::int as n from subjects');
+  const ownSubjects = await db.query(
+    'select count(*)::int as n from subjects where academic_period_id = $1',
+    [periodId],
+  );
   check('student A sees their own subject', ownSubjects.rows[0].n, 1);
 
   const dismissedOwn = await db.query(
@@ -222,9 +275,9 @@ async function main() {
   try {
     await db.query(
       `insert into campus_subject_links
-         (user_id, campus_connection_id, subject_id, external_course_id)
-       values ($1, $2, $3, 'FORGED')`,
-      [studentB, campusConnectionId, subjectId],
+         (user_id, campus_connection_id, academic_period_id, subject_id, external_course_id)
+       values ($1, $2, $3, $4, 'FORGED')`,
+      [studentB, campusConnectionId, periodId, subjectId],
     );
   } catch {
     forgedCampusLink = true;

@@ -32,12 +32,14 @@ export default async function CampusSyncImportPage() {
             code: subject.code,
           }))}
           connectionId={connection.id}
-          links={links.map((link) => ({
-            campusConnectionId: link.campusConnectionId,
-            externalCourseId: link.externalCourseId,
-            externalSessionId: link.externalSessionId,
-            subjectId: link.subjectId,
-          }))}
+          links={links
+            .filter((link) => link.academicPeriodId === period.id)
+            .map((link) => ({
+              campusConnectionId: link.campusConnectionId,
+              externalCourseId: link.externalCourseId,
+              externalSessionId: link.externalSessionId,
+              subjectId: link.subjectId,
+            }))}
         />
       )}
     </AppShell>

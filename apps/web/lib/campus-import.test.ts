@@ -70,7 +70,7 @@ describe('planning a course import', () => {
     ).toEqual({ mode: 'link', subjectId: 'subject-his' });
   });
 
-  it('leaves a course linked outside the period to the server', () => {
+  it('leaves a course linked to an archived subject to the server', () => {
     expect(
       plan(snapshot('ADM2011C1', 'Administración I'), {
         links: [
@@ -78,7 +78,7 @@ describe('planning a course import', () => {
             campusConnectionId: 'connection-1',
             externalCourseId: 'ADM2011C1',
             externalSessionId: '0',
-            subjectId: 'subject-from-last-period',
+            subjectId: 'subject-archived',
           },
         ],
       }),
@@ -155,7 +155,7 @@ describe('ingest requests', () => {
   });
 
   it('explains known ingest errors', () => {
-    expect(ingestErrorMessage('course_linked_to_previous_period')).toContain('período anterior');
+    expect(ingestErrorMessage('subject_not_in_active_period')).toContain('período actual');
     expect(ingestErrorMessage('something_new')).toBe('No se pudo guardar esta materia.');
   });
 });

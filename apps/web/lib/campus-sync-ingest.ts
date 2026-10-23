@@ -152,8 +152,9 @@ async function applyConfirmedSchedule(
  *
  * Campus items only ever add or update Pulse records: a section missing from
  * the snapshot leaves earlier tasks and documents untouched. Campus Sync always
- * writes into the active period, so a course still tied to a subject from an
- * earlier period is refused instead of reviving or moving that history.
+ * writes into the active period and only reuses links made in it. A course that
+ * returns in a new period gets a new subject; the old subject, its tasks,
+ * schedule and sync history stay with the period they belong to.
  */
 export async function ingestCampusSnapshot(
   userId: UserId,
@@ -170,7 +171,10 @@ export async function ingestCampusSnapshot(
 
   const snapshot: CampusSyncSnapshot = request.snapshot;
   const externalSessionId = normalizeExternalSessionId(snapshot.course.sessionId);
-  const existingLink = resolveCampusSubjectLink(await campusSync.listSubjectLinks(userId), {
+  const periodLinks = (await campusSync.listSubjectLinks(userId)).filter(
+    (link) => link.academicPeriodId === period.id,
+  );
+  const existingLink = resolveCampusSubjectLink(periodLinks, {
     campusConnectionId: connection.id,
     externalCourseId: snapshot.course.externalId,
     externalSessionId,
@@ -199,10 +203,6 @@ export async function ingestCampusSnapshot(
     }
   } else {
     subject = linkedSubject;
-  }
-
-  if (linkedSubject && linkedSubject.academicPeriodId !== period.id) {
-    return { ok: false, status: 409, error: 'course_linked_to_previous_period' };
   }
 
   if (!subject) {
@@ -235,10 +235,12 @@ export async function ingestCampusSnapshot(
   const subjectLink = existingLink
     ? await campusSync.updateSubjectLink(userId, existingLink.id, {
         subjectId: subject.id,
+        academicPeriodId: subject.academicPeriodId,
         externalSessionId: externalSessionId ?? existingLink.externalSessionId,
       })
     : await campusSync.upsertSubjectLink(userId, {
         campusConnectionId: connection.id,
+        academicPeriodId: subject.academicPeriodId,
         subjectId: subject.id,
         externalCourseId: snapshot.course.externalId,
         externalSessionId,

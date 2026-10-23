@@ -257,11 +257,18 @@ export function createMemoryCampusSync(): {
       async listSubjectLinks(userId) {
         return own(state.links, userId);
       },
-      async findSubjectLink(userId, campusConnectionId, externalCourseId, externalSessionId) {
+      async findSubjectLink(
+        userId,
+        campusConnectionId,
+        academicPeriodId,
+        externalCourseId,
+        externalSessionId,
+      ) {
         return (
           own(state.links, userId).find(
             (link) =>
               link.campusConnectionId === campusConnectionId &&
+              link.academicPeriodId === academicPeriodId &&
               link.externalCourseId === externalCourseId &&
               link.externalSessionId === externalSessionId,
           ) ?? null
@@ -271,6 +278,7 @@ export function createMemoryCampusSync(): {
         const existing = await this.findSubjectLink(
           userId,
           input.campusConnectionId,
+          input.academicPeriodId,
           input.externalCourseId,
           input.externalSessionId,
         );
@@ -279,6 +287,7 @@ export function createMemoryCampusSync(): {
         const duplicate = own(state.links, userId).some(
           (link) =>
             link.campusConnectionId === input.campusConnectionId &&
+            link.academicPeriodId === input.academicPeriodId &&
             link.externalCourseId === input.externalCourseId &&
             (link.externalSessionId ?? '') === (input.externalSessionId ?? ''),
         );
