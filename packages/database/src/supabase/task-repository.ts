@@ -8,6 +8,9 @@ import type { TaskRow } from './rows';
 
 const TABLE = 'tasks';
 
+/** Keeps each id list well inside request URL limits. */
+const DELETE_BATCH = 100;
+
 /** Only the fields present are written, so a partial update stays partial. */
 function toRow(task: Partial<Omit<Task, 'id' | 'userId'>>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
@@ -102,6 +105,18 @@ export function createTaskRepository(client: PulseSupabaseClient): TaskRepositor
     async remove(userId: UserId, id: TaskId): Promise<void> {
       const { error } = await client.from(TABLE).delete().eq('user_id', userId).eq('id', id);
       if (error) throw translateError(error);
+    },
+
+    async removeMany(userId: UserId, ids: readonly TaskId[]): Promise<void> {
+      for (let start = 0; start < ids.length; start += DELETE_BATCH) {
+        const { error } = await client
+          .from(TABLE)
+          .delete()
+          .eq('user_id', userId)
+          .in('id', ids.slice(start, start + DELETE_BATCH));
+
+        if (error) throw translateError(error);
+      }
     },
   };
 }

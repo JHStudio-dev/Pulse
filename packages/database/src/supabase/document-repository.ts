@@ -8,6 +8,9 @@ import type { DocumentRow } from './rows';
 
 const TABLE = 'documents';
 
+/** Keeps each id list well inside request URL limits. */
+const DELETE_BATCH = 100;
+
 function toDocumentRow(
   changes: Partial<Omit<DocumentRecord, 'id' | 'userId'>>,
 ): Record<string, unknown> {
@@ -100,6 +103,18 @@ export function createDocumentRepository(client: PulseSupabaseClient): DocumentR
     async remove(userId: UserId, id: DocumentId): Promise<void> {
       const { error } = await client.from(TABLE).delete().eq('user_id', userId).eq('id', id);
       if (error) throw translateError(error);
+    },
+
+    async removeMany(userId: UserId, ids: readonly DocumentId[]): Promise<void> {
+      for (let start = 0; start < ids.length; start += DELETE_BATCH) {
+        const { error } = await client
+          .from(TABLE)
+          .delete()
+          .eq('user_id', userId)
+          .in('id', ids.slice(start, start + DELETE_BATCH));
+
+        if (error) throw translateError(error);
+      }
     },
 
     /**

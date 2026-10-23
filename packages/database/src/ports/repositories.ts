@@ -216,6 +216,7 @@ export interface DocumentRepository {
     changes: Partial<Omit<DocumentRecord, 'id' | 'userId'>>,
   ): Promise<DocumentRecord>;
   remove(userId: UserId, id: DocumentId): Promise<void>;
+  removeMany(userId: UserId, ids: readonly DocumentId[]): Promise<void>;
   createSignedUrl(userId: UserId, id: DocumentId, expiresInSeconds: number): Promise<string>;
 }
 
@@ -355,6 +356,7 @@ export interface TaskRepository {
   ): Promise<Task>;
   update(userId: UserId, id: TaskId, changes: Partial<Omit<Task, 'id' | 'userId'>>): Promise<Task>;
   remove(userId: UserId, id: TaskId): Promise<void>;
+  removeMany(userId: UserId, ids: readonly TaskId[]): Promise<void>;
 }
 
 /** Everything the application layer is allowed to reach storage through. */
