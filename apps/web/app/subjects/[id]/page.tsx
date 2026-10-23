@@ -16,6 +16,23 @@ import { GenerateSessions } from './generate-sessions';
 import { ScheduleForm } from './schedule-form';
 import { UploadDocument } from './upload-document';
 
+function describeCampusRun(
+  run: { status: string; startedAt: string; completedAt: string | null },
+  timeZone: string,
+): string {
+  const when = new Intl.DateTimeFormat('es', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  }).format(new Date(run.completedAt ?? run.startedAt));
+
+  if (run.status === 'failed') return `la última sincronización falló (${when})`;
+  if (run.status === 'running') return 'sincronizando';
+  return `sincronizada ${when}`;
+}
+
 export default async function SubjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { userId, email, db } = await requireUser();
@@ -38,6 +55,11 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
       db.campusSync.listAppliedTargets(userId),
       db.notes.listBySubject(userId, subject.id),
     ]);
+
+  const campusLink = (await db.campusSync.listSubjectLinks(userId)).find(
+    (link) => link.subjectId === subject.id,
+  );
+  const latestRun = campusLink ? await db.campusSync.findLatestRun(userId, campusLink.id) : null;
 
   const upcoming = sessions
     .filter((session) => session.status !== 'cancelled' && session.date >= today)
@@ -76,13 +98,29 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             {MODALITY_LABEL[subject.defaultModality]}
             {subject.professorName ? ` · ${subject.professorName}` : ''}
           </p>
+          {subject.defaultMeetingUrl ? (
+            <a
+              href={subject.defaultMeetingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-sm underline underline-offset-4"
+            >
+              Enlace de clase
+            </a>
+          ) : null}
+          {campusLink ? (
+            <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
+              Campus · {campusLink.externalCourseId}
+              {latestRun ? ` · ${describeCampusRun(latestRun, period.timeZone)}` : ''}
+            </p>
+          ) : null}
         </div>
 
         <form action={archiveSubject}>
           <input type="hidden" name="subjectId" value={subject.id} />
           <button
             type="submit"
-            className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] rounded-md border border-[color:var(--color-border)] px-3 py-1.5 text-xs"
+            className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
           >
             Archivar materia
           </button>
@@ -117,52 +155,6 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             showSubject={false}
           />
         )}
-      </section>
-
-      <section className="mt-10" aria-labelledby="schedule-heading">
-        <h2 id="schedule-heading" className="text-sm font-medium">
-          Horario semanal
-        </h2>
-
-        {schedules.length === 0 ? (
-          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
-            Sin horarios. Agrega el primero abajo.
-          </p>
-        ) : (
-          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
-            {schedules.map((schedule) => (
-              <li key={schedule.id} className="flex items-center justify-between gap-4 py-3">
-                <div>
-                  <p className="text-sm">
-                    {WEEKDAY_LABEL[schedule.weekday]} · {schedule.startTime}–{schedule.endTime}
-                  </p>
-                  <p className="text-[color:var(--color-ink-muted)] mt-0.5 text-xs">
-                    {MODALITY_LABEL[schedule.modality]}
-                    {schedule.location.room ? ` · Aula ${schedule.location.room}` : ''}
-                  </p>
-                </div>
-
-                <form action={deleteSchedule}>
-                  <input type="hidden" name="scheduleId" value={schedule.id} />
-                  <input type="hidden" name="subjectId" value={subject.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-[color:var(--color-border)] px-2.5 py-1 text-xs"
-                  >
-                    Quitar
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-10" aria-labelledby="new-schedule-heading">
-        <h2 id="new-schedule-heading" className="mb-4 text-sm font-medium">
-          Nuevo horario
-        </h2>
-        <ScheduleForm subjectId={subject.id} />
       </section>
 
       <section className="mt-10" aria-labelledby="sessions-heading">
@@ -298,6 +290,65 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="schedule-heading">
+        <h2 id="schedule-heading" className="text-sm font-medium">
+          Horario semanal
+        </h2>
+
+        {schedules.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Sin horarios. Agrega el primero abajo.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+            {schedules.map((schedule) => (
+              <li key={schedule.id} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm">
+                    {WEEKDAY_LABEL[schedule.weekday]} · {schedule.startTime}–{schedule.endTime}
+                  </p>
+                  <p className="text-[color:var(--color-ink-muted)] mt-0.5 text-xs">
+                    {MODALITY_LABEL[schedule.modality]}
+                    {schedule.location.room ? ` · Aula ${schedule.location.room}` : ''}
+                    {schedule.meetingUrl && schedule.meetingUrl !== subject.defaultMeetingUrl ? (
+                      <>
+                        {' · '}
+                        <a
+                          href={schedule.meetingUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline underline-offset-4"
+                        >
+                          enlace
+                        </a>
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+
+                <form action={deleteSchedule}>
+                  <input type="hidden" name="scheduleId" value={schedule.id} />
+                  <input type="hidden" name="subjectId" value={subject.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-[color:var(--color-border)] px-2.5 py-1 text-xs"
+                  >
+                    Quitar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="new-schedule-heading">
+        <h2 id="new-schedule-heading" className="mb-4 text-sm font-medium">
+          Nuevo horario
+        </h2>
+        <ScheduleForm subjectId={subject.id} />
       </section>
     </AppShell>
   );

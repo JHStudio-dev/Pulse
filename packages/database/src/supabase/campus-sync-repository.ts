@@ -172,6 +172,23 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
       return toCampusSyncRun(data as CampusSyncRunRow);
     },
 
+    async findLatestRun(
+      userId: UserId,
+      subjectLinkId: CampusSubjectLinkId,
+    ): Promise<CampusSyncRun | null> {
+      const { data, error } = await client
+        .from(RUNS)
+        .select('*')
+        .eq('user_id', userId)
+        .eq('subject_link_id', subjectLinkId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      return data ? toCampusSyncRun(data as CampusSyncRunRow) : null;
+    },
+
     async listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]> {
       const { data, error } = await client
         .from(ITEMS)

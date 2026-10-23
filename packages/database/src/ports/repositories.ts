@@ -110,6 +110,7 @@ export interface CampusSyncRepository {
     },
   ): Promise<CampusSubjectLink>;
   startRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun>;
+  findLatestRun(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncRun | null>;
   listItems(userId: UserId, subjectLinkId: CampusSubjectLinkId): Promise<CampusSyncItem[]>;
   /** Records that the student deleted these campus tasks on purpose. */
   dismissAppliedTasks(userId: UserId, taskIds: readonly TaskId[]): Promise<void>;

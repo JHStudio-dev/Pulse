@@ -326,6 +326,13 @@ export function createMemoryCampusSync(): {
         state.runs.push(run);
         return run;
       },
+      async findLatestRun(userId, subjectLinkId) {
+        return (
+          own(state.runs, userId)
+            .filter((run) => run.subjectLinkId === subjectLinkId)
+            .at(-1) ?? null
+        );
+      },
       async listItems(userId, subjectLinkId) {
         return own(state.items, userId).filter((item) => item.subjectLinkId === subjectLinkId);
       },
