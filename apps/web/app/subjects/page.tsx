@@ -25,10 +25,19 @@ export default async function SubjectsPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const [subjects, archivedSubjects] = await Promise.all([
+  const [subjects, archivedSubjects, tasks, campusLinks] = await Promise.all([
     db.subjects.listByPeriod(userId, period.id),
     db.subjects.listArchivedByPeriod(userId, period.id),
+    db.tasks.listByUser(userId),
+    db.campusSync.listSubjectLinks(userId),
   ]);
+
+  const pendingBySubject = new Map<string, number>();
+  for (const task of tasks) {
+    if (task.subjectId === null || task.status === 'done' || task.status === 'submitted') continue;
+    pendingBySubject.set(task.subjectId, (pendingBySubject.get(task.subjectId) ?? 0) + 1);
+  }
+  const linkedSubjects = new Set<string>(campusLinks.map((link) => link.subjectId));
 
   const today = instantToZonedDate(new Date(), period.timeZone);
   const [schedules, sessions] = await Promise.all([
@@ -84,6 +93,7 @@ export default async function SubjectsPage() {
             const subjectSchedules = schedulesBySubject.get(subject.id) ?? [];
             const next = sessionsBySubject.get(subject.id)?.[0];
             const scheduleSummary = summarizeSchedules(subjectSchedules);
+            const pending = pendingBySubject.get(subject.id) ?? 0;
 
             return (
               <li key={subject.id}>
@@ -106,6 +116,8 @@ export default async function SubjectsPage() {
                   <p className="text-[color:var(--color-ink-muted)] mt-1 text-xs">
                     {scheduleSummary.length > 0 ? scheduleSummary : 'Sin horario'}
                     {subject.professorName ? ` · ${subject.professorName}` : ''}
+                    {pending > 0 ? ` · ${pending} ${pending === 1 ? 'pendiente' : 'pendientes'}` : ''}
+                    {linkedSubjects.has(subject.id) ? ' · Campus' : ''}
                   </p>
 
                   {next ? (
