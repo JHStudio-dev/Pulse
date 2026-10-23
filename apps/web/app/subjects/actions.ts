@@ -1,8 +1,14 @@
 'use server';
 
-import type { SubjectId, UserId } from '@pulse/types';
+import { RECORDINGS_BUCKET } from '@pulse/database';
+import type { SubjectId } from '@pulse/types';
 import { createSubjectSchema, uuidSchema } from '@pulse/validation';
 import { revalidatePath } from 'next/cache';
+import {
+  removeActivePeriodSubjects,
+  removeSubjectPermanently,
+  type AcademicCleanupRepositories,
+} from '@/lib/academic-cleanup';
 import { requireUser } from '@/lib/session';
 
 export interface SubjectResult {
@@ -84,14 +90,23 @@ export async function restoreSubject(formData: FormData): Promise<void> {
 }
 
 
-async function removeSubjectWithTasks(
-  userId: UserId,
-  db: Awaited<ReturnType<typeof requireUser>>['db'],
-  subjectId: SubjectId,
-): Promise<void> {
-  const tasks = await db.tasks.listBySubject(userId, subjectId);
-  await Promise.all(tasks.map((task) => db.tasks.remove(userId, task.id)));
-  await db.subjects.remove(userId, subjectId);
+function cleanupRepositories({
+  db,
+  supabase,
+}: Awaited<ReturnType<typeof requireUser>>): AcademicCleanupRepositories {
+  return {
+    periods: db.periods,
+    subjects: db.subjects,
+    tasks: db.tasks,
+    documents: db.documents,
+    notes: db.notes,
+    sessions: db.sessions,
+    recordings: db.recordings,
+    async removeRecordingFiles(paths) {
+      const { error } = await supabase.storage.from(RECORDINGS_BUCKET).remove([...paths]);
+      if (error) throw new Error(`Recording files could not be removed: ${error.message}`);
+    },
+  };
 }
 
 function refreshSubjectViews(): void {
@@ -105,31 +120,18 @@ export async function deleteSubjectPermanently(formData: FormData): Promise<void
   const subject = uuidSchema.safeParse(String(formData.get('subjectId') ?? ''));
   if (!subject.success) return;
 
-  const { userId, db } = await requireUser();
+  const context = await requireUser();
   const subjectId = subject.data as SubjectId;
-  const owned = await db.subjects.findById(userId, subjectId);
+  const owned = await context.db.subjects.findById(context.userId, subjectId);
 
   if (!owned || owned.archivedAt === null) return;
 
-  await removeSubjectWithTasks(userId, db, subjectId);
+  await removeSubjectPermanently(context.userId, subjectId, cleanupRepositories(context));
   refreshSubjectViews();
 }
 
 export async function deleteAllSubjectsInActivePeriod(): Promise<void> {
-  const { userId, db } = await requireUser();
-  const period = await db.periods.findActive(userId);
-  if (!period) return;
-
-  const [active, archived] = await Promise.all([
-    db.subjects.listByPeriod(userId, period.id),
-    db.subjects.listArchivedByPeriod(userId, period.id),
-  ]);
-
-  const subjects = new Map([...active, ...archived].map((subject) => [subject.id, subject]));
-
-  for (const subject of subjects.values()) {
-    await removeSubjectWithTasks(userId, db, subject.id);
-  }
-
+  const context = await requireUser();
+  await removeActivePeriodSubjects(context.userId, cleanupRepositories(context));
   refreshSubjectViews();
 }

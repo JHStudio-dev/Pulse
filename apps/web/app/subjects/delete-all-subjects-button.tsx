@@ -2,13 +2,24 @@
 
 import { deleteAllSubjectsInActivePeriod } from './actions';
 
-export function DeleteAllSubjectsButton({ subjectCount }: { subjectCount: number }) {
+export function DeleteAllSubjectsButton({
+  subjectCount,
+  periodName,
+}: {
+  subjectCount: number;
+  periodName: string;
+}) {
   return (
     <form
       action={deleteAllSubjectsInActivePeriod}
       onSubmit={(event) => {
         const confirmed = window.confirm(
-          `¿Eliminar permanentemente las ${subjectCount} materias del período actual? También se borrarán las tareas asociadas. Esta acción no se puede deshacer.`,
+          [
+            `¿Eliminar permanentemente ${subjectCount === 1 ? 'la materia' : `las ${subjectCount} materias`} de ${periodName}, incluidas las archivadas?`,
+            'Se borrarán sus tareas, horarios, clases, grabaciones, enlaces de documentos del campus y vínculos de Campus Sync.',
+            'Los archivos subidos, las notas y las capturas se conservan sin materia. Otros períodos no se tocan.',
+            'Esta acción no se puede deshacer.',
+          ].join('\n\n'),
         );
 
         if (!confirmed) event.preventDefault();

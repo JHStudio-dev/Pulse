@@ -60,6 +60,7 @@ export default async function SubjectsPage() {
           {subjects.length + archivedSubjects.length > 0 ? (
             <DeleteAllSubjectsButton
               subjectCount={subjects.length + archivedSubjects.length}
+              periodName={period.name}
             />
           ) : null}
           {subjects.length > 0 ? <NewSubject /> : null}

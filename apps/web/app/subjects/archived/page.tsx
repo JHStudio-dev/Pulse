@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
+import { previewSubjectRemoval } from '@/lib/academic-cleanup';
 import { requireUser } from '@/lib/session';
 import { restoreSubject } from '../actions';
 import { DeleteSubjectButton } from './delete-subject-button';
@@ -11,6 +12,9 @@ export default async function ArchivedSubjectsPage() {
   if (!period) redirect('/onboarding');
 
   const archived = await db.subjects.listArchivedByPeriod(userId, period.id);
+  const previews = await Promise.all(
+    archived.map((subject) => previewSubjectRemoval(userId, subject.id, db)),
+  );
 
   return (
     <AppShell email={email}>
@@ -27,7 +31,8 @@ export default async function ArchivedSubjectsPage() {
       </p>
       <p className="text-[color:var(--color-ink-muted)] mt-2 max-w-xl text-xs">
         Restaurar vuelve a mostrar la materia. Eliminar permanentemente borra la materia, sus
-        tareas, horarios y su vínculo de Campus Sync; no se puede deshacer.
+        tareas, horarios, clases, grabaciones y su vínculo de Campus Sync. Los archivos que
+        subiste y tus notas se conservan sin materia. No se puede deshacer.
       </p>
 
       {archived.length === 0 ? (
@@ -36,7 +41,7 @@ export default async function ArchivedSubjectsPage() {
         </p>
       ) : (
         <ul className="mt-6 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
-          {archived.map((subject) => (
+          {archived.map((subject, index) => (
             <li key={subject.id} className="flex flex-wrap items-center gap-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{subject.name}</p>
@@ -60,6 +65,7 @@ export default async function ArchivedSubjectsPage() {
                 <DeleteSubjectButton
                   subjectId={subject.id}
                   subjectName={subject.name}
+                  preview={previews[index]!}
                 />
               </div>
             </li>
