@@ -172,6 +172,26 @@ async function main() {
   const ownSubjects = await db.query('select count(*)::int as n from subjects');
   check('student A sees their own subject', ownSubjects.rows[0].n, 1);
 
+  const dismissedOwn = await db.query(
+    `update campus_sync_items set dismissed_at = now()
+     where kind = 'assignment' returning id`,
+  );
+  check('student A records a dismissed campus task', dismissedOwn.rows.length, 1);
+
+  let dismissedAnnouncement = false;
+  try {
+    await db.query(
+      `insert into campus_sync_items
+         (user_id, campus_subject_link_id, last_sync_run_id, kind, external_id,
+          content_hash, payload, dismissed_at)
+       values ($1, $2, $3, 'announcement', 'a-1', 'hash-2', '{}'::jsonb, now())`,
+      [studentA, subjectLinkId, syncRunId],
+    );
+  } catch {
+    dismissedAnnouncement = true;
+  }
+  check('only campus assignments can be dismissed', dismissedAnnouncement, true);
+
   // Student B must see none of it.
   await actAs(db, studentB);
   const otherSubjects = await db.query('select count(*)::int as n from subjects');
@@ -192,6 +212,11 @@ async function main() {
 
   const otherSyncItems = await db.query('select count(*)::int as n from campus_sync_items');
   check('student B cannot read A campus sync items', otherSyncItems.rows[0].n, 0);
+
+  const dismissedByOther = await db.query(
+    'update campus_sync_items set dismissed_at = now() returning id',
+  );
+  check('student B cannot dismiss A campus tasks', dismissedByOther.rows.length, 0);
 
   let forgedCampusLink = false;
   try {

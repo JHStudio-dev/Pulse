@@ -187,6 +187,7 @@ export interface CampusSyncItemRow {
   applied_at: string | null;
   applied_task_id: string | null;
   applied_document_id: string | null;
+  dismissed_at: string | null;
 }
 
 export interface DocumentRow {

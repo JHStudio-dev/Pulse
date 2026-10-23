@@ -71,6 +71,8 @@ export interface CampusSyncItem {
   appliedAt: Instant | null;
   appliedTaskId: TaskId | null;
   appliedDocumentId: DocumentId | null;
+  /** Set when the student deleted the task this assignment created. */
+  dismissedAt: Instant | null;
 }
 
 export interface CampusSyncItemInput {

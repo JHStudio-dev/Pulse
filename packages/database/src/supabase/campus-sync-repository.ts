@@ -35,6 +35,9 @@ function summaryRow(summary: CampusSyncSummary) {
   };
 }
 
+/** Keeps each id list well inside request URL limits. */
+const ID_BATCH = 100;
+
 const EMPTY_SUMMARY: CampusSyncSummary = {
   discoveredCount: 0,
   newCount: 0,
@@ -164,6 +167,47 @@ export function createCampusSyncRepository(client: PulseSupabaseClient): CampusS
 
       if (error) throw translateError(error);
       return (data as CampusSyncItemRow[]).map(toCampusSyncItem);
+    },
+
+    async dismissAppliedTasks(userId: UserId, taskIds: readonly TaskId[]): Promise<void> {
+      for (let start = 0; start < taskIds.length; start += ID_BATCH) {
+        const { error } = await client
+          .from(ITEMS)
+          .update({ dismissed_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('kind', 'assignment')
+          .in('applied_task_id', taskIds.slice(start, start + ID_BATCH));
+
+        if (error) throw translateError(error);
+      }
+    },
+
+    async listDismissedItems(userId: UserId): Promise<CampusSyncItem[]> {
+      const { data, error } = await client
+        .from(ITEMS)
+        .select('*')
+        .eq('user_id', userId)
+        .not('dismissed_at', 'is', null)
+        .is('applied_task_id', null)
+        .order('dismissed_at', { ascending: false });
+
+      if (error) throw translateError(error);
+      return (data as CampusSyncItemRow[]).map(toCampusSyncItem);
+    },
+
+    async restoreDismissedItem(userId: UserId, itemId: CampusSyncItemId): Promise<CampusSyncItem> {
+      const { data, error } = await client
+        .from(ITEMS)
+        .update({ dismissed_at: null })
+        .eq('user_id', userId)
+        .eq('id', itemId)
+        .not('dismissed_at', 'is', null)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Dismissed campus item ${itemId} not found`);
+      return toCampusSyncItem(data as CampusSyncItemRow);
     },
 
     async listAppliedTasks(

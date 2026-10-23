@@ -339,6 +339,7 @@ export function toCampusSyncItem(row: CampusSyncItemRow): CampusSyncItem {
     appliedAt: row.applied_at,
     appliedTaskId: row.applied_task_id as CampusSyncItem['appliedTaskId'],
     appliedDocumentId: row.applied_document_id as CampusSyncItem['appliedDocumentId'],
+    dismissedAt: row.dismissed_at,
   };
 }
 
