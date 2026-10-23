@@ -7,7 +7,7 @@ function count(value: number, singular: string, plural: string): string {
   return `${value} ${value === 1 ? singular : plural}`;
 }
 
-export function removalMessage(subjectName: string, preview: SubjectRemovalPreview): string {
+function removalMessage(subjectName: string, preview: SubjectRemovalPreview): string {
   const removed = [
     count(preview.tasks, 'tarea', 'tareas'),
     'sus horarios, clases y grabaciones',

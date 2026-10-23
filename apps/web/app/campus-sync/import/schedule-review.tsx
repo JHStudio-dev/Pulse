@@ -23,7 +23,7 @@ const MODALITY_LABELS: Record<Modality, string> = {
 const FIELD =
   'mt-1 block w-full rounded-sm border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1.5';
 
-export function describeScheduleDraft(draft: ScheduleDraft): string {
+function describeScheduleDraft(draft: ScheduleDraft): string {
   const days = DAY_LABELS.filter((day) => draft.weekdays.includes(day.value))
     .map((day) => day.label)
     .join(', ');

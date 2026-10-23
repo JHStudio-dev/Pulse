@@ -51,7 +51,7 @@ export interface SubjectRemovalPreview {
   keptNotes: number;
 }
 
-export function isCampusMirror(document: Pick<DocumentRecord, 'source' | 'storagePath'>): boolean {
+function isCampusMirror(document: Pick<DocumentRecord, 'source' | 'storagePath'>): boolean {
   return document.source === 'campus_sync' && document.storagePath === null;
 }
 
