@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import type { SubjectId } from '@pulse/types';
+import { instantToZonedDate, sortTasksByPriority } from '@pulse/core';
+import type { Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
 import { AddReminder } from '@/app/reminders/add-reminder';
+import { TaskList } from '@/app/tasks/task-list';
 import { formatSessionDate, MODALITY_LABEL, WEEKDAY_LABEL } from '@/lib/format';
 import { describeType, formatSize } from '@/lib/uploads';
 import { requireUser } from '@/lib/session';
@@ -22,13 +24,37 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
   const subject = await db.subjects.findById(userId, id as SubjectId);
   if (!subject) notFound();
 
-  const schedules = await db.schedules.listBySubject(userId, subject.id);
-  const sessions = await db.sessions.listBySubject(userId, subject.id);
-  const documents = await db.documents.listBySubject(userId, subject.id);
-  const upcoming = sessions.filter((session) => session.status !== 'cancelled').slice(0, 8);
+  const today = instantToZonedDate(new Date(), period.timeZone);
+  const [schedules, sessions, documents, tasks, reminders, periodSubjects] = await Promise.all([
+    db.schedules.listBySubject(userId, subject.id),
+    db.sessions.listBySubject(userId, subject.id),
+    db.documents.listBySubject(userId, subject.id),
+    db.tasks.listBySubject(userId, subject.id),
+    db.reminders.listByUser(userId),
+    db.subjects.listByPeriod(userId, period.id),
+  ]);
+
+  const upcoming = sessions
+    .filter((session) => session.status !== 'cancelled' && session.date >= today)
+    .slice(0, 8);
+
+  const openTasks = sortTasksByPriority(
+    tasks.filter((task) => task.status !== 'done' && task.status !== 'submitted'),
+    { today },
+  ).map((entry) => entry.task);
+  const doneCount = tasks.length - openTasks.length;
+
+  const reminderCounts = new Map<string, number>();
+  for (const reminder of reminders) {
+    const taskId = reminder.target.taskId;
+    if (!reminder.enabled || !taskId) continue;
+    reminderCounts.set(taskId, (reminderCounts.get(taskId) ?? 0) + 1);
+  }
+
+  const subjectOptions = periodSubjects.map((item) => ({ id: item.id as string, name: item.name }));
 
   return (
-    <AppShell email={email}>
+    <AppShell email={email} subjects={subjectOptions}>
       <Link
         href="/subjects"
         className="text-[color:var(--color-ink-muted)] text-sm underline-offset-4 hover:underline"
@@ -57,7 +83,36 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
         </form>
       </div>
 
-      <section className="mt-8" aria-labelledby="schedule-heading">
+      <section className="mt-8" aria-labelledby="subject-tasks-heading">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 id="subject-tasks-heading" className="text-sm font-medium">
+            Tareas pendientes
+          </h2>
+          <Link
+            href="/tasks"
+            className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+          >
+            {doneCount > 0 ? `${doneCount} completadas · ` : ''}Ver todas las tareas
+          </Link>
+        </div>
+
+        {openTasks.length === 0 ? (
+          <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
+            Nada pendiente en esta materia.
+          </p>
+        ) : (
+          <TaskList
+            tasks={openTasks}
+            subjectsById={new Map<SubjectId, Subject>([[subject.id, subject]])}
+            subjects={subjectOptions}
+            today={today}
+            reminderCounts={reminderCounts}
+            showSubject={false}
+          />
+        )}
+      </section>
+
+      <section className="mt-10" aria-labelledby="schedule-heading">
         <h2 id="schedule-heading" className="text-sm font-medium">
           Horario semanal
         </h2>
@@ -118,30 +173,33 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
         ) : (
           <>
             <p className="text-[color:var(--color-ink-muted)] mt-3 text-sm">
-              {sessions.length} en total. Las próximas:
+              {sessions.length} en total.{' '}
+              {upcoming.length > 0 ? 'Las próximas:' : 'No quedan clases por delante.'}
             </p>
-            <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
-              {upcoming.map((session) => (
-                <li
-                  key={session.id}
-                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5"
-                >
-                  <span className="text-sm">{formatSessionDate(session.date)}</span>
-                  <span className="text-[color:var(--color-ink-muted)] text-xs">
-                    {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
-                  </span>
-                  <span className="ml-auto flex items-center gap-3">
-                    <Link
-                      href={`/sessions/${session.id}`}
-                      className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
-                    >
-                      Abrir
-                    </Link>
-                    <AddReminder kind="session" targetId={session.id} />
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {upcoming.length > 0 ? (
+              <ul className="mt-3 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)]">
+                {upcoming.map((session) => (
+                  <li
+                    key={session.id}
+                    className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2.5"
+                  >
+                    <span className="text-sm">{formatSessionDate(session.date)}</span>
+                    <span className="text-[color:var(--color-ink-muted)] text-xs">
+                      {session.startTime}–{session.endTime} · {MODALITY_LABEL[session.modality]}
+                    </span>
+                    <span className="ml-auto flex items-center gap-3">
+                      <Link
+                        href={`/sessions/${session.id}`}
+                        className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-xs underline-offset-4 hover:underline"
+                      >
+                        Abrir
+                      </Link>
+                      <AddReminder kind="session" targetId={session.id} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </>
         )}
       </section>
@@ -172,6 +230,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ id: st
                 </form>
 
                 <span className="text-[color:var(--color-ink-muted)] text-xs">
+                  {document.source === 'campus_sync' ? 'Campus · ' : ''}
                   {describeType(document.mimeType)}
                   {document.sizeBytes === null ? '' : ` · ${formatSize(document.sizeBytes)}`} ·{' '}
                   {formatSessionDate(document.createdAt.slice(0, 10))}
