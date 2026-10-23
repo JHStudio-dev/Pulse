@@ -17,7 +17,7 @@ export function DeleteAllSubjectsButton({
           [
             `¿Eliminar permanentemente ${subjectCount === 1 ? 'la materia' : `las ${subjectCount} materias`} de ${periodName}, incluidas las archivadas?`,
             'Se borrarán sus tareas, horarios, clases, grabaciones, enlaces de documentos del campus y vínculos de Campus Sync.',
-            'Los archivos subidos, las notas y las capturas se conservan sin materia. Otros períodos no se tocan.',
+            'Los archivos subidos y las notas pasan a Materias › Sin materia; las capturas siguen en Inbox. Otros períodos no se tocan.',
             'Esta acción no se puede deshacer.',
           ].join('\n\n'),
         );

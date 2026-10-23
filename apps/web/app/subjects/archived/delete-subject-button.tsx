@@ -25,7 +25,9 @@ export function removalMessage(subjectName: string, preview: SubjectRemovalPrevi
   return [
     `¿Eliminar "${subjectName}" permanentemente?`,
     `Se borrarán ${removed.join(', ')}.`,
-    ...(kept.length > 0 ? [`Se conservarán sin materia: ${kept.join(' y ')}.`] : []),
+    ...(kept.length > 0
+      ? [`Se conservarán en Materias › Sin materia: ${kept.join(' y ')}.`]
+      : []),
     'Esta acción no se puede deshacer.',
   ].join('\n\n');
 }

@@ -25,12 +25,16 @@ export default async function SubjectsPage() {
   const period = await db.periods.findActive(userId);
   if (!period) redirect('/onboarding');
 
-  const [subjects, archivedSubjects, tasks, campusLinks] = await Promise.all([
-    db.subjects.listByPeriod(userId, period.id),
-    db.subjects.listArchivedByPeriod(userId, period.id),
-    db.tasks.listByUser(userId),
-    db.campusSync.listSubjectLinks(userId),
-  ]);
+  const [subjects, archivedSubjects, tasks, campusLinks, looseDocuments, looseNotes] =
+    await Promise.all([
+      db.subjects.listByPeriod(userId, period.id),
+      db.subjects.listArchivedByPeriod(userId, period.id),
+      db.tasks.listByUser(userId),
+      db.campusSync.listSubjectLinks(userId),
+      db.documents.listUnassigned(userId),
+      db.notes.listUnassigned(userId),
+    ]);
+  const unassignedCount = looseDocuments.length + looseNotes.length;
 
   const pendingBySubject = new Map<string, number>();
   for (const task of tasks) {
@@ -66,6 +70,14 @@ export default async function SubjectsPage() {
           >
             Archivadas
           </Link>
+          {unassignedCount > 0 ? (
+            <Link
+              href="/subjects/unassigned"
+              className="text-[color:var(--color-ink-muted)] hover:text-[color:var(--color-ink)] text-sm underline-offset-4 hover:underline"
+            >
+              Sin materia · {unassignedCount}
+            </Link>
+          ) : null}
           {subjects.length + archivedSubjects.length > 0 ? (
             <DeleteAllSubjectsButton
               subjectCount={subjects.length + archivedSubjects.length}

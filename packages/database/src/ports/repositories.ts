@@ -231,6 +231,8 @@ export interface AttendanceRepository {
 /** Files a student uploads. The bucket is private; access goes through signed URLs. */
 export interface DocumentRepository {
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<DocumentRecord[]>;
+  /** Documents left without a subject, usually after one was deleted. */
+  listUnassigned(userId: UserId): Promise<DocumentRecord[]>;
   findById(userId: UserId, id: DocumentId): Promise<DocumentRecord | null>;
   create(
     userId: UserId,
@@ -265,6 +267,8 @@ export interface InboxRepository {
 
 export interface NoteRepository {
   listBySubject(userId: UserId, subjectId: SubjectId): Promise<Note[]>;
+  /** Notes with no subject: captured without one, or left by a deleted subject. */
+  listUnassigned(userId: UserId): Promise<Note[]>;
   /** The note written during a class. One per session, so it can be reopened. */
   findBySession(userId: UserId, sessionId: ClassSessionId): Promise<Note | null>;
   create(
@@ -272,6 +276,7 @@ export interface NoteRepository {
     input: Omit<Note, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
   ): Promise<Note>;
   updateBody(userId: UserId, id: NoteId, body: string): Promise<Note>;
+  moveToSubject(userId: UserId, id: NoteId, subjectId: SubjectId | null): Promise<Note>;
   remove(userId: UserId, id: NoteId): Promise<void>;
 }
 

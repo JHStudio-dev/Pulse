@@ -44,6 +44,18 @@ export function createDocumentRepository(client: PulseSupabaseClient): DocumentR
       return (data as DocumentRow[]).map(toDocument);
     },
 
+    async listUnassigned(userId: UserId): Promise<DocumentRecord[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select('*')
+        .eq('user_id', userId)
+        .is('subject_id', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw translateError(error);
+      return (data as DocumentRow[]).map(toDocument);
+    },
+
     async findById(userId: UserId, id: DocumentId): Promise<DocumentRecord | null> {
       const { data, error } = await client
         .from(TABLE)

@@ -22,6 +22,18 @@ export function createNoteRepository(client: PulseSupabaseClient): NoteRepositor
       return (data as NoteRow[]).map(toNote);
     },
 
+    async listUnassigned(userId: UserId): Promise<Note[]> {
+      const { data, error } = await client
+        .from(TABLE)
+        .select('*')
+        .eq('user_id', userId)
+        .is('subject_id', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw translateError(error);
+      return (data as NoteRow[]).map(toNote);
+    },
+
     async findBySession(userId: UserId, sessionId: ClassSessionId): Promise<Note | null> {
       const { data, error } = await client
         .from(TABLE)
@@ -61,6 +73,20 @@ export function createNoteRepository(client: PulseSupabaseClient): NoteRepositor
       const { data, error } = await client
         .from(TABLE)
         .update({ body })
+        .eq('user_id', userId)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw translateError(error);
+      if (!data) throw new DatabaseError('not_found', `Note ${id} not found`);
+      return toNote(data as NoteRow);
+    },
+
+    async moveToSubject(userId: UserId, id: NoteId, subjectId: SubjectId | null): Promise<Note> {
+      const { data, error } = await client
+        .from(TABLE)
+        .update({ subject_id: subjectId })
         .eq('user_id', userId)
         .eq('id', id)
         .select()

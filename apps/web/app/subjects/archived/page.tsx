@@ -32,7 +32,7 @@ export default async function ArchivedSubjectsPage() {
       <p className="text-[color:var(--color-ink-muted)] mt-2 max-w-xl text-xs">
         Restaurar vuelve a mostrar la materia. Eliminar permanentemente borra la materia, sus
         tareas, horarios, clases, grabaciones y su vínculo de Campus Sync. Los archivos que
-        subiste y tus notas se conservan sin materia. No se puede deshacer.
+        subiste y tus notas pasan a Sin materia. No se puede deshacer.
       </p>
 
       {archived.length === 0 ? (
