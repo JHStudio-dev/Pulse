@@ -11,7 +11,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --build --verbose",
+    "typecheck": "tsc --build --verbose && npm run typecheck --workspace @pulse/web",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
