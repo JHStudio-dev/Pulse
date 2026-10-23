@@ -65,7 +65,11 @@ export function Agenda({
                       className="hover:bg-[color:var(--color-surface-raised)] flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-1 py-2"
                     >
                       <span className="font-mono text-xs tabular-nums">{session.startTime}</span>
-                      <span className="text-sm">{subject?.name ?? 'Clase'}</span>
+                      <span
+                        className={session.status === 'cancelled' ? 'text-sm line-through' : 'text-sm'}
+                      >
+                        {subject?.name ?? 'Clase'}
+                      </span>
                       <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
                         Clase · {MODALITY_LABEL[session.modality]}
                         {place.length > 0 ? ` · ${place}` : ''}
@@ -86,6 +90,7 @@ export function Agenda({
                     <span className="text-sm">{event.title}</span>
                     <span className="text-[color:var(--color-ink-muted)] ml-auto text-xs">
                       Evento · {event.subjectName}{event.allDay ? ' · Todo el día' : ''}
+                      {event.sourceUrl ? <span className="sr-only"> (abre el campus)</span> : null}
                     </span>
                   </>
                 );

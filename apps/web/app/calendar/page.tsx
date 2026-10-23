@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { instantToZonedDate } from '@pulse/core';
 import type { IsoDate, Subject, SubjectId } from '@pulse/types';
 import { AppShell } from '@/components/app-shell';
+import { formatSessionDate } from '@/lib/format';
 import {
   buildCampusEvents,
   campusEventDate,
@@ -148,21 +149,21 @@ export default async function CalendarPage({
 
         <div className="flex items-center gap-3 text-sm">
           {canGoBack ? (
-            <Link href={`/calendar?month=${previous}`} aria-label="Mes anterior">
+            <Link href={`/calendar?month=${previous}`} aria-label="Mes anterior" className="px-2 py-1">
               ‹
             </Link>
           ) : (
-            <span className="text-[color:var(--color-ink-muted)]" aria-hidden="true">
+            <span className="text-[color:var(--color-ink-muted)] px-2 py-1" aria-hidden="true">
               ‹
             </span>
           )}
           <span className="min-w-[9rem] text-center font-medium">{formatMonth(month)}</span>
           {canGoForward ? (
-            <Link href={`/calendar?month=${next}`} aria-label="Mes siguiente">
+            <Link href={`/calendar?month=${next}`} aria-label="Mes siguiente" className="px-2 py-1">
               ›
             </Link>
           ) : (
-            <span className="text-[color:var(--color-ink-muted)]" aria-hidden="true">
+            <span className="text-[color:var(--color-ink-muted)] px-2 py-1" aria-hidden="true">
               ›
             </span>
           )}
@@ -181,7 +182,7 @@ export default async function CalendarPage({
       <section className="mt-8" aria-labelledby="agenda-heading">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 id="agenda-heading" className="text-sm font-medium">
-            {selected ? 'Ese día' : 'Todo el mes'}
+            {selected ? (selected === today ? 'Hoy' : formatSessionDate(selected)) : 'Todo el mes'}
           </h2>
           {selected ? (
             <Link
